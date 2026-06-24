@@ -1,0 +1,22 @@
+{
+  "name": "focussive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ADHD Focus Session Management System",
+  "scripts": {
+    "dev:backend": "pnpm -F @focussive/backend dev",
+    "dev:mobile": "pnpm -F @focussive/mobile start",
+    "dev:extension": "pnpm -F @focussive/extension dev",
+    "build:backend": "pnpm -F @focussive/backend build",
+    "build:extension": "pnpm -F @focussive/extension build",
+    "typecheck": "pnpm -r run typecheck",
+    "test-db": "pnpm -F @focussive/backend test-db",
+    "clean": "pnpm -r run clean"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["bcrypt", "esbuild"]
+  }
+}

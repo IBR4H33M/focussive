@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "Focussive",
+    "slug": "focussive",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "focussive",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.focussive.app",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.focussive.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#90EE90",
+        "foregroundImage": "./assets/images/icon.png"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Focussive to access your camera to scan QR codes."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "android": {
+            "image": "./assets/images/icon.png",
+            "imageWidth": 100
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "apiUrl": "http://localhost:3000",
+      "router": {},
+      "eas": {
+        "projectId": "c71a2169-5cb4-452a-b07c-61809b84ac9c"
+      }
+    }
+  }
+}
