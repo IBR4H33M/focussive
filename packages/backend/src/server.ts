@@ -63,6 +63,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // ---- Routes ----
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`[${req.method}] ${req.url}`);
+  next();
+});
+
 app.use('/auth', authRoutes);
 app.use('/sessions', sessionRoutes);
 app.use('/violations', violationRoutes);
@@ -85,8 +91,8 @@ app.use(errorHandler);
 
 // ---- Start Server ----
 
-app.listen(PORT, () => {
-  console.log(`🟢 Focussive backend running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🟢 Focussive backend running on http://0.0.0.0:${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 

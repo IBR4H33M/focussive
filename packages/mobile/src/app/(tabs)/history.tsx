@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/utils/theme';
 import { historyApi } from '@/utils/api';
+import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
 import type { SessionHistory } from '@focussive/shared';
 
@@ -120,7 +121,7 @@ export default function HistoryScreen() {
         onEndReachedThreshold={0.5}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📋</Text>
+            <Ionicons name="list-outline" size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>No history yet</Text>
             <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
               Completed and cancelled sessions will appear here

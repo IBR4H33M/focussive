@@ -19,7 +19,8 @@
       },
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.QUERY_ALL_PACKAGES"
       ]
     },
     "web": {
@@ -57,7 +58,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiUrl": "http://localhost:3000",
+      "apiUrl": "http://192.168.10.211:3000",
       "router": {},
       "eas": {
         "projectId": "c71a2169-5cb4-452a-b07c-61809b84ac9c"

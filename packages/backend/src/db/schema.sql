@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- ============================================================
 -- SESSIONS TABLE
@@ -45,9 +45,9 @@ CREATE TABLE IF NOT EXISTS sessions (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX idx_sessions_status ON sessions(status);
-CREATE INDEX idx_sessions_user_status ON sessions(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_status ON sessions(user_id, status);
 
 -- ============================================================
 -- VIOLATIONS TABLE
@@ -64,8 +64,8 @@ CREATE TABLE IF NOT EXISTS violations (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_violations_session_id ON violations(session_id);
-CREATE INDEX idx_violations_user_id ON violations(user_id);
+CREATE INDEX IF NOT EXISTS idx_violations_session_id ON violations(session_id);
+CREATE INDEX IF NOT EXISTS idx_violations_user_id ON violations(user_id);
 
 -- ============================================================
 -- APP GROUPS TABLE
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS app_groups (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_app_groups_user_id ON app_groups(user_id);
+CREATE INDEX IF NOT EXISTS idx_app_groups_user_id ON app_groups(user_id);
 
 -- ============================================================
 -- DEVICES TABLE
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS devices (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_devices_user_id ON devices(user_id);
+CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id);
 
 -- ============================================================
 -- QR CODES TABLE
@@ -107,8 +107,8 @@ CREATE TABLE IF NOT EXISTS qr_codes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_qr_codes_code ON qr_codes(code);
-CREATE INDEX idx_qr_codes_user_id ON qr_codes(user_id);
+CREATE INDEX IF NOT EXISTS idx_qr_codes_code ON qr_codes(code);
+CREATE INDEX IF NOT EXISTS idx_qr_codes_user_id ON qr_codes(user_id);
 
 -- ============================================================
 -- SESSION HISTORY TABLE
@@ -129,8 +129,8 @@ CREATE TABLE IF NOT EXISTS session_history (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_session_history_user_id ON session_history(user_id);
-CREATE INDEX idx_session_history_session_id ON session_history(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_history_user_id ON session_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_session_history_session_id ON session_history(session_id);
 
 -- ============================================================
 -- SESSION ALLOWLIST TABLE (for "Mark as necessary" during session)
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS session_allowlist (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_session_allowlist_session_id ON session_allowlist(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_allowlist_session_id ON session_allowlist(session_id);
 
 -- ============================================================
 -- UPDATED_AT TRIGGER FUNCTION

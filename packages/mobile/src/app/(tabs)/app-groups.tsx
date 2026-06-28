@@ -19,6 +19,8 @@ import { useTheme } from '@/utils/theme';
 import { appGroupApi } from '@/utils/api';
 import { PREDEFINED_APPS } from '@focussive/shared';
 import type { AppGroup, AppInfo } from '@focussive/shared';
+import { Ionicons } from '@expo/vector-icons';
+import InstalledApps from '../../../modules/my-module';
 
 export default function AppGroupsScreen() {
   const theme = useTheme();
@@ -29,6 +31,7 @@ export default function AppGroupsScreen() {
   const [editingGroup, setEditingGroup] = useState<AppGroup | null>(null);
   const [groupName, setGroupName] = useState('');
   const [selectedApps, setSelectedApps] = useState<AppInfo[]>([]);
+  const [deviceApps, setDeviceApps] = useState<AppInfo[]>(PREDEFINED_APPS);
 
   const fetchGroups = useCallback(async () => {
     try {
@@ -43,6 +46,19 @@ export default function AppGroupsScreen() {
 
   useEffect(() => {
     fetchGroups();
+    
+    async function loadDeviceApps() {
+      try {
+        if (!InstalledApps) return; // Native module not available yet — use predefined apps
+        const apps = await InstalledApps.getApps();
+        if (apps && apps.length > 0) {
+          setDeviceApps(apps.map(a => ({ id: a.id, name: a.name, icon: 'apps-outline' })));
+        }
+      } catch {
+        // Fallback to predefined apps if native module fails (e.g. in Expo Go before rebuild)
+      }
+    }
+    loadDeviceApps();
   }, [fetchGroups]);
 
   function openCreateModal() {
@@ -113,13 +129,13 @@ export default function AppGroupsScreen() {
         <View style={styles.groupHeader}>
           <Text style={[styles.groupName, { color: theme.text }]}>{item.name}</Text>
           <TouchableOpacity onPress={() => handleDelete(item.id)}>
-            <Text style={[styles.deleteBtn, { color: theme.danger }]}>🗑</Text>
+            <Ionicons name="trash-outline" size={20} color={theme.danger} />
           </TouchableOpacity>
         </View>
         <View style={styles.appList}>
           {(item.apps || []).slice(0, 5).map((app) => (
             <View key={app.id} style={[styles.appChip, { backgroundColor: theme.surface }]}>
-              <Text style={styles.appChipIcon}>{app.icon}</Text>
+              <Ionicons name={app.icon as any || 'apps-outline'} size={14} color={theme.textSecondary} />
               <Text style={[styles.appChipText, { color: theme.textSecondary }]}>{app.name}</Text>
             </View>
           ))}
@@ -150,7 +166,7 @@ export default function AppGroupsScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📱</Text>
+            <Ionicons name="apps-outline" size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>No app groups</Text>
             <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
               Create groups of distracting apps to block during sessions
@@ -176,7 +192,7 @@ export default function AppGroupsScreen() {
                 {editingGroup ? 'Edit Group' : 'New Group'}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={[styles.closeBtn, { color: theme.textSecondary }]}>✕</Text>
+                <Ionicons name="close" size={24} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -191,7 +207,7 @@ export default function AppGroupsScreen() {
             <Text style={[styles.appSectionTitle, { color: theme.textSecondary }]}>Select Apps</Text>
 
             <ScrollView style={styles.appGrid}>
-              {PREDEFINED_APPS.map((app) => {
+              {deviceApps.map((app) => {
                 const isSelected = selectedApps.some((a) => a.id === app.id);
                 return (
                   <TouchableOpacity
@@ -203,9 +219,9 @@ export default function AppGroupsScreen() {
                     ]}
                     onPress={() => toggleApp(app)}
                   >
-                    <Text style={styles.appItemIcon}>{app.icon}</Text>
+                    <Ionicons name={app.icon as any || 'apps-outline'} size={24} color={theme.textSecondary} />
                     <Text style={[styles.appItemName, { color: theme.text }]}>{app.name}</Text>
-                    {isSelected && <Text style={[styles.checkmark, { color: theme.accent }]}>✓</Text>}
+                    {isSelected && <Ionicons name="checkmark" size={20} color={theme.accent} />}
                   </TouchableOpacity>
                 );
               })}

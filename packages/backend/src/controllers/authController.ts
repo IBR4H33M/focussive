@@ -85,6 +85,7 @@ export async function signup(req: Request, res: Response): Promise<void> {
     .single();
 
   if (error || !user) {
+    console.error('[Supabase Error] Failed to create user:', error);
     throw new AppError('Failed to create user', 500, 'CREATE_ERROR');
   }
 

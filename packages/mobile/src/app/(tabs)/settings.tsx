@@ -17,6 +17,7 @@ import { useTheme } from '@/utils/theme';
 import { useAuth } from '@/context/AuthContext';
 import { userApi } from '@/utils/api';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -153,7 +154,7 @@ export default function SettingsScreen() {
           onPress={openEditModal}
         >
           <Text style={[styles.menuText, { color: theme.text }]}>Edit Profile</Text>
-          <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -161,7 +162,7 @@ export default function SettingsScreen() {
           onPress={() => setPasswordModalVisible(true)}
         >
           <Text style={[styles.menuText, { color: theme.text }]}>Change Password</Text>
-          <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -169,7 +170,7 @@ export default function SettingsScreen() {
           onPress={() => router.push('/(auth)/extension-qr' as never)}
         >
           <Text style={[styles.menuText, { color: theme.text }]}>Connect Extension</Text>
-          <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
 

@@ -19,6 +19,7 @@ import { useSessions } from '@/context/SessionContext';
 import SessionCard from '@/components/SessionCard';
 import { sessionApi } from '@/utils/api';
 import type { Session } from '@focussive/shared';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -107,7 +108,7 @@ export default function HomeScreen() {
         {/* Empty State */}
         {allSessions.length === 0 && !isLoading && (
           <View style={styles.emptyState}>
-            <Text style={[styles.emptyIcon]}>🎯</Text>
+            <Ionicons name="bulb-outline" size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>No sessions yet</Text>
             <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
               Create your first focus session to get started
