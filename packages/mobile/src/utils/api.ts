@@ -131,6 +131,9 @@ export const sessionApi = {
   cancel: (id: string, reason?: string) =>
     apiRequest(`/sessions/${id}/cancel`, { method: 'POST', body: { reason } }),
 
+  pause: (id: string) =>
+    apiRequest(`/sessions/${id}/pause`, { method: 'POST' }),
+
   getActive: () => apiRequest<{ data: unknown[] }>('/sessions/active'),
 
   getUpcoming: () => apiRequest<{ data: unknown[] }>('/sessions/upcoming'),
@@ -177,6 +180,12 @@ export const historyApi = {
 
   export: (body?: { session_ids?: string[]; start_date?: string; end_date?: string }) =>
     apiRequest('/history/export', { method: 'POST', body }),
+
+  deleteOne: (id: string) =>
+    apiRequest(`/history/${id}`, { method: 'DELETE' }),
+
+  deleteAll: () =>
+    apiRequest('/history', { method: 'DELETE' }),
 };
 
 // --- User API ---

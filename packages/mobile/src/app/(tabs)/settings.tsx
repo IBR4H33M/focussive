@@ -174,6 +174,19 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Data */}
+      <View style={[styles.section, { borderColor: theme.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>DATA</Text>
+
+        <TouchableOpacity
+          style={[styles.menuItem, { borderColor: theme.border }]}
+          onPress={() => router.push('/history/manage' as never)}
+        >
+          <Text style={[styles.menuText, { color: theme.text }]}>Manage History</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+        </TouchableOpacity>
+      </View>
+
       {/* Actions */}
       <View style={[styles.section, { borderColor: theme.border }]}>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>

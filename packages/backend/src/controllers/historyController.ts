@@ -120,3 +120,49 @@ export async function exportHistory(req: AuthRequest, res: Response): Promise<vo
   res.setHeader('Content-Disposition', 'attachment; filename=focussive_history.csv');
   res.send(csv);
 }
+
+// DELETE /history/:id — delete a single history entry
+export async function deleteHistoryEntry(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const { id } = req.params;
+
+  const { data: entry } = await supabase
+    .from('session_history')
+    .select('id')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (!entry) {
+    throw new AppError('History entry not found', 404, 'NOT_FOUND');
+  }
+
+  const { error } = await supabase
+    .from('session_history')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) {
+    throw new AppError('Failed to delete history entry', 500, 'DELETE_ERROR');
+  }
+
+  res.status(204).send();
+}
+
+// DELETE /history — delete ALL history for this user
+export async function deleteAllHistory(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+
+  const { error } = await supabase
+    .from('session_history')
+    .delete()
+    .eq('user_id', userId);
+
+  if (error) {
+    throw new AppError('Failed to delete history', 500, 'DELETE_ERROR');
+  }
+
+  res.status(204).send();
+}
+

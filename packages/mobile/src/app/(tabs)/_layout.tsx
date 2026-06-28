@@ -43,10 +43,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Sessions',
           headerTitle: 'Focussive',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'timer' : 'timer-outline'} size={22} color={color} />
           ),
         }}
       />
@@ -55,7 +55,7 @@ export default function TabLayout() {
         options={{
           title: 'History',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'time' : 'time-outline'} size={22} color={color} />
           ),
         }}
       />
@@ -64,7 +64,7 @@ export default function TabLayout() {
         options={{
           title: 'Groups',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'grid' : 'grid-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'layers' : 'layers-outline'} size={22} color={color} />
           ),
         }}
       />
@@ -80,3 +80,4 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+

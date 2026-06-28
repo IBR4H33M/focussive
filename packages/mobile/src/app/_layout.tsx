@@ -2,16 +2,43 @@
 // Focussive Mobile — Root Layout
 // ============================================================
 
-import React from 'react';
-import { Stack } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { AuthProvider } from '@/context/AuthContext';
+import { View, ActivityIndicator } from 'react-native';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SessionProvider } from '@/context/SessionContext';
 import { useTheme, useIsDark } from '@/utils/theme';
 
 function RootLayoutContent() {
   const theme = useTheme();
   const isDark = useIsDark();
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (isLoading) return; // wait until auth state is known
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (isAuthenticated && inAuthGroup) {
+      // User just logged in — send them to the main app
+      router.replace('/(tabs)' as never);
+    } else if (!isAuthenticated && !inAuthGroup) {
+      // User logged out — send them to login
+      router.replace('/(auth)/login' as never);
+    }
+  }, [isAuthenticated, isLoading, segments]);
+
+  // Show a spinner while checking auth state on startup
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color={theme.accent} />
+      </View>
+    );
+  }
 
   return (
     <>
@@ -44,6 +71,15 @@ function RootLayoutContent() {
             headerTintColor: theme.text,
           }}
         />
+        <Stack.Screen
+          name="history/manage"
+          options={{
+            headerShown: true,
+            title: 'Manage History',
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
+          }}
+        />
       </Stack>
     </>
   );
@@ -58,3 +94,4 @@ export default function RootLayout() {
     </AuthProvider>
   );
 }
+

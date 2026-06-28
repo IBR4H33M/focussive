@@ -18,6 +18,7 @@ import { sessionApi, appGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
 import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES } from '@focussive/shared';
 import type { AppGroup } from '@focussive/shared';
+import { Ionicons } from '@expo/vector-icons';
 
 const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.MONDAY, label: 'Mon' },
@@ -218,7 +219,10 @@ export default function CreateSessionScreen() {
         style={[styles.toggleRow, { borderColor: mobileFocus ? theme.accent : theme.border }]}
         onPress={() => setMobileFocus(!mobileFocus)}
       >
-        <Text style={[styles.toggleLabel, { color: theme.text }]}>📱 Mobile Focus</Text>
+        <View style={styles.toggleLabelRow}>
+          <Ionicons name="phone-portrait-outline" size={18} color={mobileFocus ? theme.accent : theme.textSecondary} />
+          <Text style={[styles.toggleLabel, { color: theme.text }]}>Mobile Focus</Text>
+        </View>
         <View style={[styles.toggle, mobileFocus && { backgroundColor: theme.accent }]}>
           <View style={[styles.toggleDot, mobileFocus && styles.toggleDotActive]} />
         </View>
@@ -228,7 +232,10 @@ export default function CreateSessionScreen() {
         style={[styles.toggleRow, { borderColor: browserFocus ? theme.accent : theme.border }]}
         onPress={() => setBrowserFocus(!browserFocus)}
       >
-        <Text style={[styles.toggleLabel, { color: theme.text }]}>🌐 Browser Focus</Text>
+        <View style={styles.toggleLabelRow}>
+          <Ionicons name="globe-outline" size={18} color={browserFocus ? theme.accent : theme.textSecondary} />
+          <Text style={[styles.toggleLabel, { color: theme.text }]}>Browser Focus</Text>
+        </View>
         <View style={[styles.toggle, browserFocus && { backgroundColor: theme.accent }]}>
           <View style={[styles.toggleDot, browserFocus && styles.toggleDotActive]} />
         </View>
@@ -310,6 +317,7 @@ const styles = StyleSheet.create({
   dayBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
   dayBtnText: { fontSize: 12, fontWeight: '400' },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderWidth: 1, borderRadius: 10, marginTop: 8 },
+  toggleLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   toggleLabel: { fontSize: 15 },
   toggle: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#ccc', justifyContent: 'center', paddingHorizontal: 2 },
   toggleDot: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },

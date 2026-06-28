@@ -77,9 +77,10 @@ export default function HomeScreen() {
             {activeSessions.map((session) => (
               <SessionCard
                 key={session.id}
-                session={session as Session & { violations_count?: number }}
+                session={session as Session & { violations_count?: number; pause_count?: number }}
                 isActive
                 onCancel={handleCancel}
+                onRefresh={refreshSessions}
               />
             ))}
           </View>
@@ -90,7 +91,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>UPCOMING</Text>
             {upcomingSessions.map((session) => (
-              <SessionCard key={session.id} session={session as Session & { violations_count?: number }} />
+              <SessionCard key={session.id} session={session as Session & { violations_count?: number; pause_count?: number }} onRefresh={refreshSessions} />
             ))}
           </View>
         )}
@@ -100,7 +101,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SCHEDULED</Text>
             {scheduledSessions.map((session) => (
-              <SessionCard key={session.id} session={session as Session & { violations_count?: number }} />
+              <SessionCard key={session.id} session={session as Session & { violations_count?: number; pause_count?: number }} onRefresh={refreshSessions} />
             ))}
           </View>
         )}

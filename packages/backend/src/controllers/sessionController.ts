@@ -9,6 +9,48 @@ import { AppError } from '../middleware/errorHandler.js';
 import type { AuthRequest } from '../middleware/auth.js';
 import { isSessionOverlap, SessionStatus } from '@focussive/shared';
 
+// POST /sessions/:id/pause  — toggles active <-> paused
+export async function pauseSession(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const { id } = req.params;
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    throw new AppError('Session not found', 404, 'NOT_FOUND');
+  }
+
+  const isCurrentlyActive = session.status === SessionStatus.ACTIVE;
+  const isCurrentlyPaused = session.status === 'paused';
+
+  if (!isCurrentlyActive && !isCurrentlyPaused) {
+    throw new AppError('Only active or paused sessions can be toggled', 400, 'INVALID_STATUS');
+  }
+
+  const newStatus = isCurrentlyActive ? 'paused' : SessionStatus.ACTIVE;
+  // Increment pause_count only when going active -> paused
+  const pauseCount = isCurrentlyActive ? (session.pause_count || 0) + 1 : session.pause_count;
+
+  const { data: updated, error } = await supabase
+    .from('sessions')
+    .update({ status: newStatus, pause_count: pauseCount })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error || !updated) {
+    throw new AppError('Failed to toggle pause', 500, 'UPDATE_ERROR');
+  }
+
+  res.json({ ...updated, message: isCurrentlyActive ? 'Session paused' : 'Session resumed' });
+}
+
 // GET /sessions
 export async function getSessions(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
@@ -267,7 +309,7 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     .update({ status: SessionStatus.CANCELLED, completed_at: now })
     .eq('id', id);
 
-  // Create history entry
+  // Create history entry (include pause_count)
   await supabase.from('session_history').insert({
     id: uuidv4(),
     session_id: id,
@@ -278,6 +320,7 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     start_time: session.start_time,
     status: SessionStatus.CANCELLED,
     violations_count: violationsCount || 0,
+    pause_count: session.pause_count || 0,
     cancellation_reason: reason || null,
     cancelled_at: now,
   });
@@ -303,7 +346,7 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
     throw new AppError('Failed to fetch active sessions', 500, 'FETCH_ERROR');
   }
 
-  // Include violation counts
+  // Include violation counts and pause status
   const sessionsWithViolations = await Promise.all(
     (sessions || []).map(async (session) => {
       const { count } = await supabase
@@ -311,7 +354,6 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
         .select('*', { count: 'exact', head: true })
         .eq('session_id', session.id);
 
-      // Get allowlist for this session
       const { data: allowlist } = await supabase
         .from('session_allowlist')
         .select('app_name, website_name')

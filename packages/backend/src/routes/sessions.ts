@@ -10,6 +10,7 @@ import {
   updateSession,
   deleteSession,
   cancelSession,
+  pauseSession,
   getActiveSessions,
   getUpcomingSessions,
 } from '../controllers/sessionController.js';
@@ -30,5 +31,7 @@ router.post('/', createSession);
 router.put('/:id', updateSession);
 router.delete('/:id', deleteSession);
 router.post('/:id/cancel', cancelSession);
+router.post('/:id/pause', pauseSession);
 
 export default router;
+

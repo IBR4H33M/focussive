@@ -3,26 +3,54 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/utils/theme';
-import { formatDuration, formatCountdown, formatTime, getRemainingSeconds } from '@focussive/shared';
+import { formatDuration, formatCountdown, getRemainingSeconds } from '@focussive/shared';
 import type { Session } from '@focussive/shared';
 import { SessionStatus } from '@focussive/shared';
+import { sessionApi } from '@/utils/api';
 
 interface SessionCardProps {
-  session: Session & { violations_count?: number };
+  session: Session & { violations_count?: number; pause_count?: number };
   onCancel?: (id: string) => void;
+  onRefresh?: () => void;
   isActive?: boolean;
 }
 
-export default function SessionCard({ session, onCancel, isActive }: SessionCardProps) {
+// Compute "9:30 AM – 12:30 PM" from start_time (HH:mm) + duration (minutes)
+function formatTimeRange(startTime: string, durationMinutes: number): string {
+  const [hStr, mStr] = startTime.split(':');
+  const startH = parseInt(hStr, 10);
+  const startM = parseInt(mStr, 10);
+
+  const startDate = new Date();
+  startDate.setHours(startH, startM, 0, 0);
+  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+
+  const fmt = (d: Date) => {
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  return `${fmt(startDate)} – ${fmt(endDate)}`;
+}
+
+export default function SessionCard({ session, onCancel, onRefresh, isActive }: SessionCardProps) {
   const theme = useTheme();
   const router = useRouter();
   const [remaining, setRemaining] = useState(getRemainingSeconds(session));
+  const [isPausing, setIsPausing] = useState(false);
+
+  const isActiveSession = session.status === SessionStatus.ACTIVE || isActive;
+  const isPausedSession = session.status === 'paused';
 
   useEffect(() => {
-    if (session.status !== SessionStatus.ACTIVE) return;
+    if (!isActiveSession) return;
 
     const interval = setInterval(() => {
       const newRemaining = getRemainingSeconds(session);
@@ -31,9 +59,22 @@ export default function SessionCard({ session, onCancel, isActive }: SessionCard
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [session]);
+  }, [session, isActiveSession]);
 
-  const isActiveSession = session.status === SessionStatus.ACTIVE || isActive;
+  async function handlePause() {
+    setIsPausing(true);
+    try {
+      await sessionApi.pause(session.id);
+      onRefresh?.();
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to toggle pause');
+    } finally {
+      setIsPausing(false);
+    }
+  }
+
+  const timeRange = formatTimeRange(session.start_time, session.duration);
+  const durationLabel = formatDuration(session.duration);
 
   return (
     <TouchableOpacity
@@ -41,63 +82,85 @@ export default function SessionCard({ session, onCancel, isActive }: SessionCard
         styles.card,
         {
           backgroundColor: theme.card,
-          borderColor: isActiveSession ? theme.accent : theme.border,
-          borderWidth: 1,
+          borderColor: isActiveSession ? theme.accent : isPausedSession ? theme.textSecondary : theme.border,
+          borderWidth: isActiveSession ? 2 : 1,
         },
-        isActiveSession && styles.activeCard,
       ]}
       onPress={() => router.push(`/session/${session.id}` as never)}
       activeOpacity={0.7}
     >
+      {/* Header row */}
       <View style={styles.header}>
-        <Text
-          style={[styles.name, { color: theme.text }]}
-          numberOfLines={1}
-        >
+        <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
           {session.name}
         </Text>
         <View style={styles.headerRight}>
+          {(isActiveSession || isPausedSession) && (
+            <TouchableOpacity
+              onPress={handlePause}
+              style={[styles.iconBtn, { borderColor: theme.border }]}
+              disabled={isPausing}
+            >
+              <Ionicons
+                name={isPausedSession ? 'play' : 'pause'}
+                size={14}
+                color={isPausedSession ? theme.accent : theme.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
           {isActiveSession && onCancel && (
             <TouchableOpacity
               onPress={() => onCancel(session.id)}
-              style={[styles.cancelBtn, { borderColor: theme.danger }]}
+              style={[styles.iconBtn, { borderColor: theme.danger }]}
             >
-              <Text style={[styles.cancelText, { color: theme.danger }]}>✕</Text>
+              <Ionicons name="close" size={14} color={theme.danger} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {isActiveSession ? (
-        <View style={styles.activeContent}>
-          <Text style={[styles.countdown, { color: theme.accent }]}>
-            {formatCountdown(remaining)}
-          </Text>
-          <View style={styles.statsRow}>
-            <Text style={[styles.violations, { color: theme.danger }]}>
-              {session.violations_count || 0} violations
-            </Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.info}>
-          <Text style={[styles.time, { color: theme.textSecondary }]}>
-            {formatTime(session.start_time)} · {formatDuration(session.duration)}
-          </Text>
-        </View>
-      )}
+      {/* Time row: range on left, duration large on right */}
+      <View style={styles.timeRow}>
+        <Text style={[styles.timeRange, { color: theme.textSecondary }]}>{timeRange}</Text>
+        <Text style={[styles.durationBig, { color: isActiveSession ? theme.accent : theme.text }]}>
+          {isActiveSession ? formatCountdown(remaining) : durationLabel}
+        </Text>
+      </View>
 
-      <View style={styles.badges}>
-        {session.mobile_focus && (
-          <View style={[styles.badge, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.badgeText, { color: theme.textSecondary }]}>📱 Mobile</Text>
-          </View>
-        )}
-        {session.browser_focus && (
-          <View style={[styles.badge, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.badgeText, { color: theme.textSecondary }]}>🌐 Browser</Text>
-          </View>
-        )}
+      {/* Stats + badges row */}
+      <View style={styles.footer}>
+        <View style={styles.badgesRow}>
+          {session.mobile_focus && (
+            <View style={[styles.badge, { backgroundColor: theme.surface }]}>
+              <Ionicons name="phone-portrait-outline" size={12} color={theme.textSecondary} />
+              <Text style={[styles.badgeText, { color: theme.textSecondary }]}>Mobile</Text>
+            </View>
+          )}
+          {session.browser_focus && (
+            <View style={[styles.badge, { backgroundColor: theme.surface }]}>
+              <Ionicons name="globe-outline" size={12} color={theme.textSecondary} />
+              <Text style={[styles.badgeText, { color: theme.textSecondary }]}>Browser</Text>
+            </View>
+          )}
+          {isPausedSession && (
+            <View style={[styles.badge, { backgroundColor: theme.surface }]}>
+              <Ionicons name="pause-circle-outline" size={12} color={theme.textSecondary} />
+              <Text style={[styles.badgeText, { color: theme.textSecondary }]}>Paused</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.statsRow}>
+          {(isActiveSession || isPausedSession) && (session.violations_count ?? 0) > 0 && (
+            <Text style={[styles.stat, { color: theme.danger }]}>
+              {session.violations_count} violation{session.violations_count !== 1 ? 's' : ''}
+            </Text>
+          )}
+          {(session.pause_count ?? 0) > 0 && (
+            <Text style={[styles.stat, { color: theme.textSecondary }]}>
+              {session.pause_count} pause{session.pause_count !== 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -105,18 +168,15 @@ export default function SessionCard({ session, onCancel, isActive }: SessionCard
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-  },
-  activeCard: {
-    borderWidth: 2,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   headerRight: {
     flexDirection: 'row',
@@ -124,11 +184,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   name: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '500',
     flex: 1,
   },
-  cancelBtn: {
+  iconBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -136,44 +196,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cancelText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  activeContent: {
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    marginBottom: 10,
   },
-  countdown: {
-    fontSize: 36,
+  timeRange: {
+    fontSize: 13,
+    fontWeight: '300',
+    flex: 1,
+  },
+  durationBig: {
+    fontSize: 22,
     fontWeight: '300',
     fontVariant: ['tabular-nums'],
+    textAlign: 'right',
   },
-  statsRow: {
-    marginTop: 4,
-  },
-  violations: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  info: {
-    marginBottom: 4,
-  },
-  time: {
-    fontSize: 14,
-    fontWeight: '300',
-  },
-  badges: {
+  footer: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   badgeText: {
+    fontSize: 11,
+    fontWeight: '400',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  stat: {
     fontSize: 12,
     fontWeight: '400',
   },
