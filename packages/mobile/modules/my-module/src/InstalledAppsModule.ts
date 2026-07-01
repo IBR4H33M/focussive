@@ -3,6 +3,7 @@ import { requireNativeModule } from 'expo';
 export type InstalledAppInfo = {
   id: string;
   name: string;
+  icon: string; // Base64 data URI, e.g. "data:image/png;base64,..."
 };
 
 type InstalledAppsModuleType = {

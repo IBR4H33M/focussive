@@ -59,7 +59,7 @@ export async function getSessions(req: AuthRequest, res: Response): Promise<void
     .from('sessions')
     .select('*')
     .eq('user_id', userId)
-    .in('status', [SessionStatus.SCHEDULED, SessionStatus.ACTIVE])
+    .in('status', [SessionStatus.SCHEDULED, SessionStatus.ACTIVE, 'paused'])
     .order('start_time', { ascending: true });
 
   if (error) {

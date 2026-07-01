@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@focussive/installed-apps": "file:./modules/my-module",
     "@expo/ui": "~56.0.18",
     "@expo/vector-icons": "^15.1.1",
     "@focussive/shared": "workspace:*",

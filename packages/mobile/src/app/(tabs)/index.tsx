@@ -24,21 +24,23 @@ import { Ionicons } from '@expo/vector-icons';
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { activeSessions, upcomingSessions, allSessions, isLoading, refreshSessions } = useSessions();
+  const { activeSessions, allSessions, isLoading, refreshSessions } = useSessions();
 
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [cancellingSession, setCancellingSession] = useState<Session | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
-  // Scheduled sessions = all minus active minus upcoming
   const activeIds = new Set(activeSessions.map((s) => s.id));
-  const upcomingIds = new Set(upcomingSessions.map((s) => s.id));
-  const scheduledSessions = allSessions.filter(
-    (s) => !activeIds.has(s.id) && !upcomingIds.has(s.id)
-  );
+
+  // Paused sessions should also appear in the active area (with resume button)
+  const pausedSessions = allSessions.filter((s) => s.status === 'paused');
+  const pausedIds = new Set(pausedSessions.map((s) => s.id));
+
+  // All scheduled sessions that aren't active or paused
+  const scheduledSessions = allSessions.filter((s) => !activeIds.has(s.id) && !pausedIds.has(s.id));
 
   function handleCancel(sessionId: string) {
-    const session = activeSessions.find((s) => s.id === sessionId);
+    const session = [...activeSessions, ...pausedSessions].find((s) => s.id === sessionId);
     if (session) {
       setCancellingSession(session);
       setCancelModalVisible(true);
@@ -70,8 +72,8 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Active Sessions */}
-        {activeSessions.length > 0 && (
+        {/* Active + Paused Sessions */}
+        {(activeSessions.length > 0 || pausedSessions.length > 0) && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ACTIVE</Text>
             {activeSessions.map((session) => (
@@ -83,15 +85,13 @@ export default function HomeScreen() {
                 onRefresh={refreshSessions}
               />
             ))}
-          </View>
-        )}
-
-        {/* Upcoming Sessions */}
-        {upcomingSessions.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>UPCOMING</Text>
-            {upcomingSessions.map((session) => (
-              <SessionCard key={session.id} session={session as Session & { violations_count?: number; pause_count?: number }} onRefresh={refreshSessions} />
+            {pausedSessions.map((session) => (
+              <SessionCard
+                key={session.id}
+                session={session as Session & { violations_count?: number; pause_count?: number }}
+                onCancel={handleCancel}
+                onRefresh={refreshSessions}
+              />
             ))}
           </View>
         )}

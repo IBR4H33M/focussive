@@ -13,9 +13,12 @@ export enum SessionStatus {
 
 export enum ScheduleType {
   TODAY = 'today',
-  SPECIFIC_DAYS = 'specific_days',
-  RECURRING = 'recurring',
+  SCHEDULED = 'scheduled',   // specific calendar dates (replaces SPECIFIC_DAYS)
+  RECURRING = 'recurring',   // repeats weekly on schedule_days (weekdays)
 }
+
+/** @deprecated Use ScheduleType.SCHEDULED */
+export const SPECIFIC_DAYS = 'specific_days';
 
 export enum Weekday {
   MONDAY = 'monday',
@@ -55,14 +58,17 @@ export interface Session {
   user_id: string;
   name: string;
   duration: number; // minutes
-  schedule: ScheduleType;
-  schedule_days: Weekday[];
+  schedule: ScheduleType | string;
+  /** RECURRING: weekday strings. SCHEDULED: ISO date strings ("2026-07-01"). TODAY: empty. */
+  schedule_days: string[];
   start_time: string; // HH:mm format
   mobile_focus: boolean;
   browser_focus: boolean;
   app_group_id?: string;
   blocked_websites?: string[];
-  status: SessionStatus;
+  website_group_ids?: string[];
+  pause_count?: number;
+  status: SessionStatus | string;
   started_at?: string;
   completed_at?: string;
   created_at: string;
@@ -95,6 +101,15 @@ export interface AppInfo {
   name: string;
   package_name?: string;
   icon?: string;
+}
+
+export interface WebsiteGroup {
+  id: string;
+  user_id: string;
+  name: string;
+  websites: string[];
+  is_default: boolean;
+  created_at: string;
 }
 
 export interface Device {

@@ -58,7 +58,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px 0',
   },
   menuItem: {
-    display: 'block',
+    display: 'flex',
+    alignItems: 'center',
     width: '100%',
     padding: '14px 20px',
     background: 'none',
@@ -103,9 +104,27 @@ export default function Menu({ onClose, onLogout }: MenuProps) {
         </div>
 
         <div style={styles.menuItems}>
-          <button style={styles.menuItem}>👤  Profile</button>
-          <button style={styles.menuItem}>⚙️  Settings</button>
-          <button style={styles.menuItem}>📧  Contact</button>
+          <button style={styles.menuItem}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, verticalAlign: 'middle' }}>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Profile
+          </button>
+          <button style={styles.menuItem}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, verticalAlign: 'middle' }}>
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+            </svg>
+            Settings
+          </button>
+          <button style={styles.menuItem}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, verticalAlign: 'middle' }}>
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Contact
+          </button>
         </div>
 
         <div style={styles.footer}>

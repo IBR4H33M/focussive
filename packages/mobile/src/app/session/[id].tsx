@@ -47,7 +47,8 @@ export default function SessionDetailScreen() {
 
   // Edit form state
   const [editName, setEditName] = useState('');
-  const [editDuration, setEditDuration] = useState('');
+  const [editDurationHours, setEditDurationHours] = useState('0');
+  const [editDurationMinutes, setEditDurationMinutes] = useState('25');
   const [editHours, setEditHours] = useState('');
   const [editMinutes, setEditMinutes] = useState('');
   const [editSchedule, setEditSchedule] = useState<ScheduleType>(ScheduleType.TODAY);
@@ -74,22 +75,19 @@ export default function SessionDetailScreen() {
     appGroupApi.getAll().then(r => setAppGroups(r.data as AppGroup[])).catch(() => {});
   }, [fetchSession]);
 
-  // Set the Edit button in the header
+  // Header configuration
   useEffect(() => {
     navigation.setOptions({
-      headerRight: () =>
-        session && session.status !== SessionStatus.ACTIVE ? (
-          <TouchableOpacity onPress={openEditModal} style={{ marginRight: 16 }}>
-            <Ionicons name="create-outline" size={22} color={theme.accent} />
-          </TouchableOpacity>
-        ) : null,
+      headerRight: () => null,
     });
-  }, [session, theme.accent]);
+  }, [navigation]);
 
   function openEditModal() {
     if (!session) return;
     setEditName(session.name);
-    setEditDuration(String(session.duration));
+    const totalMins = session.duration;
+    setEditDurationHours(String(Math.floor(totalMins / 60)));
+    setEditDurationMinutes(String(totalMins % 60));
     const [h, m] = session.start_time.split(':');
     setEditHours(h);
     setEditMinutes(m);
@@ -102,19 +100,45 @@ export default function SessionDetailScreen() {
     setEditModalVisible(true);
   }
 
+  function handleDelete() {
+    if (!session) return;
+    Alert.alert(
+      'Delete Session',
+      `Are you sure you want to delete "${session.name}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await sessionApi.delete(session.id);
+              await refreshSessions();
+              router.back();
+            } catch (error) {
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete session');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   async function handleSave() {
     if (!editName.trim()) {
       Alert.alert('Error', 'Session name is required');
       return;
     }
-    const duration = parseInt(editDuration, 10);
-    if (isNaN(duration) || duration < 1) {
+    const dh = parseInt(editDurationHours, 10) || 0;
+    const dm = parseInt(editDurationMinutes, 10) || 0;
+    const duration = dh * 60 + dm;
+    if (duration < 1) {
       Alert.alert('Error', 'Duration must be at least 1 minute');
       return;
     }
-    const h = parseInt(editHours, 10) || 0;
-    const m = parseInt(editMinutes, 10) || 0;
-    if (h < 0 || h > 23 || m < 0 || m > 59) {
+    const sh = parseInt(editHours, 10) || 0;
+    const sm = parseInt(editMinutes, 10) || 0;
+    if (sh < 0 || sh > 23 || sm < 0 || sm > 59) {
       Alert.alert('Error', 'Please enter a valid time');
       return;
     }
@@ -124,7 +148,7 @@ export default function SessionDetailScreen() {
       await sessionApi.update(id, {
         name: editName.trim(),
         duration,
-        start_time: `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`,
+        start_time: `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`,
         schedule: editSchedule,
         schedule_days: editSchedule !== ScheduleType.TODAY ? editScheduleDays : [],
         mobile_focus: editMobileFocus,
@@ -202,8 +226,29 @@ export default function SessionDetailScreen() {
 
         {!isEditable && (
           <Text style={[styles.editHint, { color: theme.textSecondary }]}>
-            {isActive ? 'Stop the session to edit it' : 'Resume or stop the session to edit it'}
+            {isActive ? 'Stop the session to edit or delete it' : 'Resume or stop the session to edit it'}
           </Text>
+        )}
+
+        {/* Action Buttons — shown for all non-active sessions */}
+        {!isActive && (
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.editBtn, { borderColor: theme.accent }]}
+              onPress={openEditModal}
+            >
+              <Ionicons name="create-outline" size={16} color={theme.accent} />
+              <Text style={[styles.editBtnText, { color: theme.accent }]}>Edit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.deleteBtn, { borderColor: theme.danger }]}
+              onPress={handleDelete}
+            >
+              <Ionicons name="trash-outline" size={16} color={theme.danger} />
+              <Text style={[styles.deleteBtnText, { color: theme.danger }]}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
 
@@ -226,15 +271,23 @@ export default function SessionDetailScreen() {
             placeholderTextColor={theme.textSecondary}
           />
 
-          <Text style={[styles.label, { color: theme.textSecondary }]}>DURATION (MINUTES)</Text>
-          <TextInput
-            style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-            value={editDuration}
-            onChangeText={setEditDuration}
-            keyboardType="numeric"
-            placeholder="25"
-            placeholderTextColor={theme.textSecondary}
-          />
+          <Text style={[styles.label, { color: theme.textSecondary }]}>DURATION</Text>
+          <View style={styles.timeRow}>
+            <TextInput
+              style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              value={editDurationHours} onChangeText={setEditDurationHours}
+              keyboardType="numeric" maxLength={2} placeholder="0"
+              placeholderTextColor={theme.textSecondary}
+            />
+            <Text style={[styles.timeSep, { color: theme.textSecondary }]}>h</Text>
+            <TextInput
+              style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              value={editDurationMinutes} onChangeText={setEditDurationMinutes}
+              keyboardType="numeric" maxLength={2} placeholder="25"
+              placeholderTextColor={theme.textSecondary}
+            />
+            <Text style={[styles.timeSep, { color: theme.textSecondary }]}>m</Text>
+          </View>
 
           <Text style={[styles.label, { color: theme.textSecondary }]}>START TIME</Text>
           <View style={styles.timeRow}>
@@ -405,4 +458,9 @@ const styles = StyleSheet.create({
   websiteText: { fontSize: 13 },
   saveBtn: { height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 32 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  actionButtonsContainer: { flexDirection: 'row', marginTop: 24, gap: 12 },
+  editBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1, borderRadius: 12 },
+  editBtnText: { fontSize: 14, fontWeight: '500' },
+  deleteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1, borderRadius: 12 },
+  deleteBtnText: { fontSize: 14, fontWeight: '500' },
 });

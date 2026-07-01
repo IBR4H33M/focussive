@@ -47,8 +47,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '40px 20px',
   },
   noSessionIcon: {
-    fontSize: 40,
     marginBottom: 12,
+    display: 'flex',
+    justifyContent: 'center',
   },
   noSessionTitle: {
     fontSize: 16,
@@ -158,7 +159,13 @@ export default function Popup() {
           </>
         ) : (
           <div style={styles.noSession}>
-            <div style={styles.noSessionIcon}>🎯</div>
+            <div style={styles.noSessionIcon}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#90EE90" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="6"/>
+                <circle cx="12" cy="12" r="2"/>
+              </svg>
+            </div>
             <div style={styles.noSessionTitle}>No active session</div>
             <div style={styles.noSessionSub}>
               {upcomingSessions.length > 0

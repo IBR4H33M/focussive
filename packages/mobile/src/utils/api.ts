@@ -212,3 +212,19 @@ export const deviceApi = {
   remove: (id: string) =>
     apiRequest(`/devices/${id}`, { method: 'DELETE' }),
 };
+
+// --- Website Group API ---
+
+export const websiteGroupApi = {
+  getAll: () => apiRequest<{ data: unknown[] }>('/website-groups'),
+
+  create: (body: { name: string; websites: string[] }) =>
+    apiRequest('/website-groups', { method: 'POST', body }),
+
+  update: (id: string, body: { name?: string; websites?: string[] }) =>
+    apiRequest(`/website-groups/${id}`, { method: 'PUT', body }),
+
+  delete: (id: string) =>
+    apiRequest(`/website-groups/${id}`, { method: 'DELETE' }),
+};
+

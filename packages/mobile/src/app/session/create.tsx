@@ -4,21 +4,113 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ScrollView, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/utils/theme';
-import { sessionApi, appGroupApi } from '@/utils/api';
+import { sessionApi, appGroupApi, websiteGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
-import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES } from '@focussive/shared';
-import type { AppGroup } from '@focussive/shared';
+import { ScheduleType, Weekday } from '@focussive/shared';
+import type { AppGroup, WebsiteGroup } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
+
+// ── Mini calendar component ──────────────────────────────────────────────────
+
+function MiniCalendar({
+  selectedDates,
+  onToggleDate,
+  theme,
+}: {
+  selectedDates: string[];
+  onToggleDate: (iso: string) => void;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const monthName = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  function isoOf(day: number) {
+    return `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
+  }
+
+  const cells: (number | null)[] = Array(firstDay).fill(null).concat(
+    Array.from({ length: daysInMonth }, (_, i) => i + 1)
+  );
+  // Pad to full weeks
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  return (
+    <View style={[calStyles.cal, { borderColor: theme.border }]}>
+      <View style={calStyles.header}>
+        <TouchableOpacity onPress={prevMonth}>
+          <Ionicons name="chevron-back" size={20} color={theme.textSecondary} />
+        </TouchableOpacity>
+        <Text style={[calStyles.monthTitle, { color: theme.text }]}>{monthName}</Text>
+        <TouchableOpacity onPress={nextMonth}>
+          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      <View style={calStyles.weekRow}>
+        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+          <Text key={d} style={[calStyles.weekDay, { color: theme.textSecondary }]}>{d}</Text>
+        ))}
+      </View>
+      <View style={calStyles.grid}>
+        {cells.map((day, i) => {
+          if (!day) return <View key={`empty-${i}`} style={calStyles.cell} />;
+          const iso = isoOf(day);
+          const isSelected = selectedDates.includes(iso);
+          const isPast = iso < todayISO;
+          return (
+            <TouchableOpacity
+              key={iso}
+              style={[calStyles.cell, isSelected && { backgroundColor: theme.accent }]}
+              onPress={() => !isPast && onToggleDate(iso)}
+              disabled={isPast}
+            >
+              <Text style={[
+                calStyles.dayText,
+                { color: isSelected ? '#fff' : isPast ? theme.textSecondary : theme.text },
+                isPast && { opacity: 0.35 },
+              ]}>
+                {day}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const calStyles = StyleSheet.create({
+  cal: { borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 8 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  monthTitle: { fontSize: 15, fontWeight: '500' },
+  weekRow: { flexDirection: 'row', marginBottom: 4 },
+  weekDay: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  cell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 20 },
+  dayText: { fontSize: 13 },
+});
+
+// ── Weekday picker ────────────────────────────────────────────────────────────
 
 const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.MONDAY, label: 'Mon' },
@@ -30,69 +122,87 @@ const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.SUNDAY, label: 'Sun' },
 ];
 
+// ── Main Screen ───────────────────────────────────────────────────────────────
+
 export default function CreateSessionScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { refreshSessions } = useSessions();
 
   const [name, setName] = useState('');
-  const [durationStr, setDurationStr] = useState('25');
-  const [hours, setHours] = useState('');
-  const [minutes, setMinutes] = useState('');
+  const [durationHours, setDurationHours] = useState('0');
+  const [durationMinutes, setDurationMinutes] = useState('25');
+  const [startHours, setStartHours] = useState('');
+  const [startMinutes, setStartMinutes] = useState('');
   const [schedule, setSchedule] = useState<ScheduleType>(ScheduleType.TODAY);
-  const [scheduleDays, setScheduleDays] = useState<Weekday[]>([]);
+  const [recurringDays, setRecurringDays] = useState<Weekday[]>([]);   // for RECURRING
+  const [scheduledDates, setScheduledDates] = useState<string[]>([]);   // for SCHEDULED
   const [mobileFocus, setMobileFocus] = useState(false);
   const [browserFocus, setBrowserFocus] = useState(false);
   const [appGroups, setAppGroups] = useState<AppGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [selectedWebsites, setSelectedWebsites] = useState<string[]>([]);
+  const [websiteGroups, setWebsiteGroups] = useState<WebsiteGroup[]>([]);
+  const [selectedWebsiteGroupIds, setSelectedWebsiteGroupIds] = useState<string[]>([]);
+  const [extraWebsites, setExtraWebsites] = useState<string[]>([]);
+  const [customWebsite, setCustomWebsite] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadAppGroups();
+    appGroupApi.getAll().then(r => setAppGroups(r.data as AppGroup[])).catch(() => {});
+    websiteGroupApi.getAll().then(r => setWebsiteGroups(r.data as WebsiteGroup[])).catch(() => {});
   }, []);
 
-  async function loadAppGroups() {
-    try {
-      const response = await appGroupApi.getAll();
-      setAppGroups(response.data as AppGroup[]);
-    } catch {
-      // silently fail
-    }
+  function toggleRecurringDay(day: Weekday) {
+    setRecurringDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   }
-
-  function toggleDay(day: Weekday) {
-    setScheduleDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-    );
+  function toggleScheduledDate(iso: string) {
+    setScheduledDates(prev => prev.includes(iso) ? prev.filter(d => d !== iso) : [...prev, iso]);
   }
-
-  function toggleWebsite(site: string) {
-    setSelectedWebsites((prev) =>
-      prev.includes(site) ? prev.filter((s) => s !== site) : [...prev, site]
-    );
+  function toggleWebsiteGroup(id: string) {
+    setSelectedWebsiteGroupIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  }
+  function addCustomWebsite() {
+    const site = customWebsite.trim().toLowerCase().replace(/^https?:\/\//, '');
+    if (!site) return;
+    if (!extraWebsites.includes(site)) setExtraWebsites(prev => [...prev, site]);
+    setCustomWebsite('');
+  }
+  function removeExtraWebsite(site: string) {
+    setExtraWebsites(prev => prev.filter(s => s !== site));
   }
 
   async function handleCreate() {
-    if (!name.trim()) {
-      Alert.alert('Error', 'Session name is required');
-      return;
-    }
+    if (!name.trim()) { Alert.alert('Error', 'Session name is required'); return; }
 
-    const duration = parseInt(durationStr, 10);
-    if (isNaN(duration) || duration < 1) {
-      Alert.alert('Error', 'Duration must be at least 1 minute');
-      return;
-    }
+    const dh = parseInt(durationHours, 10) || 0;
+    const dm = parseInt(durationMinutes, 10) || 0;
+    const duration = dh * 60 + dm;
+    if (duration < 1) { Alert.alert('Error', 'Duration must be at least 1 minute'); return; }
 
-    const h = parseInt(hours, 10) || 0;
-    const m = parseInt(minutes, 10) || 0;
-    const startTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-
-    if (h < 0 || h > 23 || m < 0 || m > 59) {
+    const sh = parseInt(startHours, 10) || 0;
+    const sm = parseInt(startMinutes, 10) || 0;
+    if (sh < 0 || sh > 23 || sm < 0 || sm > 59) {
       Alert.alert('Error', 'Please enter a valid time (HH:MM)');
       return;
     }
+    const startTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
+
+    if (schedule === ScheduleType.RECURRING && recurringDays.length === 0) {
+      Alert.alert('Error', 'Select at least one day for recurring sessions');
+      return;
+    }
+    if (schedule === ScheduleType.SCHEDULED && scheduledDates.length === 0) {
+      Alert.alert('Error', 'Select at least one date');
+      return;
+    }
+
+    // Combine website group websites + extra websites
+    const allBlockedWebsites = [
+      ...new Set([
+        ...websiteGroups.filter(g => selectedWebsiteGroupIds.includes(g.id)).flatMap(g => g.websites),
+        ...extraWebsites,
+      ]),
+    ];
 
     setLoading(true);
     try {
@@ -100,14 +210,18 @@ export default function CreateSessionScreen() {
         name: name.trim(),
         duration,
         schedule,
-        schedule_days: schedule !== ScheduleType.TODAY ? scheduleDays : [],
+        schedule_days: schedule === ScheduleType.RECURRING
+          ? recurringDays
+          : schedule === ScheduleType.SCHEDULED
+          ? scheduledDates
+          : [],
         start_time: startTime,
         mobile_focus: mobileFocus,
         browser_focus: browserFocus,
         app_group_id: mobileFocus ? selectedGroupId : null,
-        blocked_websites: browserFocus ? selectedWebsites : [],
+        blocked_websites: browserFocus ? allBlockedWebsites : [],
+        website_group_ids: browserFocus ? selectedWebsiteGroupIds : [],
       });
-
       await refreshSessions();
       router.back();
     } catch (error) {
@@ -118,63 +232,58 @@ export default function CreateSessionScreen() {
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={styles.content}
-    >
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
+
       {/* Session Name */}
       <Text style={[styles.label, { color: theme.textSecondary }]}>SESSION NAME</Text>
       <TextInput
         style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
         placeholder="e.g. Deep Work, Study, Writing..."
         placeholderTextColor={theme.textSecondary}
-        value={name}
-        onChangeText={setName}
+        value={name} onChangeText={setName}
       />
 
       {/* Duration */}
-      <Text style={[styles.label, { color: theme.textSecondary }]}>DURATION (MINUTES)</Text>
-      <TextInput
-        style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-        placeholder="25"
-        placeholderTextColor={theme.textSecondary}
-        value={durationStr}
-        onChangeText={setDurationStr}
-        keyboardType="numeric"
-      />
+      <Text style={[styles.label, { color: theme.textSecondary }]}>DURATION</Text>
+      <View style={styles.timeRow}>
+        <TextInput
+          style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+          placeholder="0" placeholderTextColor={theme.textSecondary}
+          value={durationHours} onChangeText={setDurationHours} keyboardType="numeric" maxLength={2}
+        />
+        <Text style={[styles.timeSep, { color: theme.textSecondary }]}>h</Text>
+        <TextInput
+          style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+          placeholder="25" placeholderTextColor={theme.textSecondary}
+          value={durationMinutes} onChangeText={setDurationMinutes} keyboardType="numeric" maxLength={2}
+        />
+        <Text style={[styles.timeSep, { color: theme.textSecondary }]}>m</Text>
+      </View>
 
       {/* Start Time */}
       <Text style={[styles.label, { color: theme.textSecondary }]}>START TIME</Text>
       <View style={styles.timeRow}>
         <TextInput
           style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-          placeholder="HH"
-          placeholderTextColor={theme.textSecondary}
-          value={hours}
-          onChangeText={setHours}
-          keyboardType="numeric"
-          maxLength={2}
+          placeholder="HH" placeholderTextColor={theme.textSecondary}
+          value={startHours} onChangeText={setStartHours} keyboardType="numeric" maxLength={2}
         />
         <Text style={[styles.timeSep, { color: theme.text }]}>:</Text>
         <TextInput
           style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-          placeholder="MM"
-          placeholderTextColor={theme.textSecondary}
-          value={minutes}
-          onChangeText={setMinutes}
-          keyboardType="numeric"
-          maxLength={2}
+          placeholder="MM" placeholderTextColor={theme.textSecondary}
+          value={startMinutes} onChangeText={setStartMinutes} keyboardType="numeric" maxLength={2}
         />
       </View>
 
-      {/* Schedule */}
+      {/* Schedule Type */}
       <Text style={[styles.label, { color: theme.textSecondary }]}>SCHEDULE</Text>
       <View style={styles.scheduleRow}>
-        {[
+        {([
           { key: ScheduleType.TODAY, label: 'Today' },
-          { key: ScheduleType.SPECIFIC_DAYS, label: 'Specific Days' },
+          { key: ScheduleType.SCHEDULED, label: 'Scheduled' },
           { key: ScheduleType.RECURRING, label: 'Recurring' },
-        ].map((opt) => (
+        ] as const).map(opt => (
           <TouchableOpacity
             key={opt.key}
             style={[
@@ -191,20 +300,20 @@ export default function CreateSessionScreen() {
         ))}
       </View>
 
-      {/* Day Selector */}
-      {schedule !== ScheduleType.TODAY && (
+      {/* Recurring: weekday picker */}
+      {schedule === ScheduleType.RECURRING && (
         <View style={styles.daysRow}>
-          {WEEKDAYS.map((day) => (
+          {WEEKDAYS.map(day => (
             <TouchableOpacity
               key={day.key}
               style={[
                 styles.dayBtn,
-                { borderColor: scheduleDays.includes(day.key) ? theme.accent : theme.border },
-                scheduleDays.includes(day.key) && { backgroundColor: `${theme.accent}20` },
+                { borderColor: recurringDays.includes(day.key) ? theme.accent : theme.border },
+                recurringDays.includes(day.key) && { backgroundColor: `${theme.accent}20` },
               ]}
-              onPress={() => toggleDay(day.key)}
+              onPress={() => toggleRecurringDay(day.key)}
             >
-              <Text style={[styles.dayBtnText, { color: scheduleDays.includes(day.key) ? theme.accent : theme.textSecondary }]}>
+              <Text style={[styles.dayBtnText, { color: recurringDays.includes(day.key) ? theme.accent : theme.textSecondary }]}>
                 {day.label}
               </Text>
             </TouchableOpacity>
@@ -212,7 +321,28 @@ export default function CreateSessionScreen() {
         </View>
       )}
 
-      {/* Focus Toggles */}
+      {/* Scheduled: calendar date picker */}
+      {schedule === ScheduleType.SCHEDULED && (
+        <>
+          <MiniCalendar selectedDates={scheduledDates} onToggleDate={toggleScheduledDate} theme={theme} />
+          {scheduledDates.length > 0 && (
+            <View style={styles.selectedDatesRow}>
+              {scheduledDates.sort().map(d => (
+                <TouchableOpacity
+                  key={d}
+                  style={[styles.datePill, { backgroundColor: `${theme.accent}20`, borderColor: theme.accent }]}
+                  onPress={() => toggleScheduledDate(d)}
+                >
+                  <Text style={[styles.datePillText, { color: theme.accent }]}>{d}</Text>
+                  <Ionicons name="close" size={12} color={theme.accent} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </>
+      )}
+
+      {/* Focus Mode */}
       <Text style={[styles.label, { color: theme.textSecondary }]}>FOCUS MODE</Text>
 
       <TouchableOpacity
@@ -228,6 +358,26 @@ export default function CreateSessionScreen() {
         </View>
       </TouchableOpacity>
 
+      {mobileFocus && appGroups.length > 0 && (
+        <>
+          <Text style={[styles.subLabel, { color: theme.textSecondary }]}>App Group to Block</Text>
+          {appGroups.map(group => (
+            <TouchableOpacity
+              key={group.id}
+              style={[
+                styles.groupItem,
+                { borderColor: selectedGroupId === group.id ? theme.accent : theme.border },
+                selectedGroupId === group.id && { backgroundColor: `${theme.accent}15` },
+              ]}
+              onPress={() => setSelectedGroupId(selectedGroupId === group.id ? null : group.id)}
+            >
+              <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
+              <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.apps?.length || 0} apps</Text>
+            </TouchableOpacity>
+          ))}
+        </>
+      )}
+
       <TouchableOpacity
         style={[styles.toggleRow, { borderColor: browserFocus ? theme.accent : theme.border }]}
         onPress={() => setBrowserFocus(!browserFocus)}
@@ -241,50 +391,57 @@ export default function CreateSessionScreen() {
         </View>
       </TouchableOpacity>
 
-      {/* App Group Selector (when mobile focus ON) */}
-      {mobileFocus && (
-        <>
-          <Text style={[styles.label, { color: theme.textSecondary }]}>SELECT APP GROUP</Text>
-          {appGroups.map((group) => (
-            <TouchableOpacity
-              key={group.id}
-              style={[
-                styles.groupItem,
-                { borderColor: selectedGroupId === group.id ? theme.accent : theme.border },
-                selectedGroupId === group.id && { backgroundColor: `${theme.accent}20` },
-              ]}
-              onPress={() => setSelectedGroupId(selectedGroupId === group.id ? null : group.id)}
-            >
-              <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
-              <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>
-                {group.apps?.length || 0} apps
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </>
-      )}
-
-      {/* Blocked Websites (when browser focus ON) */}
       {browserFocus && (
         <>
-          <Text style={[styles.label, { color: theme.textSecondary }]}>BLOCK WEBSITES</Text>
-          <View style={styles.websiteGrid}>
-            {PREDEFINED_BLOCKED_WEBSITES.map((site) => (
-              <TouchableOpacity
-                key={site}
-                style={[
-                  styles.websiteChip,
-                  { borderColor: selectedWebsites.includes(site) ? theme.accent : theme.border },
-                  selectedWebsites.includes(site) && { backgroundColor: `${theme.accent}20` },
-                ]}
-                onPress={() => toggleWebsite(site)}
-              >
-                <Text style={[styles.websiteText, { color: selectedWebsites.includes(site) ? theme.accent : theme.textSecondary }]}>
-                  {site}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* Website Groups */}
+          {websiteGroups.length > 0 && (
+            <>
+              <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Website Groups</Text>
+              {websiteGroups.map(group => (
+                <TouchableOpacity
+                  key={group.id}
+                  style={[
+                    styles.groupItem,
+                    { borderColor: selectedWebsiteGroupIds.includes(group.id) ? theme.accent : theme.border },
+                    selectedWebsiteGroupIds.includes(group.id) && { backgroundColor: `${theme.accent}15` },
+                  ]}
+                  onPress={() => toggleWebsiteGroup(group.id)}
+                >
+                  <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
+                  <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.websites?.length || 0} sites</Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+
+          {/* Additional individual websites */}
+          <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Additional Websites</Text>
+          <View style={styles.customRow}>
+            <TextInput
+              style={[styles.customInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              placeholder="example.com" placeholderTextColor={theme.textSecondary}
+              value={customWebsite} onChangeText={setCustomWebsite}
+              autoCapitalize="none" keyboardType="url"
+              onSubmitEditing={addCustomWebsite}
+            />
+            <TouchableOpacity onPress={addCustomWebsite} style={[styles.addIconBtn, { backgroundColor: theme.accent }]}>
+              <Ionicons name="add" size={20} color="#fff" />
+            </TouchableOpacity>
           </View>
+          {extraWebsites.length > 0 && (
+            <View style={styles.chipWrap}>
+              {extraWebsites.map(site => (
+                <TouchableOpacity
+                  key={site}
+                  style={[styles.sitePill, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                  onPress={() => removeExtraWebsite(site)}
+                >
+                  <Text style={[styles.sitePillText, { color: theme.text }]}>{site}</Text>
+                  <Ionicons name="close" size={12} color={theme.textSecondary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </>
       )}
 
@@ -294,10 +451,10 @@ export default function CreateSessionScreen() {
         onPress={handleCreate}
         disabled={loading}
       >
-        <Text style={styles.createBtnText}>
-          {loading ? 'Creating...' : 'Create Session'}
-        </Text>
+        <Text style={styles.createBtnText}>{loading ? 'Creating...' : 'Create Session'}</Text>
       </TouchableOpacity>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
@@ -306,6 +463,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20, paddingBottom: 40 },
   label: { fontSize: 12, fontWeight: '600', letterSpacing: 2, marginBottom: 8, marginTop: 20 },
+  subLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginBottom: 8, marginTop: 12 },
   input: { height: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300' },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timeInput: { width: 70, height: 48, borderWidth: 1, borderRadius: 10, textAlign: 'center', fontSize: 18, fontWeight: '300' },
@@ -316,18 +474,24 @@ const styles = StyleSheet.create({
   daysRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
   dayBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
   dayBtnText: { fontSize: 12, fontWeight: '400' },
+  selectedDatesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  datePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
+  datePillText: { fontSize: 12, fontWeight: '500' },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderWidth: 1, borderRadius: 10, marginTop: 8 },
   toggleLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   toggleLabel: { fontSize: 15 },
   toggle: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#ccc', justifyContent: 'center', paddingHorizontal: 2 },
   toggleDot: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
   toggleDotActive: { alignSelf: 'flex-end' },
-  groupItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderWidth: 1, borderRadius: 10, marginTop: 8 },
+  groupItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderWidth: 1, borderRadius: 10, marginTop: 6 },
   groupItemText: { fontSize: 15 },
   groupItemCount: { fontSize: 13 },
-  websiteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  websiteChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
-  websiteText: { fontSize: 13 },
+  customRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  customInput: { flex: 1, height: 44, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, fontSize: 14 },
+  addIconBtn: { width: 44, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  sitePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
+  sitePillText: { fontSize: 12 },
   createBtn: { height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 32 },
   createBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 });
