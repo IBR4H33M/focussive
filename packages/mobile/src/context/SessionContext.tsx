@@ -14,7 +14,7 @@ import React, {
 import { sessionApi, appGroupApi, violationApi } from '@/utils/api';
 import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
-import type { Session } from '@focussive/shared';
+import { type Session, ViolationAction } from '@focussive/shared';
 
 interface SessionState {
   activeSessions: Session[];
@@ -114,10 +114,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let violationListener: ReturnType<typeof addListener> | null = null;
 
     async function syncAppBlocker() {
+      // Always remove old listener first to avoid stale closures
+      if (violationListener) {
+        violationListener.remove();
+        violationListener = null;
+      }
+
       try {
         const mobileActiveSession = state.activeSessions.find(s => s.mobile_focus === true);
         
-        if (mobileActiveSession && mobileActiveSession.app_group_id) {
+        if (mobileActiveSession && mobileActiveSession.app_group_ids && mobileActiveSession.app_group_ids.length > 0) {
           const hasPerms = await hasRequiredPermissions();
           if (!hasPerms) {
             console.log('AppBlocker: Missing required permissions to start monitoring.');
@@ -127,40 +133,42 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           // Fetch app groups to find the apps to block
           const groupsRes = await appGroupApi.getAll();
           const groups = groupsRes.data as import('@focussive/shared').AppGroup[];
-          const targetGroup = groups.find(g => g.id === mobileActiveSession.app_group_id);
           
-          if (targetGroup && targetGroup.apps) {
-            const blockedPackages = targetGroup.apps
-              .map(app => app.package_name || app.id)
-              .filter(Boolean) as string[];
+          const targetGroups = groups.filter(g => mobileActiveSession.app_group_ids?.includes(g.id));
+          
+          if (targetGroups.length > 0) {
+            const blockedPackages = [
+              ...new Set(
+                targetGroups.flatMap(g => 
+                  g.apps.map(app => app.package_name || app.id).filter(Boolean)
+                )
+              )
+            ] as string[];
             
             console.log('AppBlocker: Starting monitoring for', blockedPackages.length, 'packages');
             startMonitoring(blockedPackages);
 
-            // Setup violation listener
-            if (!violationListener) {
-              violationListener = addListener('onAppViolation', async (event) => {
-                console.log('AppBlocker Violation detected:', event.packageName);
-                try {
-                  await violationApi.create({
-                    session_id: mobileActiveSession.id,
-                    type: 'app_launch',
-                    details: event.packageName
-                  });
-                  console.log('Violation recorded successfully');
-                } catch (e) {
-                  console.error('Failed to record violation:', e);
-                }
-              });
-            }
+            // Capture the session id in scope for this listener
+            const sessionId = mobileActiveSession.id;
+
+            violationListener = addListener('onAppViolation', async (event) => {
+              console.log('AppBlocker Violation detected:', event.packageName, 'session:', sessionId);
+              try {
+                await violationApi.create({
+                  session_id: sessionId,
+                  app_name: event.packageName,
+                  duration_seconds: 0,
+                  action_taken: ViolationAction.ALLOW_ANYWAY,
+                } as import('@focussive/shared').CreateViolationRequest);
+                console.log('Violation recorded successfully for:', event.packageName);
+              } catch (e) {
+                console.error('Failed to record violation:', e);
+              }
+            });
           }
         } else {
           // No active mobile session, ensure monitoring is stopped
           stopMonitoring();
-          if (violationListener) {
-            violationListener.remove();
-            violationListener = null;
-          }
         }
       } catch (err) {
         console.error('AppBlocker sync error:', err);

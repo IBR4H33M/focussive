@@ -4,6 +4,7 @@
 
 import supabase from '../config/supabase.js';
 import { SessionStatus, ScheduleType, Weekday } from '@focussive/shared';
+import { v4 as uuidv4 } from 'uuid';
 
 const WEEKDAY_MAP: Record<number, Weekday> = {
   0: Weekday.SUNDAY,
@@ -123,11 +124,25 @@ async function completeExpiredSessions() {
 
       // If session has run longer than its duration, mark it as completed
       if (elapsedMinutes >= session.duration) {
-        // Get violation count
+        // Get total violation count
         const { count: violationsCount } = await supabase
           .from('violations')
           .select('*', { count: 'exact', head: true })
           .eq('session_id', session.id);
+
+        // Get app violations count
+        const { count: appViolationsCount } = await supabase
+          .from('violations')
+          .select('*', { count: 'exact', head: true })
+          .eq('session_id', session.id)
+          .not('app_name', 'is', null);
+
+        // Get web violations count
+        const { count: webViolationsCount } = await supabase
+          .from('violations')
+          .select('*', { count: 'exact', head: true })
+          .eq('session_id', session.id)
+          .not('website_name', 'is', null);
 
         const completedAt = now.toISOString();
 
@@ -149,7 +164,8 @@ async function completeExpiredSessions() {
           .eq('id', session.id);
 
         // Create history entry
-        await supabase.from('session_history').insert({
+        const { error: insertError } = await supabase.from('session_history').insert({
+          id: uuidv4(),
           session_id: session.id,
           user_id: session.user_id,
           session_name: session.name,
@@ -158,8 +174,14 @@ async function completeExpiredSessions() {
           start_time: session.start_time,
           status: SessionStatus.COMPLETED,
           violations_count: violationsCount || 0,
+          app_violations_count: appViolationsCount || 0,
+          web_violations_count: webViolationsCount || 0,
           pause_count: session.pause_count || 0,
         });
+
+        if (insertError) {
+          console.error(`[Scheduler] Failed to insert session history for ${session.id}:`, insertError);
+        }
 
         console.log(`[Scheduler] Completed session: ${session.name} (${session.id})`);
       }

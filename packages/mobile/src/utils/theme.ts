@@ -20,33 +20,33 @@ export interface ThemeColors {
 }
 
 export const lightTheme: ThemeColors = {
-  background: '#FFFFFF',
-  surface: '#F5F5F5',
-  surfaceAlt: '#FAFAFA',
-  text: '#000000',
-  textSecondary: '#666666',
-  accent: '#90EE90',
-  accentDark: '#2D5016',
-  border: '#E0E0E0',
-  danger: '#DC3545',
-  dangerBg: 'rgba(220, 53, 69, 0.1)',
+  background: '#F2F2F7',
+  surface: '#E8E8ED',
+  surfaceAlt: '#EFEFEF',
+  text: '#111111',
+  textSecondary: '#6B6B6B',
+  accent: '#2E8B4A',
+  accentDark: '#1A5C30',
+  border: '#D8D8DC',
+  danger: '#D93025',
+  dangerBg: 'rgba(217, 48, 37, 0.1)',
   white: '#FFFFFF',
   card: '#FFFFFF',
 };
 
 export const darkTheme: ThemeColors = {
-  background: '#1a1a1a',
-  surface: '#252525',
-  surfaceAlt: '#2a2a2a',
+  background: '#121212',
+  surface: '#1E1E1E',
+  surfaceAlt: '#1A1A1A',
   text: '#E0E0E0',
   textSecondary: '#999999',
-  accent: '#90EE90',
-  accentDark: '#2D5016',
-  border: '#333333',
-  danger: '#DC3545',
-  dangerBg: 'rgba(220, 53, 69, 0.15)',
+  accent: '#4CAF72',
+  accentDark: '#2D6A40',
+  border: '#2A2A2A',
+  danger: '#E05260',
+  dangerBg: 'rgba(224, 82, 96, 0.15)',
   white: '#FFFFFF',
-  card: '#252525',
+  card: '#1E1E1E',
 };
 
 export function useTheme(): ThemeColors {

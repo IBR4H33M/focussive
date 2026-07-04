@@ -146,7 +146,7 @@ export async function createSession(req: AuthRequest, res: Response): Promise<vo
     start_time,
     mobile_focus,
     browser_focus,
-    app_group_id,
+    app_group_ids,
     blocked_websites,
   } = req.body;
 
@@ -193,7 +193,7 @@ export async function createSession(req: AuthRequest, res: Response): Promise<vo
       start_time,
       mobile_focus: mobile_focus || false,
       browser_focus: browser_focus || false,
-      app_group_id: app_group_id || null,
+      app_group_ids: app_group_ids || [],
       blocked_websites: blocked_websites || [],
       status: SessionStatus.SCHEDULED,
     })
@@ -230,7 +230,7 @@ export async function updateSession(req: AuthRequest, res: Response): Promise<vo
 
   const allowedFields = [
     'name', 'duration', 'schedule', 'schedule_days', 'start_time',
-    'mobile_focus', 'browser_focus', 'app_group_id', 'blocked_websites',
+    'mobile_focus', 'browser_focus', 'app_group_ids', 'blocked_websites',
   ];
 
   const updates: Record<string, unknown> = {};
@@ -332,11 +332,25 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     throw new AppError('Only active sessions can be cancelled', 400, 'INVALID_STATUS');
   }
 
-  // Get violation count
+  // Get total violation count
   const { count: violationsCount } = await supabase
     .from('violations')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', id);
+
+  // Get app violations count
+  const { count: appViolationsCount } = await supabase
+    .from('violations')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', id)
+    .not('app_name', 'is', null);
+
+  // Get web violations count
+  const { count: webViolationsCount } = await supabase
+    .from('violations')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', id)
+    .not('website_name', 'is', null);
 
   // Calculate actual duration
   const startedAt = session.started_at ? new Date(session.started_at).getTime() : Date.now();
@@ -362,7 +376,7 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     .eq('id', id);
 
   // Create history entry (include pause_count)
-  await supabase.from('session_history').insert({
+  const { error: insertError } = await supabase.from('session_history').insert({
     id: uuidv4(),
     session_id: id,
     user_id: userId,
@@ -372,10 +386,16 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     start_time: session.start_time,
     status: SessionStatus.CANCELLED,
     violations_count: violationsCount || 0,
+    app_violations_count: appViolationsCount || 0,
+    web_violations_count: webViolationsCount || 0,
     pause_count: session.pause_count || 0,
     cancellation_reason: reason || null,
     cancelled_at: now,
   });
+
+  if (insertError) {
+    console.error('[SessionController] Failed to insert history for cancelled session:', insertError);
+  }
 
   res.json({
     message: 'Session cancelled',

@@ -144,9 +144,11 @@ export default function CreateSessionScreen() {
   const [mobileFocus, setMobileFocus] = useState(false);
   const [browserFocus, setBrowserFocus] = useState(false);
   const [appGroups, setAppGroups] = useState<AppGroup[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedAppGroupIds, setSelectedAppGroupIds] = useState<string[]>([]);
+  const [expandedAppGroupId, setExpandedAppGroupId] = useState<string | null>(null);
   const [websiteGroups, setWebsiteGroups] = useState<WebsiteGroup[]>([]);
   const [selectedWebsiteGroupIds, setSelectedWebsiteGroupIds] = useState<string[]>([]);
+  const [expandedWebsiteGroupId, setExpandedWebsiteGroupId] = useState<string | null>(null);
   const [extraWebsites, setExtraWebsites] = useState<string[]>([]);
   const [customWebsite, setCustomWebsite] = useState('');
   const [loading, setLoading] = useState(false);
@@ -171,6 +173,9 @@ export default function CreateSessionScreen() {
   }
   function toggleScheduledDate(iso: string) {
     setScheduledDates(prev => prev.includes(iso) ? prev.filter(d => d !== iso) : [...prev, iso]);
+  }
+  function toggleAppGroup(id: string) {
+    setSelectedAppGroupIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   }
   function toggleWebsiteGroup(id: string) {
     setSelectedWebsiteGroupIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -227,8 +232,8 @@ export default function CreateSessionScreen() {
     }
 
     if (mobileFocus) {
-      if (!selectedGroupId) {
-        Alert.alert('Error', 'Select an app group to block for mobile focus');
+      if (selectedAppGroupIds.length === 0) {
+        Alert.alert('Error', 'Select at least one app group to block for mobile focus');
         return;
       }
       
@@ -275,7 +280,7 @@ export default function CreateSessionScreen() {
         start_time: startTime,
         mobile_focus: mobileFocus,
         browser_focus: browserFocus,
-        app_group_id: mobileFocus ? selectedGroupId : null,
+        app_group_ids: mobileFocus ? selectedAppGroupIds : [],
         blocked_websites: browserFocus ? allBlockedWebsites : [],
         website_group_ids: browserFocus ? selectedWebsiteGroupIds : [],
       });
@@ -418,117 +423,142 @@ export default function CreateSessionScreen() {
       {/* Focus Mode */}
       <Text style={[styles.label, { color: theme.textSecondary }]}>FOCUS MODE</Text>
 
-      <TouchableOpacity
-        style={[styles.toggleRow, { borderColor: mobileFocus ? theme.accent : theme.border }]}
-        onPress={async () => {
-          if (!mobileFocus) {
-            const hasPerms = await hasRequiredPermissions();
-            if (!hasPerms) {
-              Alert.alert(
-                'Permissions Required', 
-                'You need to grant Usage Access and Display Over Other Apps permissions to use Mobile Focus.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { 
-                    text: 'Grant Usage Access', 
-                    onPress: () => requestUsageStatsPermission() 
-                  },
-                  { 
-                    text: 'Grant Overlay', 
-                    onPress: () => requestOverlayPermission() 
-                  },
-                ]
-              );
-              return; // Do not enable if permissions are missing (or let them enable it anyway but they'll be prompted at creation)
+      {/* Mobile Focus Container */}
+      <View style={[styles.focusContainer, { backgroundColor: theme.background }]}>
+        <TouchableOpacity
+          style={[styles.toggleRow, { borderColor: mobileFocus ? theme.accent : theme.border }]}
+          onPress={async () => {
+            if (!mobileFocus) {
+              const hasPerms = await hasRequiredPermissions();
+              if (!hasPerms) {
+                Alert.alert(
+                  'Permissions Required', 
+                  'You need to grant Usage Access and Display Over Other Apps permissions to use Mobile Focus.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                      text: 'Grant Usage Access', 
+                      onPress: () => requestUsageStatsPermission() 
+                    },
+                    { 
+                      text: 'Grant Overlay', 
+                      onPress: () => requestOverlayPermission() 
+                    },
+                  ]
+                );
+                return;
+              }
             }
-          }
-          setMobileFocus(!mobileFocus);
-        }}
-      >
-        <View style={styles.toggleLabelRow}>
-          <Ionicons name="phone-portrait-outline" size={18} color={mobileFocus ? theme.accent : theme.textSecondary} />
-          <Text style={[styles.toggleLabel, { color: theme.text }]}>Mobile Focus</Text>
-        </View>
-        <View style={[styles.toggle, mobileFocus && { backgroundColor: theme.accent }]}>
-          <View style={[styles.toggleDot, mobileFocus && styles.toggleDotActive]} />
-        </View>
-      </TouchableOpacity>
+            setMobileFocus(!mobileFocus);
+          }}
+        >
+          <View style={styles.toggleLabelRow}>
+            <Ionicons name="phone-portrait-outline" size={18} color={mobileFocus ? theme.accent : theme.textSecondary} />
+            <Text style={[styles.toggleLabel, { color: theme.text }]}>Mobile Focus</Text>
+          </View>
+          <View style={[styles.toggle, mobileFocus && { backgroundColor: theme.accent }]}>
+            <View style={[styles.toggleDot, mobileFocus && styles.toggleDotActive]} />
+          </View>
+        </TouchableOpacity>
 
-      {mobileFocus && appGroups.length > 0 && (
-        <>
-          <Text style={[styles.subLabel, { color: theme.textSecondary }]}>App Group to Block</Text>
-          {appGroups.map(group => {
-            const isSelected = selectedGroupId === group.id;
-            return (
-              <View key={group.id}>
-                <TouchableOpacity
-                  style={[
-                    styles.groupItem,
-                    { borderColor: isSelected ? theme.accent : theme.border },
-                    isSelected && { backgroundColor: `${theme.accent}15` },
-                  ]}
-                  onPress={() => setSelectedGroupId(isSelected ? null : group.id)}
-                >
-                  <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.apps?.length || 0} apps</Text>
-                    <Ionicons name={isSelected ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
+        {mobileFocus && appGroups.length > 0 && (
+          <View style={styles.focusContent}>
+            <Text style={[styles.subLabel, { color: theme.textSecondary }]}>App Groups to Block</Text>
+            {appGroups.map(group => {
+              const isSelected = selectedAppGroupIds.includes(group.id);
+              const isExpanded = expandedAppGroupId === group.id;
+              return (
+                <View key={group.id}>
+                  <View
+                    style={[
+                      styles.groupItem,
+                      { borderColor: isSelected ? theme.accent : theme.border },
+                      isSelected && { backgroundColor: `${theme.accent}15` },
+                    ]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                      <TouchableOpacity 
+                        onPress={() => setExpandedAppGroupId(isExpanded ? null : group.id)}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 }}
+                      >
+                        <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.apps?.length || 0} apps</Text>
+                        <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => toggleAppGroup(group.id)}>
+                        <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={isSelected ? theme.accent : theme.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </TouchableOpacity>
-                {isSelected && group.apps && group.apps.length > 0 && (
-                  <View style={[styles.appListContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    {group.apps.map((app, index) => (
-                      <View key={app.id || index} style={[styles.appListItem, index < group.apps.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
-                        <Ionicons name="apps-outline" size={16} color={theme.textSecondary} />
-                        <Text style={[styles.appListText, { color: theme.text }]}>{app.name}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </>
-      )}
+                  {isExpanded && group.apps && group.apps.length > 0 && (
+                    <View style={[styles.appListContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                      {group.apps.map((app, index) => (
+                        <View key={app.id || index} style={[styles.appListItem, index < group.apps.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                          <Ionicons name="apps-outline" size={16} color={theme.textSecondary} />
+                          <Text style={[styles.appListText, { color: theme.text }]}>{app.name}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
 
-      <TouchableOpacity
-        style={[styles.toggleRow, { borderColor: browserFocus ? theme.accent : theme.border }]}
-        onPress={() => setBrowserFocus(!browserFocus)}
-      >
-        <View style={styles.toggleLabelRow}>
-          <Ionicons name="globe-outline" size={18} color={browserFocus ? theme.accent : theme.textSecondary} />
-          <Text style={[styles.toggleLabel, { color: theme.text }]}>Browser Focus</Text>
-        </View>
-        <View style={[styles.toggle, browserFocus && { backgroundColor: theme.accent }]}>
-          <View style={[styles.toggleDot, browserFocus && styles.toggleDotActive]} />
-        </View>
-      </TouchableOpacity>
+      {/* Browser Focus Container */}
+      <View style={[styles.focusContainer, { backgroundColor: theme.background }]}>
+        <TouchableOpacity
+          style={[styles.toggleRow, { borderColor: browserFocus ? theme.accent : theme.border }]}
+          onPress={() => setBrowserFocus(!browserFocus)}
+        >
+          <View style={styles.toggleLabelRow}>
+            <Ionicons name="globe-outline" size={18} color={browserFocus ? theme.accent : theme.textSecondary} />
+            <Text style={[styles.toggleLabel, { color: theme.text }]}>Browser Focus</Text>
+          </View>
+          <View style={[styles.toggle, browserFocus && { backgroundColor: theme.accent }]}>
+            <View style={[styles.toggleDot, browserFocus && styles.toggleDotActive]} />
+          </View>
+        </TouchableOpacity>
 
       {browserFocus && (
-        <>
+        <View style={styles.focusContent}>
           {/* Website Groups */}
           {websiteGroups.length > 0 && (
             <>
               <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Website Groups</Text>
               {websiteGroups.map(group => {
                 const isSelected = selectedWebsiteGroupIds.includes(group.id);
+                const isExpanded = expandedWebsiteGroupId === group.id;
                 return (
                   <View key={group.id}>
-                    <TouchableOpacity
+                    <View
                       style={[
                         styles.groupItem,
                         { borderColor: isSelected ? theme.accent : theme.border },
                         isSelected && { backgroundColor: `${theme.accent}15` },
                       ]}
-                      onPress={() => toggleWebsiteGroup(group.id)}
                     >
-                      <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.websites?.length || 0} sites</Text>
-                        <Ionicons name={isSelected ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
                       </View>
-                    </TouchableOpacity>
-                    {isSelected && group.websites && group.websites.length > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                        <TouchableOpacity 
+                          onPress={() => setExpandedWebsiteGroupId(isExpanded ? null : group.id)}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 }}
+                        >
+                          <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.websites?.length || 0} sites</Text>
+                          <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => toggleWebsiteGroup(group.id)}>
+                          <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={isSelected ? theme.accent : theme.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    {isExpanded && group.websites && group.websites.length > 0 && (
                       <View style={[styles.appListContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                         {group.websites.map((website, index) => (
                           <View key={`${group.id}-${website}-${index}`} style={[styles.appListItem, index < group.websites.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
@@ -572,8 +602,9 @@ export default function CreateSessionScreen() {
               ))}
             </View>
           )}
-        </>
+        </View>
       )}
+      </View>
 
       {/* Create Button */}
       <TouchableOpacity
@@ -630,4 +661,6 @@ const styles = StyleSheet.create({
   appListText: { fontSize: 14, flex: 1 },
   createBtn: { height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 32 },
   createBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  focusContainer: { marginTop: 12, borderRadius: 12, overflow: 'hidden' },
+  focusContent: { paddingHorizontal: 4, paddingBottom: 12 },
 });

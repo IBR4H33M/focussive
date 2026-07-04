@@ -64,7 +64,7 @@ export interface Session {
   start_time: string; // HH:mm format
   mobile_focus: boolean;
   browser_focus: boolean;
-  app_group_id?: string;
+  app_group_ids?: string[];
   blocked_websites?: string[];
   website_group_ids?: string[];
   pause_count?: number;
@@ -141,6 +141,8 @@ export interface SessionHistory {
   end_time?: string;
   status: SessionStatus;
   violations_count: number;
+  app_violations_count: number;
+  web_violations_count: number;
   cancellation_reason?: string;
   cancelled_at?: string;
   created_at: string;
@@ -174,7 +176,7 @@ export interface CreateSessionRequest {
   start_time: string;
   mobile_focus: boolean;
   browser_focus: boolean;
-  app_group_id?: string;
+  app_group_ids?: string[];
   blocked_websites?: string[];
 }
 

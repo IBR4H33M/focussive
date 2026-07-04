@@ -45,8 +45,6 @@ function showOverlay(sessionId: string, websiteName: string) {
 
   overlayElement.innerHTML = `
     <div style="text-align: center; padding: 32px;">
-      <!-- Warning Triangle -->
-      <div style="font-size: 80px; color: white; margin-bottom: 24px;">▲</div>
 
       <h2 style="color: white; font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">
         Distraction Detected

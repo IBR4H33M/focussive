@@ -55,7 +55,10 @@ export async function createWebsiteGroup(req: AuthRequest, res: Response): Promi
     .select()
     .single();
 
-  if (error || !group) throw new AppError('Failed to create website group', 500, 'CREATE_ERROR');
+  if (error || !group) {
+    console.error('Supabase error creating website group:', error);
+    throw new AppError('Failed to create website group', 500, 'CREATE_ERROR');
+  }
 
   res.status(201).json(group);
 }
@@ -87,7 +90,10 @@ export async function updateWebsiteGroup(req: AuthRequest, res: Response): Promi
     .select()
     .single();
 
-  if (error || !group) throw new AppError('Failed to update website group', 500, 'UPDATE_ERROR');
+  if (error || !group) {
+    console.error('Supabase error updating website group:', error);
+    throw new AppError('Failed to update website group', 500, 'UPDATE_ERROR');
+  }
 
   res.json(group);
 }
