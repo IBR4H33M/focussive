@@ -1,0 +1,17 @@
+{
+  "name": "@focussive/app-blocker",
+  "version": "1.0.0",
+  "description": "Focussive native module for blocking apps",
+  "main": "index.ts",
+  "types": "index.ts",
+  "author": "Focussive",
+  "license": "MIT",
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  },
+  "expo": {
+    "module": "expo-module.config.json"
+  }
+}

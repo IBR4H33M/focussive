@@ -56,29 +56,41 @@ function showOverlay(sessionId: string, websiteName: string) {
       </p>
 
       <!-- Action Buttons -->
-      <div style="display: flex; flex-direction: column; gap: 12px; max-width: 320px; margin: 0 auto;">
-        <button id="focussive-allow" style="
-          background: rgba(255,255,255,0.2);
+      <div style="display: flex; flex-direction: column; gap: 12px; max-width: 320px; margin: 0 auto; width: 100%;">
+        <button id="focussive-exit" style="
+          background: #333333;
           color: white;
-          border: 1px solid rgba(255,255,255,0.3);
+          border: 1px solid transparent;
           padding: 16px 32px;
           border-radius: 12px;
           font-size: 16px;
           font-weight: 500;
           cursor: pointer;
-          transition: background 0.2s;
-        ">Allow anyway 🫥</button>
+          transition: all 0.2s;
+        ">Exit page</button>
 
-        <button id="focussive-necessary" style="
-          background: rgba(255,255,255,0.1);
+        <button id="focussive-allow" style="
+          background: #333333;
           color: white;
-          border: 1px solid rgba(255,255,255,0.2);
+          border: 1px solid transparent;
           padding: 16px 32px;
           border-radius: 12px;
           font-size: 16px;
-          font-weight: 400;
+          font-weight: 500;
           cursor: pointer;
-          transition: background 0.2s;
+          transition: all 0.2s;
+        ">Allow anyway 🫥</button>
+
+        <button id="focussive-necessary" style="
+          background: #333333;
+          color: white;
+          border: 1px solid transparent;
+          padding: 16px 32px;
+          border-radius: 12px;
+          font-size: 16px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
         ">Mark as necessary</button>
       </div>
     </div>
@@ -87,8 +99,13 @@ function showOverlay(sessionId: string, websiteName: string) {
   document.body.appendChild(overlayElement);
 
   // Button handlers
+  const exitBtn = document.getElementById('focussive-exit');
   const allowBtn = document.getElementById('focussive-allow');
   const necessaryBtn = document.getElementById('focussive-necessary');
+
+  exitBtn?.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'CLOSE_TAB' });
+  });
 
   allowBtn?.addEventListener('click', () => {
     const duration = Math.floor((Date.now() - violationStartTime) / 1000);
@@ -115,12 +132,15 @@ function showOverlay(sessionId: string, websiteName: string) {
   });
 
   // Hover effects
-  [allowBtn, necessaryBtn].forEach((btn) => {
-    btn?.addEventListener('mouseenter', () => {
-      btn.style.background = 'rgba(255,255,255,0.3)';
+  [exitBtn, allowBtn, necessaryBtn].forEach((btn) => {
+    if (!btn) return;
+    btn.addEventListener('mouseenter', () => {
+      btn.style.borderColor = '#90EE90';
+      btn.style.color = '#90EE90';
     });
-    btn?.addEventListener('mouseleave', () => {
-      btn.style.background = btn === allowBtn ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)';
+    btn.addEventListener('mouseleave', () => {
+      btn.style.borderColor = 'transparent';
+      btn.style.color = 'white';
     });
   });
 

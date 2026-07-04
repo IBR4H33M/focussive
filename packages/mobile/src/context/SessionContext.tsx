@@ -11,7 +11,8 @@ import React, {
   useRef,
   type ReactNode,
 } from 'react';
-import { sessionApi } from '@/utils/api';
+import { sessionApi, appGroupApi, violationApi } from '@/utils/api';
+import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
 import type { Session } from '@focussive/shared';
 
@@ -107,6 +108,73 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
     };
   }, [isAuthenticated, refreshSessions]);
+
+  // Sync active sessions with the native App Blocker and listen for violations
+  useEffect(() => {
+    let violationListener: ReturnType<typeof addListener> | null = null;
+
+    async function syncAppBlocker() {
+      try {
+        const mobileActiveSession = state.activeSessions.find(s => s.mobile_focus === true);
+        
+        if (mobileActiveSession && mobileActiveSession.app_group_id) {
+          const hasPerms = await hasRequiredPermissions();
+          if (!hasPerms) {
+            console.log('AppBlocker: Missing required permissions to start monitoring.');
+            return;
+          }
+
+          // Fetch app groups to find the apps to block
+          const groupsRes = await appGroupApi.getAll();
+          const groups = groupsRes.data as import('@focussive/shared').AppGroup[];
+          const targetGroup = groups.find(g => g.id === mobileActiveSession.app_group_id);
+          
+          if (targetGroup && targetGroup.apps) {
+            const blockedPackages = targetGroup.apps
+              .map(app => app.package_name || app.id)
+              .filter(Boolean) as string[];
+            
+            console.log('AppBlocker: Starting monitoring for', blockedPackages.length, 'packages');
+            startMonitoring(blockedPackages);
+
+            // Setup violation listener
+            if (!violationListener) {
+              violationListener = addListener('onAppViolation', async (event) => {
+                console.log('AppBlocker Violation detected:', event.packageName);
+                try {
+                  await violationApi.create({
+                    session_id: mobileActiveSession.id,
+                    type: 'app_launch',
+                    details: event.packageName
+                  });
+                  console.log('Violation recorded successfully');
+                } catch (e) {
+                  console.error('Failed to record violation:', e);
+                }
+              });
+            }
+          }
+        } else {
+          // No active mobile session, ensure monitoring is stopped
+          stopMonitoring();
+          if (violationListener) {
+            violationListener.remove();
+            violationListener = null;
+          }
+        }
+      } catch (err) {
+        console.error('AppBlocker sync error:', err);
+      }
+    }
+
+    syncAppBlocker();
+
+    return () => {
+      if (violationListener) {
+        violationListener.remove();
+      }
+    };
+  }, [state.activeSessions]);
 
   return (
     <SessionContext.Provider value={{ ...state, refreshSessions }}>

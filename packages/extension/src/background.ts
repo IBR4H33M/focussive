@@ -159,6 +159,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     handleViolationResponse(msg);
   }
 
+  if (message.type === 'CLOSE_TAB') {
+    if (sender.tab && sender.tab.id) {
+      chrome.tabs.remove(sender.tab.id);
+    }
+  }
+
   return false;
 });
 

@@ -19,6 +19,7 @@ import { useAuth } from '@/context/AuthContext';
 import { userApi } from '@/utils/api';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { hasRequiredPermissions, requestUsageStatsPermission, requestOverlayPermission } from '@focussive/app-blocker';
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -149,6 +150,29 @@ export default function SettingsScreen() {
     );
   }
 
+  async function checkPermissions() {
+    const hasPerms = await hasRequiredPermissions();
+    if (hasPerms) {
+      Alert.alert('Permissions Granted', 'App blocker has all required permissions.');
+    } else {
+      Alert.alert(
+        'Permissions Required',
+        'You need to grant Usage Access and Display Over Other Apps permissions to use Mobile Focus.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Grant Usage Access', 
+            onPress: () => requestUsageStatsPermission() 
+          },
+          { 
+            text: 'Grant Overlay', 
+            onPress: () => requestOverlayPermission() 
+          },
+        ]
+      );
+    }
+  }
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Profile Section */}
@@ -209,6 +233,14 @@ export default function SettingsScreen() {
             <Text style={[styles.menuText, { color: theme.textSecondary }]}>{use24Hour ? '24-hour' : '12-hour'}</Text>
             <Ionicons name="time-outline" size={20} color={theme.textSecondary} />
           </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, { borderColor: theme.border }]}
+          onPress={checkPermissions}
+        >
+          <Text style={[styles.menuText, { color: theme.text }]}>App Blocker Permissions</Text>
+          <Ionicons name="shield-checkmark-outline" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
 

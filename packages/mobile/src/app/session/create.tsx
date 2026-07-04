@@ -15,6 +15,7 @@ import { useSessions } from '@/context/SessionContext';
 import { ScheduleType, Weekday } from '@focussive/shared';
 import type { AppGroup, WebsiteGroup } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
+import { hasRequiredPermissions, requestUsageStatsPermission, requestOverlayPermission } from '@focussive/app-blocker';
 
 // ── Mini calendar component ──────────────────────────────────────────────────
 
@@ -225,6 +226,33 @@ export default function CreateSessionScreen() {
       return;
     }
 
+    if (mobileFocus) {
+      if (!selectedGroupId) {
+        Alert.alert('Error', 'Select an app group to block for mobile focus');
+        return;
+      }
+      
+      const hasPerms = await hasRequiredPermissions();
+      if (!hasPerms) {
+        Alert.alert(
+          'Permissions Required', 
+          'You need to grant Usage Access and Display Over Other Apps permissions to use Mobile Focus.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Grant Usage Access', 
+              onPress: () => requestUsageStatsPermission() 
+            },
+            { 
+              text: 'Grant Overlay', 
+              onPress: () => requestOverlayPermission() 
+            },
+          ]
+        );
+        return;
+      }
+    }
+
     // Combine website group websites + extra websites
     const allBlockedWebsites = [
       ...new Set([
@@ -330,7 +358,7 @@ export default function CreateSessionScreen() {
           { key: ScheduleType.RECURRING, label: 'Recurring' },
         ] as const).map(opt => (
           <TouchableOpacity
-            key={opt.key}
+            key={String(opt.key)}
             style={[
               styles.scheduleBtn,
               { borderColor: schedule === opt.key ? theme.accent : theme.border },
@@ -392,7 +420,30 @@ export default function CreateSessionScreen() {
 
       <TouchableOpacity
         style={[styles.toggleRow, { borderColor: mobileFocus ? theme.accent : theme.border }]}
-        onPress={() => setMobileFocus(!mobileFocus)}
+        onPress={async () => {
+          if (!mobileFocus) {
+            const hasPerms = await hasRequiredPermissions();
+            if (!hasPerms) {
+              Alert.alert(
+                'Permissions Required', 
+                'You need to grant Usage Access and Display Over Other Apps permissions to use Mobile Focus.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { 
+                    text: 'Grant Usage Access', 
+                    onPress: () => requestUsageStatsPermission() 
+                  },
+                  { 
+                    text: 'Grant Overlay', 
+                    onPress: () => requestOverlayPermission() 
+                  },
+                ]
+              );
+              return; // Do not enable if permissions are missing (or let them enable it anyway but they'll be prompted at creation)
+            }
+          }
+          setMobileFocus(!mobileFocus);
+        }}
       >
         <View style={styles.toggleLabelRow}>
           <Ionicons name="phone-portrait-outline" size={18} color={mobileFocus ? theme.accent : theme.textSecondary} />
