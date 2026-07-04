@@ -51,6 +51,47 @@ export async function pauseSession(req: AuthRequest, res: Response): Promise<voi
   res.json({ ...updated, message: isCurrentlyActive ? 'Session paused' : 'Session resumed' });
 }
 
+// POST /sessions/:id/start  — manually start a scheduled session
+export async function startSession(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const { id } = req.params;
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    throw new AppError('Session not found', 404, 'NOT_FOUND');
+  }
+
+  if (session.status !== SessionStatus.SCHEDULED) {
+    throw new AppError('Only scheduled sessions can be started', 400, 'INVALID_STATUS');
+  }
+
+  const now = new Date().toISOString();
+
+  const { data: updated, error } = await supabase
+    .from('sessions')
+    .update({ 
+      status: SessionStatus.ACTIVE,
+      started_at: now,
+      pause_count: 0
+    })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error || !updated) {
+    throw new AppError('Failed to start session', 500, 'UPDATE_ERROR');
+  }
+
+  res.json({ ...updated, message: 'Session started' });
+}
+
 // GET /sessions
 export async function getSessions(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;

@@ -9,13 +9,14 @@ import {
   getViolationStats,
 } from '../controllers/violationController.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 
 router.use(authMiddleware);
 
-router.post('/', createViolation);
-router.get('/stats', getViolationStats);
+router.post('/', asyncHandler(createViolation));
+router.get('/stats', asyncHandler(getViolationStats));
 
 export default router;
 

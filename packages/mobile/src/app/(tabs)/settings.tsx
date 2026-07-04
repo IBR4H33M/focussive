@@ -13,6 +13,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/utils/theme';
 import { useAuth } from '@/context/AuthContext';
 import { userApi } from '@/utils/api';
@@ -32,10 +33,31 @@ export default function SettingsScreen() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [use24Hour, setUse24Hour] = useState(true);
 
   useEffect(() => {
     fetchProfile();
+    loadTimeFormat();
   }, []);
+
+  async function loadTimeFormat() {
+    try {
+      const format = await AsyncStorage.getItem('time_format');
+      setUse24Hour(format !== '12');
+    } catch {
+      // Default to 24 hour
+    }
+  }
+
+  async function toggleTimeFormat() {
+    const newFormat = !use24Hour;
+    setUse24Hour(newFormat);
+    try {
+      await AsyncStorage.setItem('time_format', newFormat ? '24' : '12');
+    } catch {
+      Alert.alert('Error', 'Failed to save time format');
+    }
+  }
 
   async function fetchProfile() {
     try {
@@ -171,6 +193,22 @@ export default function SettingsScreen() {
         >
           <Text style={[styles.menuText, { color: theme.text }]}>Connect Extension</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Data */}
+      <View style={[styles.section, { borderColor: theme.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PREFERENCES</Text>
+
+        <TouchableOpacity
+          style={[styles.menuItem, { borderColor: theme.border }]}
+          onPress={toggleTimeFormat}
+        >
+          <Text style={[styles.menuText, { color: theme.text }]}>Time Format</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={[styles.menuText, { color: theme.textSecondary }]}>{use24Hour ? '24-hour' : '12-hour'}</Text>
+            <Ionicons name="time-outline" size={20} color={theme.textSecondary} />
+          </View>
         </TouchableOpacity>
       </View>
 

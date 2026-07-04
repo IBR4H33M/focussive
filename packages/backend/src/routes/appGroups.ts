@@ -11,15 +11,16 @@ import {
   getAvailableApps,
 } from '../controllers/appGroupController.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 
 router.use(authMiddleware);
 
-router.get('/apps', getAvailableApps);
-router.get('/', getAppGroups);
-router.post('/', createAppGroup);
-router.put('/:id', updateAppGroup);
-router.delete('/:id', deleteAppGroup);
+router.get('/apps', asyncHandler(getAvailableApps));
+router.get('/', asyncHandler(getAppGroups));
+router.post('/', asyncHandler(createAppGroup));
+router.put('/:id', asyncHandler(updateAppGroup));
+router.delete('/:id', asyncHandler(deleteAppGroup));
 
 export default router;

@@ -10,14 +10,15 @@ import {
   deleteAccount,
 } from '../controllers/userController.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 
 router.use(authMiddleware);
 
-router.get('/profile', getProfile);
-router.put('/profile', updateProfile);
-router.put('/password', updatePassword);
-router.delete('/account', deleteAccount);
+router.get('/profile', asyncHandler(getProfile));
+router.put('/profile', asyncHandler(updateProfile));
+router.put('/password', asyncHandler(updatePassword));
+router.delete('/account', asyncHandler(deleteAccount));
 
 export default router;

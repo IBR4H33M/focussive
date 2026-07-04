@@ -11,10 +11,12 @@ import {
   deleteSession,
   cancelSession,
   pauseSession,
+  startSession,
   getActiveSessions,
   getUpcomingSessions,
 } from '../controllers/sessionController.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 
@@ -22,16 +24,17 @@ const router = Router();
 router.use(authMiddleware);
 
 // Specific routes before parameterized routes
-router.get('/active', getActiveSessions);
-router.get('/upcoming', getUpcomingSessions);
+router.get('/active', asyncHandler(getActiveSessions));
+router.get('/upcoming', asyncHandler(getUpcomingSessions));
 
-router.get('/', getSessions);
-router.get('/:id', getSession);
-router.post('/', createSession);
-router.put('/:id', updateSession);
-router.delete('/:id', deleteSession);
-router.post('/:id/cancel', cancelSession);
-router.post('/:id/pause', pauseSession);
+router.get('/', asyncHandler(getSessions));
+router.get('/:id', asyncHandler(getSession));
+router.post('/', asyncHandler(createSession));
+router.put('/:id', asyncHandler(updateSession));
+router.delete('/:id', asyncHandler(deleteSession));
+router.post('/:id/cancel', asyncHandler(cancelSession));
+router.post('/:id/pause', asyncHandler(pauseSession));
+router.post('/:id/start', asyncHandler(startSession));
 
 export default router;
 

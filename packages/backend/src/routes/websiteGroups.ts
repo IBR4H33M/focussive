@@ -10,13 +10,14 @@ import {
   deleteWebsiteGroup,
 } from '../controllers/websiteGroupController.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 router.use(authMiddleware);
 
-router.get('/', getWebsiteGroups);
-router.post('/', createWebsiteGroup);
-router.put('/:id', updateWebsiteGroup);
-router.delete('/:id', deleteWebsiteGroup);
+router.get('/', asyncHandler(getWebsiteGroups));
+router.post('/', asyncHandler(createWebsiteGroup));
+router.put('/:id', asyncHandler(updateWebsiteGroup));
+router.delete('/:id', asyncHandler(deleteWebsiteGroup));
 
 export default router;

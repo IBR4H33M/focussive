@@ -73,7 +73,22 @@ async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Pr
     return undefined as T;
   }
 
-  const data = await response.json();
+  // Get response text first
+  const text = await response.text();
+  
+  // Try to parse as JSON
+  let data: any;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (error) {
+    // If JSON parsing fails, throw a more informative error
+    console.error('Failed to parse JSON response:', text);
+    throw new ApiError(
+      `Server returned invalid JSON: ${text.substring(0, 100)}`,
+      'INVALID_RESPONSE',
+      response.status
+    );
+  }
 
   if (!response.ok) {
     throw new ApiError(data.error || 'Request failed', data.code || 'ERROR', response.status);
@@ -133,6 +148,9 @@ export const sessionApi = {
 
   pause: (id: string) =>
     apiRequest(`/sessions/${id}/pause`, { method: 'POST' }),
+
+  start: (id: string) =>
+    apiRequest(`/sessions/${id}/start`, { method: 'POST' }),
 
   getActive: () => apiRequest<{ data: unknown[] }>('/sessions/active'),
 

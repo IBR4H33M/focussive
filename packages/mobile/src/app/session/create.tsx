@@ -7,6 +7,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/utils/theme';
 import { sessionApi, appGroupApi, websiteGroupApi } from '@/utils/api';
@@ -131,9 +132,11 @@ export default function CreateSessionScreen() {
 
   const [name, setName] = useState('');
   const [durationHours, setDurationHours] = useState('0');
-  const [durationMinutes, setDurationMinutes] = useState('25');
+  const [durationMinutes, setDurationMinutes] = useState('');
   const [startHours, setStartHours] = useState('');
   const [startMinutes, setStartMinutes] = useState('');
+  const [startAmPm, setStartAmPm] = useState<'AM' | 'PM'>('AM');
+  const [use24Hour, setUse24Hour] = useState(true);
   const [schedule, setSchedule] = useState<ScheduleType>(ScheduleType.TODAY);
   const [recurringDays, setRecurringDays] = useState<Weekday[]>([]);   // for RECURRING
   const [scheduledDates, setScheduledDates] = useState<string[]>([]);   // for SCHEDULED
@@ -150,7 +153,17 @@ export default function CreateSessionScreen() {
   useEffect(() => {
     appGroupApi.getAll().then(r => setAppGroups(r.data as AppGroup[])).catch(() => {});
     websiteGroupApi.getAll().then(r => setWebsiteGroups(r.data as WebsiteGroup[])).catch(() => {});
+    loadTimeFormat();
   }, []);
+
+  async function loadTimeFormat() {
+    try {
+      const format = await AsyncStorage.getItem('time_format');
+      setUse24Hour(format !== '12');
+    } catch {
+      setUse24Hour(true);
+    }
+  }
 
   function toggleRecurringDay(day: Weekday) {
     setRecurringDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -179,10 +192,26 @@ export default function CreateSessionScreen() {
     const duration = dh * 60 + dm;
     if (duration < 1) { Alert.alert('Error', 'Duration must be at least 1 minute'); return; }
 
-    const sh = parseInt(startHours, 10) || 0;
+    let sh = parseInt(startHours, 10) || 0;
     const sm = parseInt(startMinutes, 10) || 0;
-    if (sh < 0 || sh > 23 || sm < 0 || sm > 59) {
-      Alert.alert('Error', 'Please enter a valid time (HH:MM)');
+    
+    // Convert 12-hour to 24-hour if needed
+    if (!use24Hour) {
+      if (sh < 1 || sh > 12) {
+        Alert.alert('Error', 'Hour must be between 1 and 12 for 12-hour format');
+        return;
+      }
+      if (startAmPm === 'PM' && sh !== 12) sh += 12;
+      if (startAmPm === 'AM' && sh === 12) sh = 0;
+    } else {
+      if (sh < 0 || sh > 23) {
+        Alert.alert('Error', 'Hour must be between 0 and 23 for 24-hour format');
+        return;
+      }
+    }
+    
+    if (sm < 0 || sm > 59) {
+      Alert.alert('Error', 'Minutes must be between 0 and 59');
       return;
     }
     const startTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
@@ -254,18 +283,18 @@ export default function CreateSessionScreen() {
         <Text style={[styles.timeSep, { color: theme.textSecondary }]}>h</Text>
         <TextInput
           style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-          placeholder="25" placeholderTextColor={theme.textSecondary}
+          placeholder="0" placeholderTextColor={theme.textSecondary}
           value={durationMinutes} onChangeText={setDurationMinutes} keyboardType="numeric" maxLength={2}
         />
         <Text style={[styles.timeSep, { color: theme.textSecondary }]}>m</Text>
       </View>
 
       {/* Start Time */}
-      <Text style={[styles.label, { color: theme.textSecondary }]}>START TIME</Text>
+      <Text style={[styles.label, { color: theme.textSecondary }]}>START TIME {!use24Hour && '(12-hour)'}</Text>
       <View style={styles.timeRow}>
         <TextInput
           style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-          placeholder="HH" placeholderTextColor={theme.textSecondary}
+          placeholder={use24Hour ? 'HH' : '12'} placeholderTextColor={theme.textSecondary}
           value={startHours} onChangeText={setStartHours} keyboardType="numeric" maxLength={2}
         />
         <Text style={[styles.timeSep, { color: theme.text }]}>:</Text>
@@ -274,6 +303,22 @@ export default function CreateSessionScreen() {
           placeholder="MM" placeholderTextColor={theme.textSecondary}
           value={startMinutes} onChangeText={setStartMinutes} keyboardType="numeric" maxLength={2}
         />
+        {!use24Hour && (
+          <View style={styles.ampmRow}>
+            <TouchableOpacity
+              style={[styles.ampmBtn, { borderColor: theme.border, backgroundColor: startAmPm === 'AM' ? theme.accent : theme.surface }]}
+              onPress={() => setStartAmPm('AM')}
+            >
+              <Text style={[styles.ampmText, { color: startAmPm === 'AM' ? '#fff' : theme.textSecondary }]}>AM</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.ampmBtn, { borderColor: theme.border, backgroundColor: startAmPm === 'PM' ? theme.accent : theme.surface }]}
+              onPress={() => setStartAmPm('PM')}
+            >
+              <Text style={[styles.ampmText, { color: startAmPm === 'PM' ? '#fff' : theme.textSecondary }]}>PM</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Schedule Type */}
@@ -361,20 +406,37 @@ export default function CreateSessionScreen() {
       {mobileFocus && appGroups.length > 0 && (
         <>
           <Text style={[styles.subLabel, { color: theme.textSecondary }]}>App Group to Block</Text>
-          {appGroups.map(group => (
-            <TouchableOpacity
-              key={group.id}
-              style={[
-                styles.groupItem,
-                { borderColor: selectedGroupId === group.id ? theme.accent : theme.border },
-                selectedGroupId === group.id && { backgroundColor: `${theme.accent}15` },
-              ]}
-              onPress={() => setSelectedGroupId(selectedGroupId === group.id ? null : group.id)}
-            >
-              <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
-              <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.apps?.length || 0} apps</Text>
-            </TouchableOpacity>
-          ))}
+          {appGroups.map(group => {
+            const isSelected = selectedGroupId === group.id;
+            return (
+              <View key={group.id}>
+                <TouchableOpacity
+                  style={[
+                    styles.groupItem,
+                    { borderColor: isSelected ? theme.accent : theme.border },
+                    isSelected && { backgroundColor: `${theme.accent}15` },
+                  ]}
+                  onPress={() => setSelectedGroupId(isSelected ? null : group.id)}
+                >
+                  <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.apps?.length || 0} apps</Text>
+                    <Ionicons name={isSelected ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
+                  </View>
+                </TouchableOpacity>
+                {isSelected && group.apps && group.apps.length > 0 && (
+                  <View style={[styles.appListContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                    {group.apps.map((app, index) => (
+                      <View key={app.id || index} style={[styles.appListItem, index < group.apps.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                        <Ionicons name="apps-outline" size={16} color={theme.textSecondary} />
+                        <Text style={[styles.appListText, { color: theme.text }]}>{app.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </>
       )}
 
@@ -397,20 +459,37 @@ export default function CreateSessionScreen() {
           {websiteGroups.length > 0 && (
             <>
               <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Website Groups</Text>
-              {websiteGroups.map(group => (
-                <TouchableOpacity
-                  key={group.id}
-                  style={[
-                    styles.groupItem,
-                    { borderColor: selectedWebsiteGroupIds.includes(group.id) ? theme.accent : theme.border },
-                    selectedWebsiteGroupIds.includes(group.id) && { backgroundColor: `${theme.accent}15` },
-                  ]}
-                  onPress={() => toggleWebsiteGroup(group.id)}
-                >
-                  <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
-                  <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.websites?.length || 0} sites</Text>
-                </TouchableOpacity>
-              ))}
+              {websiteGroups.map(group => {
+                const isSelected = selectedWebsiteGroupIds.includes(group.id);
+                return (
+                  <View key={group.id}>
+                    <TouchableOpacity
+                      style={[
+                        styles.groupItem,
+                        { borderColor: isSelected ? theme.accent : theme.border },
+                        isSelected && { backgroundColor: `${theme.accent}15` },
+                      ]}
+                      onPress={() => toggleWebsiteGroup(group.id)}
+                    >
+                      <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.websites?.length || 0} sites</Text>
+                        <Ionicons name={isSelected ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
+                      </View>
+                    </TouchableOpacity>
+                    {isSelected && group.websites && group.websites.length > 0 && (
+                      <View style={[styles.appListContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                        {group.websites.map((website, index) => (
+                          <View key={`${group.id}-${website}-${index}`} style={[styles.appListItem, index < group.websites.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                            <Ionicons name="globe-outline" size={16} color={theme.textSecondary} />
+                            <Text style={[styles.appListText, { color: theme.text }]}>{website}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
             </>
           )}
 
@@ -430,9 +509,9 @@ export default function CreateSessionScreen() {
           </View>
           {extraWebsites.length > 0 && (
             <View style={styles.chipWrap}>
-              {extraWebsites.map(site => (
+              {extraWebsites.map((site, idx) => (
                 <TouchableOpacity
-                  key={site}
+                  key={`extra-${site}-${idx}`}
                   style={[styles.sitePill, { backgroundColor: theme.surface, borderColor: theme.border }]}
                   onPress={() => removeExtraWebsite(site)}
                 >
@@ -468,6 +547,9 @@ const styles = StyleSheet.create({
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timeInput: { width: 70, height: 48, borderWidth: 1, borderRadius: 10, textAlign: 'center', fontSize: 18, fontWeight: '300' },
   timeSep: { fontSize: 24, fontWeight: '300' },
+  ampmRow: { flexDirection: 'row', gap: 4, marginLeft: 8 },
+  ampmBtn: { width: 52, height: 48, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  ampmText: { fontSize: 14, fontWeight: '500' },
   scheduleRow: { flexDirection: 'row', gap: 8 },
   scheduleBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   scheduleBtnText: { fontSize: 13, fontWeight: '400' },
@@ -492,6 +574,9 @@ const styles = StyleSheet.create({
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   sitePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
   sitePillText: { fontSize: 12 },
+  appListContainer: { marginTop: 4, marginBottom: 8, borderRadius: 8, borderWidth: 1, overflow: 'hidden' },
+  appListItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12 },
+  appListText: { fontSize: 14, flex: 1 },
   createBtn: { height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 32 },
   createBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 });

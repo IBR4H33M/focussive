@@ -12,6 +12,7 @@ import morgan from "morgan";
 import router from "./routes";
 import { apiRateLimiter } from "./middleware/rateLimit";
 import { errorHandler } from "./middleware/errorHandler";
+import { startScheduler } from "./services/sessionScheduler";
 
 const app = express();
 
@@ -41,4 +42,7 @@ app.listen(port, () => {
   if (process.env.NODE_ENV !== "production") {
     console.log(`Focussive API running on ${port}`);
   }
+  
+  // Start the session scheduler (checks every 30 seconds)
+  startScheduler(30000);
 });
