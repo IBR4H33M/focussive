@@ -17,6 +17,9 @@
     "node": ">=22.0.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["bcrypt", "esbuild"]
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "esbuild"
+    ]
   }
 }

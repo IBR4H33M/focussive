@@ -303,10 +303,21 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
 
   const now = new Date().toISOString();
 
-  // Update session status
+  // If it's a recurring session or specific_days, it should revert to 'scheduled' so it stays visible.
+  // Otherwise (e.g., 'today'), it goes to 'cancelled'.
+  const nextStatus = (session.schedule === 'recurring' || session.schedule === 'specific_days')
+    ? SessionStatus.SCHEDULED
+    : SessionStatus.CANCELLED;
+
+  // Update session status and set completed_at so the scheduler knows it ran today
   await supabase
     .from('sessions')
-    .update({ status: SessionStatus.CANCELLED, completed_at: now })
+    .update({ 
+      status: nextStatus, 
+      completed_at: now,
+      started_at: null, // Clear started_at since it's no longer active
+      pause_count: 0
+    })
     .eq('id', id);
 
   // Create history entry (include pause_count)

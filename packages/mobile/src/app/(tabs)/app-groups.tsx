@@ -22,7 +22,7 @@ import { appGroupApi, websiteGroupApi } from '@/utils/api';
 import { PREDEFINED_APPS } from '@focussive/shared';
 import type { AppGroup, AppInfo, WebsiteGroup } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
-import InstalledApps from '../../../modules/my-module';
+import InstalledApps from '@focussive/installed-apps';
 
 const COMMON_WEBSITES = [
   'facebook.com', 'instagram.com', 'x.com', 'twitter.com', 'tiktok.com',
@@ -40,6 +40,7 @@ export default function GroupsScreen() {
   const [appModal, setAppModal] = useState(false);
   const [editingAppGroup, setEditingAppGroup] = useState<AppGroup | null>(null);
   const [appGroupName, setAppGroupName] = useState('');
+  const [appSearchQuery, setAppSearchQuery] = useState('');
   const [selectedApps, setSelectedApps] = useState<AppInfo[]>([]);
   const [deviceApps, setDeviceApps] = useState<(AppInfo & { iconUri?: string })[]>(PREDEFINED_APPS);
 
@@ -73,12 +74,17 @@ export default function GroupsScreen() {
     fetchWebsiteGroups();
     async function loadDeviceApps() {
       try {
-        if (!InstalledApps) return;
+        if (!InstalledApps) {
+          console.warn("InstalledApps module is null, using predefined fallback");
+          return;
+        }
         const apps = await InstalledApps.getApps();
         if (apps?.length > 0) {
           setDeviceApps(apps.map(a => ({ id: a.id, name: a.name, icon: 'apps-outline', iconUri: a.icon })));
         }
-      } catch { /* fallback to predefined */ }
+      } catch (err) {
+        console.error("Error loading device apps:", err);
+      }
     }
     loadDeviceApps();
   }, [fetchAppGroups, fetchWebsiteGroups]);
@@ -86,10 +92,10 @@ export default function GroupsScreen() {
   // ─── App Group Handlers ───────────────────────────────────────────────────
 
   function openCreateAppGroup() {
-    setEditingAppGroup(null); setAppGroupName(''); setSelectedApps([]); setAppModal(true);
+    setEditingAppGroup(null); setAppGroupName(''); setAppSearchQuery(''); setSelectedApps([]); setAppModal(true);
   }
   function openEditAppGroup(g: AppGroup) {
-    setEditingAppGroup(g); setAppGroupName(g.name); setSelectedApps(g.apps || []); setAppModal(true);
+    setEditingAppGroup(g); setAppGroupName(g.name); setAppSearchQuery(''); setSelectedApps(g.apps || []); setAppModal(true);
   }
   function toggleApp(app: AppInfo) {
     setSelectedApps(prev => prev.some(a => a.id === app.id) ? prev.filter(a => a.id !== app.id) : [...prev, app]);
@@ -275,8 +281,15 @@ export default function GroupsScreen() {
             value={appGroupName} onChangeText={setAppGroupName}
           />
           <Text style={[styles.label, { color: theme.textSecondary }]}>SELECT APPS</Text>
+          <TextInput
+            style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+            placeholder="Search Apps" placeholderTextColor={theme.textSecondary}
+            value={appSearchQuery} onChangeText={setAppSearchQuery}
+          />
           <ScrollView style={styles.listArea}>
-            {deviceApps.map(app => {
+            {deviceApps
+              .filter(app => app.name.toLowerCase().includes(appSearchQuery.toLowerCase()))
+              .map(app => {
               const isSel = selectedApps.some(a => a.id === app.id);
               return (
                 <TouchableOpacity

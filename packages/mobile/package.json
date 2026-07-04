@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@focussive/installed-apps": "file:./modules/my-module",
+    "@focussive/installed-apps": "workspace:*",
     "@expo/ui": "~56.0.18",
     "@expo/vector-icons": "^15.1.1",
     "@focussive/shared": "workspace:*",
@@ -43,10 +43,20 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --dev-client",
     "android": "expo run:android",
+    "android:release": "expo run:android --variant release",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:dev": "eas build --profile development --platform android",
+    "build:preview": "eas build --profile preview --platform android",
+    "build:prod": "eas build --profile production --platform android",
+    "build:prod-apk": "eas build --profile production-apk --platform android",
+    "build:status": "eas build:list",
+    "build:local:aab": "cd android && .\\gradlew bundleRelease && cd ..",
+    "build:local:apk": "cd android && .\\gradlew assembleRelease && cd ..",
+    "prebuild": "expo prebuild",
+    "prebuild:clean": "expo prebuild --clean"
   }
 }

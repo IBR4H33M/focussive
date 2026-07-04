@@ -26,8 +26,9 @@ export async function getWebsiteGroups(req: AuthRequest, res: Response): Promise
 
   if (error) throw new AppError('Failed to fetch website groups', 500, 'FETCH_ERROR');
 
-  // Auto-create default Social Media group on first visit
-  if (!groups || groups.length === 0) {
+  // Auto-create default Social Media group if they don't have one
+  const hasDefault = groups && groups.some(g => g.is_default);
+  if (!hasDefault) {
     const { data: newGroup, error: createErr } = await supabase
       .from('website_groups')
       .insert({ id: uuidv4(), user_id: userId, ...DEFAULT_SOCIAL_MEDIA_GROUP })
@@ -35,7 +36,7 @@ export async function getWebsiteGroups(req: AuthRequest, res: Response): Promise
       .single();
 
     if (createErr) throw new AppError('Failed to create default group', 500, 'CREATE_ERROR');
-    groups = [newGroup];
+    groups = groups ? [...groups, newGroup] : [newGroup];
   }
 
   res.json({ data: groups });
