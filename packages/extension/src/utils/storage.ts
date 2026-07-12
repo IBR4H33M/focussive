@@ -12,6 +12,9 @@ export interface StoredSession {
   blocked_websites: string[];
   violations_count: number;
   allowlist: Array<{ app_name?: string; website_name?: string }>;
+  allow_breaks: boolean;
+  max_break_minutes?: number;
+  remaining_break_seconds: number;
 }
 
 export async function getActiveSession(): Promise<StoredSession | null> {

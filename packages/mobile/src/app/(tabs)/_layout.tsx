@@ -3,6 +3,7 @@
 // ============================================================
 
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/utils/theme';
@@ -32,7 +33,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: theme.background,
           borderTopColor: theme.border,
-          borderTopWidth: 1,
+          borderTopWidth: StyleSheet.hairlineWidth,
           height: TAB_BAR_HEIGHT,
           paddingBottom: TAB_BAR_PADDING_BOTTOM,
           paddingTop: 8,

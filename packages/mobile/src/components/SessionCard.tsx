@@ -82,8 +82,11 @@ export default function SessionCard({ session, onCancel, onRefresh, isActive }: 
         styles.card,
         {
           backgroundColor: theme.card,
-          borderColor: isActiveSession ? theme.accent : isPausedSession ? theme.textSecondary : theme.border,
-          borderWidth: isActiveSession ? 2 : 1,
+          borderTopWidth: isActiveSession ? 1.5 : 0,
+          borderBottomWidth: isActiveSession ? 1.5 : 0,
+          borderLeftWidth: isActiveSession ? 1.5 : 0,
+          borderRightWidth: isActiveSession ? 1.5 : 0,
+          borderColor: isActiveSession ? theme.accent : 'transparent',
         },
       ]}
       onPress={() => router.push(`/session/${session.id}` as never)}

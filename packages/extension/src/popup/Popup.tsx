@@ -3,7 +3,7 @@
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { isAuthenticated as checkAuth } from '../utils/api';
+import { isAuthenticated as checkAuth, sessionApi } from '../utils/api';
 import LoginView from './LoginView';
 import SessionCard from './SessionCard';
 import UpcomingCard from './UpcomingCard';
@@ -46,11 +46,6 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center' as const,
     padding: '40px 20px',
   },
-  noSessionIcon: {
-    marginBottom: 12,
-    display: 'flex',
-    justifyContent: 'center',
-  },
   noSessionTitle: {
     fontSize: 16,
     fontWeight: 300,
@@ -88,10 +83,29 @@ export default function Popup() {
     setAuthenticated(isAuth);
 
     if (isAuth) {
-      chrome.runtime.sendMessage({ type: 'GET_SESSION' }, (response) => {
-        if (response) {
-          setActiveSession(response.activeSession || null);
-          setUpcomingSessions(response.upcomingSessions || []);
+      // Ask background for cached data first
+      chrome.runtime.sendMessage({ type: 'GET_SESSION' }, async (response) => {
+        const cached = response?.activeSession || null;
+        const upcoming = response?.upcomingSessions || [];
+
+        if (cached) {
+          setActiveSession(cached);
+          setUpcomingSessions(upcoming);
+        } else {
+          // Background cache empty — fetch directly from API as fallback
+          try {
+            const [activeRes, upcomingRes] = await Promise.all([
+              sessionApi.getActive(),
+              sessionApi.getUpcoming(),
+            ]);
+            const activeSessions = (activeRes as any).data as StoredSession[];
+            const upcomingSess = (upcomingRes as any).data as StoredSession[];
+            setActiveSession(activeSessions.length > 0 ? activeSessions[0] : null);
+            setUpcomingSessions(upcomingSess || []);
+          } catch {
+            setActiveSession(null);
+            setUpcomingSessions(upcoming);
+          }
         }
       });
     }
@@ -159,13 +173,6 @@ export default function Popup() {
           </>
         ) : (
           <div style={styles.noSession}>
-            <div style={styles.noSessionIcon}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#90EE90" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <circle cx="12" cy="12" r="6"/>
-                <circle cx="12" cy="12" r="2"/>
-              </svg>
-            </div>
             <div style={styles.noSessionTitle}>No active session</div>
             <div style={styles.noSessionSub}>
               {upcomingSessions.length > 0

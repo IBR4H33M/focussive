@@ -9,48 +9,6 @@ import { AppError } from '../middleware/errorHandler.js';
 import type { AuthRequest } from '../middleware/auth.js';
 import { isSessionOverlap, SessionStatus } from '@focussive/shared';
 
-// POST /sessions/:id/pause  — toggles active <-> paused
-export async function pauseSession(req: AuthRequest, res: Response): Promise<void> {
-  const userId = req.userId!;
-  const { id } = req.params;
-
-  const { data: session } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', userId)
-    .single();
-
-  if (!session) {
-    throw new AppError('Session not found', 404, 'NOT_FOUND');
-  }
-
-  const isCurrentlyActive = session.status === SessionStatus.ACTIVE;
-  const isCurrentlyPaused = session.status === 'paused';
-
-  if (!isCurrentlyActive && !isCurrentlyPaused) {
-    throw new AppError('Only active or paused sessions can be toggled', 400, 'INVALID_STATUS');
-  }
-
-  const newStatus = isCurrentlyActive ? 'paused' : SessionStatus.ACTIVE;
-  // Increment pause_count only when going active -> paused
-  const pauseCount = isCurrentlyActive ? (session.pause_count || 0) + 1 : session.pause_count;
-
-  const { data: updated, error } = await supabase
-    .from('sessions')
-    .update({ status: newStatus, pause_count: pauseCount })
-    .eq('id', id)
-    .eq('user_id', userId)
-    .select()
-    .single();
-
-  if (error || !updated) {
-    throw new AppError('Failed to toggle pause', 500, 'UPDATE_ERROR');
-  }
-
-  res.json({ ...updated, message: isCurrentlyActive ? 'Session paused' : 'Session resumed' });
-}
-
 // POST /sessions/:id/start  — manually start a scheduled session
 export async function startSession(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
@@ -75,10 +33,9 @@ export async function startSession(req: AuthRequest, res: Response): Promise<voi
 
   const { data: updated, error } = await supabase
     .from('sessions')
-    .update({ 
+    .update({
       status: SessionStatus.ACTIVE,
       started_at: now,
-      pause_count: 0
     })
     .eq('id', id)
     .eq('user_id', userId)
@@ -100,7 +57,7 @@ export async function getSessions(req: AuthRequest, res: Response): Promise<void
     .from('sessions')
     .select('*')
     .eq('user_id', userId)
-    .in('status', [SessionStatus.SCHEDULED, SessionStatus.ACTIVE, 'paused'])
+    .in('status', [SessionStatus.SCHEDULED, SessionStatus.ACTIVE])
     .order('start_time', { ascending: true });
 
   if (error) {
@@ -148,6 +105,8 @@ export async function createSession(req: AuthRequest, res: Response): Promise<vo
     browser_focus,
     app_group_ids,
     blocked_websites,
+    allow_breaks,
+    max_break_minutes,
   } = req.body;
 
   // Validation
@@ -157,6 +116,16 @@ export async function createSession(req: AuthRequest, res: Response): Promise<vo
 
   if (duration < 1 || duration > 480) {
     throw new AppError('Duration must be between 1 and 480 minutes', 400, 'VALIDATION_ERROR');
+  }
+
+  if (allow_breaks && max_break_minutes != null) {
+    if (max_break_minutes < 1 || max_break_minutes >= duration) {
+      throw new AppError(
+        'Max break time must be at least 1 minute and less than session duration',
+        400,
+        'VALIDATION_ERROR'
+      );
+    }
   }
 
   // Check for overlapping sessions
@@ -195,6 +164,9 @@ export async function createSession(req: AuthRequest, res: Response): Promise<vo
       browser_focus: browser_focus || false,
       app_group_ids: app_group_ids || [],
       blocked_websites: blocked_websites || [],
+      allow_breaks: allow_breaks || false,
+      max_break_minutes: allow_breaks ? (max_break_minutes || null) : null,
+      break_used_seconds: 0,
       status: SessionStatus.SCHEDULED,
     })
     .select()
@@ -231,6 +203,7 @@ export async function updateSession(req: AuthRequest, res: Response): Promise<vo
   const allowedFields = [
     'name', 'duration', 'schedule', 'schedule_days', 'start_time',
     'mobile_focus', 'browser_focus', 'app_group_ids', 'blocked_websites',
+    'allow_breaks', 'max_break_minutes',
   ];
 
   const updates: Record<string, unknown> = {};
@@ -358,24 +331,26 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
 
   const now = new Date().toISOString();
 
-  // If it's a recurring session or specific_days, it should revert to 'scheduled' so it stays visible.
-  // Otherwise (e.g., 'today'), it goes to 'cancelled'.
   const nextStatus = (session.schedule === 'recurring' || session.schedule === 'specific_days')
     ? SessionStatus.SCHEDULED
     : SessionStatus.CANCELLED;
 
-  // Update session status and set completed_at so the scheduler knows it ran today
   await supabase
     .from('sessions')
-    .update({ 
-      status: nextStatus, 
+    .update({
+      status: nextStatus,
       completed_at: now,
-      started_at: null, // Clear started_at since it's no longer active
-      pause_count: 0
+      started_at: null,
     })
     .eq('id', id);
 
-  // Create history entry (include pause_count)
+  // End any open breaks
+  await supabase
+    .from('session_breaks')
+    .update({ ended_at: now, duration_seconds: 0 })
+    .eq('session_id', id)
+    .is('ended_at', null);
+
   const { error: insertError } = await supabase.from('session_history').insert({
     id: uuidv4(),
     session_id: id,
@@ -388,7 +363,6 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     violations_count: violationsCount || 0,
     app_violations_count: appViolationsCount || 0,
     web_violations_count: webViolationsCount || 0,
-    pause_count: session.pause_count || 0,
     cancellation_reason: reason || null,
     cancelled_at: now,
   });
@@ -401,6 +375,134 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     message: 'Session cancelled',
     actual_duration: actualDuration,
     violations_count: violationsCount || 0,
+  });
+}
+
+// POST /sessions/:id/break/start
+export async function startBreak(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const { id } = req.params;
+  const { source = 'manual' } = req.body;
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    throw new AppError('Session not found', 404, 'NOT_FOUND');
+  }
+
+  if (session.status !== SessionStatus.ACTIVE) {
+    throw new AppError('Session is not active', 400, 'INVALID_STATUS');
+  }
+
+  if (!session.allow_breaks) {
+    throw new AppError('Breaks are not enabled for this session', 400, 'BREAKS_DISABLED');
+  }
+
+  // Check remaining break time
+  const maxBreakSeconds = (session.max_break_minutes || 0) * 60;
+  const remainingSeconds = maxBreakSeconds - (session.break_used_seconds || 0);
+
+  if (remainingSeconds <= 0) {
+    throw new AppError('No break time remaining', 400, 'NO_BREAK_TIME');
+  }
+
+  // Close any existing open break first
+  await supabase
+    .from('session_breaks')
+    .update({ ended_at: new Date().toISOString(), duration_seconds: 0 })
+    .eq('session_id', id)
+    .is('ended_at', null);
+
+  const breakId = uuidv4();
+  const { data: breakRecord, error } = await supabase
+    .from('session_breaks')
+    .insert({
+      id: breakId,
+      session_id: id,
+      user_id: userId,
+      source,
+    })
+    .select()
+    .single();
+
+  if (error || !breakRecord) {
+    throw new AppError('Failed to start break', 500, 'CREATE_ERROR');
+  }
+
+  res.json({ ...breakRecord, remaining_break_seconds: remainingSeconds });
+}
+
+// POST /sessions/:id/break/end
+export async function endBreak(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const { id } = req.params;
+  const { break_id } = req.body;
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    throw new AppError('Session not found', 404, 'NOT_FOUND');
+  }
+
+  // Find the open break
+  let query = supabase
+    .from('session_breaks')
+    .select('*')
+    .eq('session_id', id)
+    .is('ended_at', null);
+
+  if (break_id) query = query.eq('id', break_id);
+
+  const { data: openBreak } = await query.single();
+
+  if (!openBreak) {
+    throw new AppError('No open break found', 404, 'NOT_FOUND');
+  }
+
+  const now = new Date();
+  const startedAt = new Date(openBreak.started_at);
+  const durationSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+
+  // End the break
+  const { error: breakError } = await supabase
+    .from('session_breaks')
+    .update({ ended_at: now.toISOString(), duration_seconds: durationSeconds })
+    .eq('id', openBreak.id);
+
+  if (breakError) {
+    throw new AppError('Failed to end break', 500, 'UPDATE_ERROR');
+  }
+
+  // Update session's break_used_seconds
+  const newUsed = (session.break_used_seconds || 0) + durationSeconds;
+  const { data: updatedSession, error: sessionError } = await supabase
+    .from('sessions')
+    .update({ break_used_seconds: newUsed })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (sessionError) {
+    throw new AppError('Failed to update session break time', 500, 'UPDATE_ERROR');
+  }
+
+  const maxBreakSeconds = (session.max_break_minutes || 0) * 60;
+  const remainingSeconds = Math.max(0, maxBreakSeconds - newUsed);
+
+  res.json({
+    ...updatedSession,
+    break_duration_seconds: durationSeconds,
+    remaining_break_seconds: remainingSeconds,
   });
 }
 
@@ -418,8 +520,7 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
     throw new AppError('Failed to fetch active sessions', 500, 'FETCH_ERROR');
   }
 
-  // Include violation counts and pause status
-  const sessionsWithViolations = await Promise.all(
+  const sessionsWithDetails = await Promise.all(
     (sessions || []).map(async (session) => {
       const { count } = await supabase
         .from('violations')
@@ -431,15 +532,22 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
         .select('app_name, website_name')
         .eq('session_id', session.id);
 
+      // Calculate remaining break time
+      const maxBreakSeconds = (session.max_break_minutes || 0) * 60;
+      const remainingBreakSeconds = session.allow_breaks
+        ? Math.max(0, maxBreakSeconds - (session.break_used_seconds || 0))
+        : 0;
+
       return {
         ...session,
         violations_count: count || 0,
         allowlist: allowlist || [],
+        remaining_break_seconds: remainingBreakSeconds,
       };
     })
   );
 
-  res.json({ data: sessionsWithViolations });
+  res.json({ data: sessionsWithDetails });
 }
 
 // GET /sessions/upcoming

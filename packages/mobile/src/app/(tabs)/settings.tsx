@@ -12,6 +12,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/utils/theme';
@@ -21,6 +22,86 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { hasRequiredPermissions, requestUsageStatsPermission, requestOverlayPermission } from '@focussive/app-blocker';
 
+// ─── TimeFormatToggle ─────────────────────────────────────────────────────────
+function TimeFormatToggle({
+  use24Hour,
+  onToggle,
+  theme,
+}: {
+  use24Hour: boolean;
+  onToggle: () => void;
+  theme: any;
+}) {
+  const slideAnim = React.useRef(new Animated.Value(use24Hour ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: use24Hour ? 1 : 0,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 20,
+    }).start();
+  }, [use24Hour]);
+
+  const PILL_W = 52;
+
+  const translateX = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [2, PILL_W + 2],
+  });
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        backgroundColor: theme.surface,
+        borderRadius: 10,
+        padding: 2,
+        position: 'relative',
+        width: PILL_W * 2 + 4,
+        height: 36,
+      }}
+    >
+      {/* Sliding accent pill */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          top: 2,
+          left: 0,
+          width: PILL_W,
+          height: 32,
+          borderRadius: 8,
+          backgroundColor: theme.accent,
+          transform: [{ translateX }],
+        }}
+      />
+
+      {/* 12H */}
+      <TouchableOpacity
+        onPress={() => { if (use24Hour) onToggle(); }}
+        style={{ width: PILL_W, height: 32, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}
+        activeOpacity={0.7}
+      >
+        <Text style={{ fontSize: 13, fontWeight: '600', color: !use24Hour ? '#FFFFFF' : theme.textSecondary }}>
+          12H
+        </Text>
+      </TouchableOpacity>
+
+      {/* 24H */}
+      <TouchableOpacity
+        onPress={() => { if (!use24Hour) onToggle(); }}
+        style={{ width: PILL_W, height: 32, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}
+        activeOpacity={0.7}
+      >
+        <Text style={{ fontSize: 13, fontWeight: '600', color: use24Hour ? '#FFFFFF' : theme.textSecondary }}>
+          24H
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function SettingsScreen() {
   const theme = useTheme();
   const { user, logout } = useAuth();
@@ -46,7 +127,7 @@ export default function SettingsScreen() {
       const format = await AsyncStorage.getItem('time_format');
       setUse24Hour(format !== '12');
     } catch {
-      // Default to 24 hour
+      // Default to 24-hour
     }
   }
 
@@ -160,14 +241,8 @@ export default function SettingsScreen() {
         'You need to grant Usage Access and Display Over Other Apps permissions to use Mobile Focus.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Grant Usage Access', 
-            onPress: () => requestUsageStatsPermission() 
-          },
-          { 
-            text: 'Grant Overlay', 
-            onPress: () => requestOverlayPermission() 
-          },
+          { text: 'Grant Usage Access', onPress: () => requestUsageStatsPermission() },
+          { text: 'Grant Overlay', onPress: () => requestOverlayPermission() },
         ]
       );
     }
@@ -175,8 +250,9 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+
       {/* Profile Section */}
-      <View style={[styles.section, { borderColor: theme.border }]}>
+      <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PROFILE</Text>
 
         <View style={styles.profileRow}>
@@ -195,96 +271,74 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { borderColor: theme.border }]}
-          onPress={openEditModal}
-        >
+        <TouchableOpacity style={styles.menuItem} onPress={openEditModal}>
           <Text style={[styles.menuText, { color: theme.text }]}>Edit Profile</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { borderColor: theme.border }]}
-          onPress={() => setPasswordModalVisible(true)}
-        >
+        <TouchableOpacity style={styles.menuItem} onPress={() => setPasswordModalVisible(true)}>
           <Text style={[styles.menuText, { color: theme.text }]}>Change Password</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { borderColor: theme.border }]}
-          onPress={() => router.push('/(auth)/extension-qr' as never)}
-        >
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(auth)/extension-qr' as never)}>
           <Text style={[styles.menuText, { color: theme.text }]}>Connect Extension</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
 
-      {/* Data */}
-      <View style={[styles.section, { borderColor: theme.border }]}>
+      {/* Preferences */}
+      <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PREFERENCES</Text>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { borderColor: theme.border }]}
-          onPress={toggleTimeFormat}
-        >
+        <View style={styles.menuItem}>
           <Text style={[styles.menuText, { color: theme.text }]}>Time Format</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={[styles.menuText, { color: theme.textSecondary }]}>{use24Hour ? '24-hour' : '12-hour'}</Text>
-            <Ionicons name="time-outline" size={20} color={theme.textSecondary} />
-          </View>
-        </TouchableOpacity>
+          <TimeFormatToggle use24Hour={use24Hour} onToggle={toggleTimeFormat} theme={theme} />
+        </View>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { borderColor: theme.border }]}
-          onPress={checkPermissions}
-        >
+        <TouchableOpacity style={styles.menuItem} onPress={checkPermissions}>
           <Text style={[styles.menuText, { color: theme.text }]}>App Blocker Permissions</Text>
           <Ionicons name="shield-checkmark-outline" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
 
       {/* Data */}
-      <View style={[styles.section, { borderColor: theme.border }]}>
+      <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>DATA</Text>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { borderColor: theme.border }]}
-          onPress={() => router.push('/history/manage' as never)}
-        >
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/history/manage' as never)}>
           <Text style={[styles.menuText, { color: theme.text }]}>Manage History</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
 
       {/* Actions */}
-      <View style={[styles.section, { borderColor: theme.border }]}>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+      <View style={styles.section}>
+        <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
           <Text style={[styles.logoutText, { color: theme.danger }]}>Log Out</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteAccount}>
+        <TouchableOpacity style={styles.menuItem} onPress={handleDeleteAccount}>
           <Text style={[styles.deleteText, { color: theme.danger }]}>Delete Account</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Version */}
       <Text style={[styles.version, { color: theme.textSecondary }]}>Focussive v1.0.0</Text>
 
       {/* Edit Profile Modal */}
       <Modal visible={editModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Profile</Text>
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
               placeholder="Name"
               placeholderTextColor={theme.textSecondary}
               value={editName}
               onChangeText={setEditName}
             />
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
               placeholder="Age"
               placeholderTextColor={theme.textSecondary}
               value={editAge}
@@ -292,10 +346,10 @@ export default function SettingsScreen() {
               keyboardType="numeric"
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalBtn, { borderColor: theme.border }]} onPress={() => setEditModalVisible(false)}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.surface }]} onPress={() => setEditModalVisible(false)}>
                 <Text style={{ color: theme.textSecondary }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.accentDark }]} onPress={handleSaveProfile}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.accent }]} onPress={handleSaveProfile}>
                 <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Save</Text>
               </TouchableOpacity>
             </View>
@@ -306,10 +360,10 @@ export default function SettingsScreen() {
       {/* Change Password Modal */}
       <Modal visible={passwordModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Change Password</Text>
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
               placeholder="Current Password"
               placeholderTextColor={theme.textSecondary}
               value={currentPassword}
@@ -317,7 +371,7 @@ export default function SettingsScreen() {
               secureTextEntry
             />
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
               placeholder="New Password"
               placeholderTextColor={theme.textSecondary}
               value={newPassword}
@@ -325,7 +379,7 @@ export default function SettingsScreen() {
               secureTextEntry
             />
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
               placeholder="Confirm New Password"
               placeholderTextColor={theme.textSecondary}
               value={confirmPassword}
@@ -333,10 +387,10 @@ export default function SettingsScreen() {
               secureTextEntry
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalBtn, { borderColor: theme.border }]} onPress={() => setPasswordModalVisible(false)}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.surface }]} onPress={() => setPasswordModalVisible(false)}>
                 <Text style={{ color: theme.textSecondary }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.accentDark }]} onPress={handleChangePassword}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.accent }]} onPress={handleChangePassword}>
                 <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Update</Text>
               </TouchableOpacity>
             </View>
@@ -357,18 +411,22 @@ const styles = StyleSheet.create({
   profileInfo: { flex: 1 },
   profileName: { fontSize: 18, fontWeight: '500' },
   profileEmail: { fontSize: 14, fontWeight: '300', marginTop: 2 },
-  menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1 },
+  menuItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(128,128,128,0.2)',
+  },
   menuText: { fontSize: 16, fontWeight: '300' },
-  menuArrow: { fontSize: 22, fontWeight: '300' },
-  logoutBtn: { paddingVertical: 16 },
   logoutText: { fontSize: 16, fontWeight: '500' },
-  deleteBtn: { paddingVertical: 16 },
   deleteText: { fontSize: 14, fontWeight: '300', opacity: 0.7 },
   version: { textAlign: 'center', fontSize: 12, marginTop: 16, marginBottom: 32 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  modalContent: { borderRadius: 16, borderWidth: 1, padding: 24 },
+  modalContent: { borderRadius: 16, padding: 24 },
   modalTitle: { fontSize: 20, fontWeight: '500', marginBottom: 20 },
-  input: { height: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300', marginBottom: 12 },
+  input: { height: 48, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300', marginBottom: 12 },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  modalBtn: { flex: 1, height: 44, borderRadius: 10, borderWidth: 1, borderColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
+  modalBtn: { flex: 1, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
 });

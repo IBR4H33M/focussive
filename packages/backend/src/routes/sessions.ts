@@ -10,10 +10,11 @@ import {
   updateSession,
   deleteSession,
   cancelSession,
-  pauseSession,
   startSession,
   getActiveSessions,
   getUpcomingSessions,
+  startBreak,
+  endBreak,
 } from '../controllers/sessionController.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -33,8 +34,8 @@ router.post('/', asyncHandler(createSession));
 router.put('/:id', asyncHandler(updateSession));
 router.delete('/:id', asyncHandler(deleteSession));
 router.post('/:id/cancel', asyncHandler(cancelSession));
-router.post('/:id/pause', asyncHandler(pauseSession));
 router.post('/:id/start', asyncHandler(startSession));
+router.post('/:id/break/start', asyncHandler(startBreak));
+router.post('/:id/break/end', asyncHandler(endBreak));
 
 export default router;
-

@@ -60,7 +60,7 @@ export default function HistoryScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
+        style={[styles.card, { backgroundColor: theme.card }]}
         onPress={() => router.push(`/history/${item.id}` as never)}
       >
         <View style={styles.cardHeader}>
@@ -139,7 +139,6 @@ const styles = StyleSheet.create({
   listContent: { padding: 16 },
   card: {
     borderRadius: 12,
-    borderWidth: 1,
     padding: 16,
     marginBottom: 12,
   },

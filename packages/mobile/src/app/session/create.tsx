@@ -152,6 +152,8 @@ export default function CreateSessionScreen() {
   const [extraWebsites, setExtraWebsites] = useState<string[]>([]);
   const [customWebsite, setCustomWebsite] = useState('');
   const [loading, setLoading] = useState(false);
+  const [allowBreaks, setAllowBreaks] = useState(false);
+  const [maxBreakMinutes, setMaxBreakMinutes] = useState('10');
 
   useEffect(() => {
     appGroupApi.getAll().then(r => setAppGroups(r.data as AppGroup[])).catch(() => {});
@@ -283,6 +285,8 @@ export default function CreateSessionScreen() {
         app_group_ids: mobileFocus ? selectedAppGroupIds : [],
         blocked_websites: browserFocus ? allBlockedWebsites : [],
         website_group_ids: browserFocus ? selectedWebsiteGroupIds : [],
+        allow_breaks: allowBreaks,
+        max_break_minutes: allowBreaks ? (parseInt(maxBreakMinutes) || 10) : undefined,
       });
       await refreshSessions();
       router.back();
@@ -604,6 +608,40 @@ export default function CreateSessionScreen() {
           )}
         </View>
       )}
+      </View>
+
+      {/* Allow Breaks */}
+      <Text style={[styles.label, { color: theme.textSecondary }]}>BREAKS</Text>
+      <View style={[styles.focusContainer, { backgroundColor: theme.background }]}>
+        <TouchableOpacity
+          style={[styles.toggleRow, { borderColor: allowBreaks ? theme.accent : theme.border }]}
+          onPress={() => setAllowBreaks(!allowBreaks)}
+        >
+          <View style={styles.toggleLabelRow}>
+            <Ionicons name="cafe-outline" size={18} color={allowBreaks ? theme.accent : theme.textSecondary} />
+            <View>
+              <Text style={[styles.toggleLabel, { color: theme.text }]}>Allow Breaks</Text>
+              <Text style={[{ fontSize: 12, color: theme.textSecondary }]}>Breaks don't count as distracted time</Text>
+            </View>
+          </View>
+          <View style={[styles.toggle, allowBreaks && { backgroundColor: theme.accent }]}>
+            <View style={[styles.toggleDot, allowBreaks && styles.toggleDotActive]} />
+          </View>
+        </TouchableOpacity>
+
+        {allowBreaks && (
+          <View style={[styles.focusContent, { paddingTop: 12 }]}>
+            <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Max Break Time (minutes)</Text>
+            <TextInput
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              placeholder="10"
+              placeholderTextColor={theme.textSecondary}
+              value={maxBreakMinutes}
+              onChangeText={setMaxBreakMinutes}
+              keyboardType="number-pad"
+            />
+          </View>
+        )}
       </View>
 
       {/* Create Button */}

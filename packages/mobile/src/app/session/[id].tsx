@@ -37,13 +37,15 @@ export default function SessionDetailScreen() {
   const theme = useTheme();
   const router = useRouter();
   const navigation = useNavigation();
-  const { refreshSessions } = useSessions();
+  const { refreshSessions, handleBreak } = useSessions();
 
-  const [session, setSession] = useState<Session & { violations_count?: number; pause_count?: number } | null>(null);
+  const [session, setSession] = useState<Session & { violations_count?: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [appGroups, setAppGroups] = useState<AppGroup[]>([]);
+  const [breakModalVisible, setBreakModalVisible] = useState(false);
+  const [breakPickerMinutes, setBreakPickerMinutes] = useState(1);
 
   // Edit form state
   const [editName, setEditName] = useState('');
@@ -60,7 +62,7 @@ export default function SessionDetailScreen() {
 
   const fetchSession = useCallback(async () => {
     try {
-      const data = await sessionApi.getById(id) as Session & { violations_count?: number; pause_count?: number };
+      const data = await sessionApi.getById(id) as Session & { violations_count?: number };
       setSession(data);
     } catch {
       Alert.alert('Error', 'Session not found');
@@ -184,21 +186,23 @@ export default function SessionDetailScreen() {
   if (!session) return null;
 
   const isActive = session.status === SessionStatus.ACTIVE;
-  const isPaused = session.status === 'paused';
-  const isEditable = !isActive && !isPaused;
+  const isEditable = !isActive;
+  const breakRemaining = Math.floor((session.break_used_seconds != null
+    ? Math.max(0, ((session.max_break_minutes ?? 0) * 60) - session.break_used_seconds)
+    : (session.max_break_minutes ?? 0) * 60) / 60);
 
   return (
     <>
       <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
         {/* Status Banner */}
-        <View style={[styles.statusBanner, { backgroundColor: isActive ? `${theme.accent}15` : isPaused ? `${theme.textSecondary}15` : theme.surface }]}>
+        <View style={[styles.statusBanner, { backgroundColor: isActive ? `${theme.accent}15` : theme.surface }]}>
           <Ionicons
-            name={isActive ? 'radio-button-on' : isPaused ? 'pause-circle' : 'calendar-outline'}
+            name={isActive ? 'radio-button-on' : 'calendar-outline'}
             size={16}
             color={isActive ? theme.accent : theme.textSecondary}
           />
           <Text style={[styles.statusText, { color: isActive ? theme.accent : theme.textSecondary }]}>
-            {isActive ? 'Active' : isPaused ? 'Paused' : session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+            {isActive ? 'Active' : session.status.charAt(0).toUpperCase() + session.status.slice(1)}
           </Text>
         </View>
 
@@ -213,8 +217,8 @@ export default function SessionDetailScreen() {
           {(session.violations_count ?? 0) > 0 && (
             <DetailRow icon="warning-outline" label="Violations" value={String(session.violations_count)} theme={theme} color={theme.danger} />
           )}
-          {(session.pause_count ?? 0) > 0 && (
-            <DetailRow icon="pause-outline" label="Pauses" value={String(session.pause_count)} theme={theme} />
+          {session.allow_breaks && (
+            <DetailRow icon="cafe-outline" label="Break Time" value={`${session.max_break_minutes ?? 0} min (${breakRemaining} remaining)`} theme={theme} />
           )}
         </View>
 
@@ -226,7 +230,7 @@ export default function SessionDetailScreen() {
 
         {!isEditable && (
           <Text style={[styles.editHint, { color: theme.textSecondary }]}>
-            {isActive ? 'Stop the session to edit or delete it' : 'Resume or stop the session to edit it'}
+            {isActive ? 'Stop the session to edit or delete it' : 'Cannot edit a completed session'}
           </Text>
         )}
 
@@ -250,7 +254,60 @@ export default function SessionDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Take a Break button — active sessions with allow_breaks */}
+        {isActive && session.allow_breaks && (
+          <View style={{ paddingHorizontal: 0, marginBottom: 12 }}>
+            {breakRemaining > 0 ? (
+              <TouchableOpacity
+                style={[styles.breakBtn, { borderColor: '#90EE90' }]}
+                onPress={() => { setBreakPickerMinutes(1); setBreakModalVisible(true); }}
+              >
+                <Ionicons name="cafe-outline" size={18} color="#90EE90" />
+                <Text style={styles.breakBtnText}>Take a break</Text>
+                <Text style={styles.breakBtnSub}>{breakRemaining} min remaining</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.breakBtn, { borderColor: theme.border, opacity: 0.45 }]}>
+                <Text style={[styles.breakBtnText, { color: theme.textSecondary }]}>No break time available</Text>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
+
+      {/* Break Picker Modal */}
+      <Modal visible={breakModalVisible} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={[{ backgroundColor: theme.card, borderRadius: 20, padding: 32, width: '80%', alignItems: 'center', borderWidth: 1, borderColor: theme.border }]}>
+            <Text style={[{ fontSize: 20, fontWeight: '600', color: theme.text, marginBottom: 6 }]}>Take a break</Text>
+            <Text style={[{ fontSize: 13, color: theme.textSecondary, marginBottom: 28, textAlign: 'center' }]}>Breaks don't count as distracted time</Text>
+
+            <TouchableOpacity onPress={() => setBreakPickerMinutes(m => Math.min(m + 1, breakRemaining))} style={{ paddingVertical: 8, paddingHorizontal: 40 }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 22 }}>▲</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 64, fontWeight: '200', color: theme.text, lineHeight: 72 }}>{breakPickerMinutes}</Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 14, marginBottom: 8 }}>min</Text>
+            <TouchableOpacity onPress={() => setBreakPickerMinutes(m => Math.max(m - 1, 1))} style={{ paddingVertical: 8, paddingHorizontal: 40 }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 22 }}>▼</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[{ marginTop: 28, width: '100%', paddingVertical: 14, borderRadius: 12, backgroundColor: `${theme.accent}25`, borderWidth: 1.5, borderColor: theme.accent, alignItems: 'center' }]}
+              onPress={async () => {
+                setBreakModalVisible(false);
+                await handleBreak(session.id, breakPickerMinutes);
+              }}
+            >
+              <Text style={{ color: theme.accent, fontWeight: '600', fontSize: 15 }}>Start {breakPickerMinutes} min break</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setBreakModalVisible(false)} style={{ marginTop: 14, padding: 8 }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Modal */}
       <Modal visible={editModalVisible} animationType="slide">
@@ -463,4 +520,7 @@ const styles = StyleSheet.create({
   editBtnText: { fontSize: 14, fontWeight: '500' },
   deleteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1, borderRadius: 12 },
   deleteBtnText: { fontSize: 14, fontWeight: '500' },
+  breakBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 14, borderWidth: 1.5, marginTop: 12 },
+  breakBtnText: { color: '#90EE90', fontSize: 15, fontWeight: '600' },
+  breakBtnSub: { color: 'rgba(144,238,144,0.65)', fontSize: 12 },
 });

@@ -146,11 +146,20 @@ export const sessionApi = {
   cancel: (id: string, reason?: string) =>
     apiRequest(`/sessions/${id}/cancel`, { method: 'POST', body: { reason } }),
 
-  pause: (id: string) =>
-    apiRequest(`/sessions/${id}/pause`, { method: 'POST' }),
-
   start: (id: string) =>
     apiRequest(`/sessions/${id}/start`, { method: 'POST' }),
+
+  startBreak: (id: string, source: 'manual' | 'violation' = 'manual') =>
+    apiRequest<{ id: string; remaining_break_seconds: number }>(
+      `/sessions/${id}/break/start`,
+      { method: 'POST', body: { source } }
+    ),
+
+  endBreak: (id: string, break_id?: string) =>
+    apiRequest<{ remaining_break_seconds: number }>(
+      `/sessions/${id}/break/end`,
+      { method: 'POST', body: { break_id } }
+    ),
 
   getActive: () => apiRequest<{ data: unknown[] }>('/sessions/active'),
 

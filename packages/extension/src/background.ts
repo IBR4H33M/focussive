@@ -20,6 +20,9 @@ import type { ViolationResponseMessage } from './utils/messaging';
 const POLL_INTERVAL_MS = 5000;
 let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 
+// Active break timer: { sessionId, breakId, endsAt }
+let activeBreakTimer: { sessionId: string; breakId: string; timeoutId: ReturnType<typeof setTimeout> } | null = null;
+
 async function pollSessions() {
   try {
     const authenticated = await isAuthenticated();
@@ -30,7 +33,7 @@ async function pollSessions() {
       sessionApi.getUpcoming(),
     ]);
 
-    const activeSessions = activeRes.data as StoredSession[];
+    const activeSessions = activeRes.data as (StoredSession & { remaining_break_seconds?: number })[];
     const active = activeSessions.length > 0 ? activeSessions[0] : null;
 
     await setActiveSession(active ? {
@@ -38,6 +41,9 @@ async function pollSessions() {
       blocked_websites: active.blocked_websites || [],
       violations_count: active.violations_count || 0,
       allowlist: active.allowlist || [],
+      allow_breaks: active.allow_breaks || false,
+      max_break_minutes: active.max_break_minutes,
+      remaining_break_seconds: active.remaining_break_seconds ?? 0,
     } : null);
 
     await setUpcomingSessions(
@@ -46,6 +52,8 @@ async function pollSessions() {
         blocked_websites: s.blocked_websites || [],
         violations_count: s.violations_count || 0,
         allowlist: s.allowlist || [],
+        allow_breaks: s.allow_breaks || false,
+        remaining_break_seconds: s.remaining_break_seconds ?? 0,
       }))
     );
   } catch (error) {
@@ -66,11 +74,57 @@ function stopPolling() {
   }
 }
 
+// --- Break Management ---
+
+// Is a break currently active? Skip violation detection during breaks.
+let breakActive = false;
+
+async function handleStartBreak(sessionId: string, minutes: number) {
+  try {
+    const breakRes = await sessionApi.startBreak(sessionId, 'manual');
+
+    // Clear any previous break timer
+    if (activeBreakTimer) {
+      clearTimeout(activeBreakTimer.timeoutId);
+      activeBreakTimer = null;
+    }
+
+    breakActive = true;
+    const durationMs = minutes * 60 * 1000;
+
+    // Notify any open popup
+    chrome.runtime.sendMessage({ type: 'BREAK_STARTED', minutes }).catch(() => {});
+
+    const timeoutId = setTimeout(async () => {
+      await endBreak(sessionId, breakRes.id);
+    }, durationMs);
+
+    activeBreakTimer = { sessionId, breakId: breakRes.id, timeoutId };
+  } catch (error) {
+    console.error('[Focussive BG] Start break error:', error);
+  }
+}
+
+async function endBreak(sessionId: string, breakId: string) {
+  try {
+    breakActive = false;
+    activeBreakTimer = null;
+    await sessionApi.endBreak(sessionId, breakId);
+    await pollSessions();
+    chrome.runtime.sendMessage({ type: 'BREAK_ENDED' }).catch(() => {});
+  } catch (error) {
+    console.error('[Focussive BG] End break error:', error);
+  }
+}
+
 // --- Tab Monitoring ---
 
 const VIOLATION_DELAY_MS = 5000; // 5 seconds before triggering violation
 
 async function checkTab(tabId: number, url: string) {
+  // Skip if on a break
+  if (breakActive) return;
+
   const session = await getActiveSession();
   if (!session || !session.browser_focus) return;
 
@@ -95,13 +149,21 @@ async function checkTab(tabId: number, url: string) {
       // After 5 seconds, check if still on blocked site
       setTimeout(async () => {
         try {
+          // Re-check break status before showing overlay
+          if (breakActive) {
+            await clearBlockedTimer(hostname);
+            return;
+          }
+          const currentSession = await getActiveSession();
           const tab = await chrome.tabs.get(tabId);
           if (tab.url && isBlockedWebsite(tab.url, blockedList)) {
-            // Inject overlay
+            // Pass break info to overlay
             await chrome.tabs.sendMessage(tabId, {
               type: 'SHOW_OVERLAY',
               sessionId: session.id,
               websiteName: hostname,
+              allowBreaks: currentSession?.allow_breaks || false,
+              remainingBreakSeconds: currentSession?.remaining_break_seconds ?? 0,
             });
           }
           await clearBlockedTimer(hostname);
@@ -149,6 +211,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({
         activeSession: session,
         upcomingSessions: upcoming_sessions || [],
+        breakActive,
       });
     })();
     return true; // Will respond asynchronously
@@ -162,6 +225,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'CLOSE_TAB') {
     if (sender.tab && sender.tab.id) {
       chrome.tabs.remove(sender.tab.id);
+    }
+  }
+
+  if (message.type === 'START_BREAK') {
+    handleStartBreak(message.sessionId, message.minutes);
+  }
+
+  if (message.type === 'END_BREAK') {
+    if (activeBreakTimer) {
+      clearTimeout(activeBreakTimer.timeoutId);
+      endBreak(message.sessionId, activeBreakTimer.breakId);
     }
   }
 

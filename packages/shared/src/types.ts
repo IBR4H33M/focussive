@@ -32,7 +32,6 @@ export enum Weekday {
 
 export enum ViolationAction {
   ALLOW_ANYWAY = 'allow_anyway',
-  MARK_NECESSARY = 'mark_necessary',
   CLOSED = 'closed',
 }
 
@@ -67,12 +66,26 @@ export interface Session {
   app_group_ids?: string[];
   blocked_websites?: string[];
   website_group_ids?: string[];
-  pause_count?: number;
+  // Break settings
+  allow_breaks: boolean;
+  max_break_minutes?: number;
+  break_used_seconds: number;
   status: SessionStatus | string;
   started_at?: string;
   completed_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface SessionBreak {
+  id: string;
+  session_id: string;
+  user_id: string;
+  started_at: string;
+  ended_at?: string;
+  duration_seconds?: number;
+  source: 'manual' | 'violation';
+  created_at: string;
 }
 
 export interface Violation {
@@ -178,6 +191,8 @@ export interface CreateSessionRequest {
   browser_focus: boolean;
   app_group_ids?: string[];
   blocked_websites?: string[];
+  allow_breaks?: boolean;
+  max_break_minutes?: number;
 }
 
 export interface UpdateSessionRequest extends Partial<CreateSessionRequest> {}
@@ -192,6 +207,14 @@ export interface CreateViolationRequest {
   website_name?: string;
   duration_seconds: number;
   action_taken: ViolationAction;
+}
+
+export interface CreateBreakRequest {
+  source?: 'manual' | 'violation';
+}
+
+export interface EndBreakRequest {
+  break_id: string;
 }
 
 export interface CreateAppGroupRequest {

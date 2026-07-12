@@ -236,3 +236,27 @@ export async function verify(req: AuthRequest, res: Response): Promise<void> {
 
   res.json({ user });
 }
+
+// POST /auth/refresh
+export async function refreshToken(req: Request, res: Response): Promise<void> {
+  const { refresh_token } = req.body;
+
+  if (!refresh_token) {
+    throw new AppError('Refresh token is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const refreshSecret = process.env.JWT_REFRESH_SECRET;
+  if (!refreshSecret) {
+    throw new AppError('JWT secrets not configured', 500, 'CONFIG_ERROR');
+  }
+
+  let payload: { userId: string };
+  try {
+    payload = jwt.verify(refresh_token, refreshSecret) as { userId: string };
+  } catch {
+    throw new AppError('Invalid or expired refresh token', 401, 'INVALID_REFRESH_TOKEN');
+  }
+
+  const tokens = generateTokens(payload.userId);
+  res.json(tokens);
+}
