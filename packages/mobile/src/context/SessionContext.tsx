@@ -210,13 +210,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         breakStartedListenerRef.current = addListener('onBreakStarted', async (event: { breakMinutes: number; packageName?: string }) => {
           console.log('AppBlocker: native break started', event.breakMinutes, 'min');
           try {
-            const session = state.activeSessions.find(s => s.id === desiredId);
-            if (session) {
-              await sessionApi.startBreak(desiredId, 'violation');
-            }
+            await sessionApi.startBreak(desiredId, 'violation', event.breakMinutes);
           } catch (e) {
             console.error('Failed to record native break start:', e);
           }
+          await refreshSessions();
         });
 
         // Break ended from native overlay → call API endpoint, refresh
@@ -240,7 +238,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // handleBreak: suspend monitoring for break duration, then resume
   const handleBreak = useCallback(async (sessionId: string, minutes: number) => {
     try {
-      const breakRes = await sessionApi.startBreak(sessionId, 'manual');
+      const breakRes = await sessionApi.startBreak(sessionId, 'manual', minutes);
       stopMonitoring();
 
       if (breakTimerRef.current) clearTimeout(breakTimerRef.current);

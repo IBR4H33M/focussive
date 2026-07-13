@@ -33,10 +33,14 @@ async function pollSessions() {
       sessionApi.getUpcoming(),
     ]);
 
-    const activeSessions = activeRes.data as (StoredSession & { remaining_break_seconds?: number })[];
+    const activeSessions = activeRes.data as (StoredSession & {
+      remaining_break_seconds?: number;
+      is_on_break?: boolean;
+      break_ends_at?: string | null;
+    })[];
     const active = activeSessions.length > 0 ? activeSessions[0] : null;
 
-    await setActiveSession(active ? {
+    const storedSession: StoredSession | null = active ? {
       ...active,
       blocked_websites: active.blocked_websites || [],
       violations_count: active.violations_count || 0,
@@ -44,7 +48,19 @@ async function pollSessions() {
       allow_breaks: active.allow_breaks || false,
       max_break_minutes: active.max_break_minutes,
       remaining_break_seconds: active.remaining_break_seconds ?? 0,
-    } : null);
+      is_on_break: active.is_on_break ?? false,
+      break_ends_at: active.break_ends_at ?? null,
+    } : null;
+
+    // Sync in-memory breakActive from API (catches breaks started from mobile)
+    if (storedSession?.is_on_break) {
+      breakActive = true;
+    } else if (!activeBreakTimer) {
+      // Only clear if we don't have a locally-managed timer
+      breakActive = false;
+    }
+
+    await setActiveSession(storedSession);
 
     await setUpcomingSessions(
       (upcomingRes.data as StoredSession[]).map((s) => ({

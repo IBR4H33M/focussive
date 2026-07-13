@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SessionProvider } from '@/context/SessionContext';
+import { ThemeProvider } from '@/utils/ThemeProvider';
 import { useTheme, useIsDark } from '@/utils/theme';
 
 function RootLayoutContent() {
@@ -87,11 +88,13 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <SessionProvider>
-        <RootLayoutContent />
-      </SessionProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <SessionProvider>
+          <RootLayoutContent />
+        </SessionProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

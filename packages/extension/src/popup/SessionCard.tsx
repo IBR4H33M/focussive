@@ -14,15 +14,22 @@ interface SessionCardProps {
 
 type CardScreen = 'main' | 'breakPicker';
 
+function getBreakSecondsLeft(breakEndsAt: string | null): number {
+  if (!breakEndsAt) return 0;
+  return Math.max(0, Math.floor((new Date(breakEndsAt).getTime() - Date.now()) / 1000));
+}
+
 export default function SessionCard({ session, onCancel }: SessionCardProps) {
   const [remaining, setRemaining] = useState(0);
   const [cardScreen, setCardScreen] = useState<CardScreen>('main');
   const [breakMinutes, setBreakMinutes] = useState(1);
-  const [breakActive, setBreakActive] = useState(false);
-  const [breakSecondsLeft, setBreakSecondsLeft] = useState(0);
+
+  // Break state comes from storage (synced from API) — universal across mobile + extension
+  const isOnBreak = session.is_on_break;
+  const [breakSecondsLeft, setBreakSecondsLeft] = useState(() => getBreakSecondsLeft(session.break_ends_at));
 
   const remainingBreakMin = Math.floor(session.remaining_break_seconds / 60);
-  const hasBreakTime = session.allow_breaks && session.remaining_break_seconds > 0 && !breakActive;
+  const hasBreakTime = session.allow_breaks && session.remaining_break_seconds > 0 && !isOnBreak;
 
   // Session countdown
   useEffect(() => {
@@ -32,42 +39,24 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
     } as Session;
 
     setRemaining(getRemainingSeconds(sessionLike));
-
     const interval = setInterval(() => {
       setRemaining(getRemainingSeconds(sessionLike));
     }, 1000);
-
     return () => clearInterval(interval);
   }, [session]);
 
-  // Break countdown
+  // Break countdown — derived from break_ends_at
   useEffect(() => {
-    if (!breakActive || breakSecondsLeft <= 0) return;
-
+    if (!isOnBreak || !session.break_ends_at) {
+      setBreakSecondsLeft(0);
+      return;
+    }
+    setBreakSecondsLeft(getBreakSecondsLeft(session.break_ends_at));
     const interval = setInterval(() => {
-      setBreakSecondsLeft(s => {
-        if (s <= 1) {
-          setBreakActive(false);
-          return 0;
-        }
-        return s - 1;
-      });
+      setBreakSecondsLeft(getBreakSecondsLeft(session.break_ends_at!));
     }, 1000);
-
     return () => clearInterval(interval);
-  }, [breakActive, breakSecondsLeft]);
-
-  // Listen for BREAK_ENDED from background
-  useEffect(() => {
-    const handler = (msg: { type: string }) => {
-      if (msg.type === 'BREAK_ENDED') {
-        setBreakActive(false);
-        setBreakSecondsLeft(0);
-      }
-    };
-    chrome.runtime.onMessage.addListener(handler);
-    return () => chrome.runtime.onMessage.removeListener(handler);
-  }, []);
+  }, [isOnBreak, session.break_ends_at]);
 
   const handleStartBreak = useCallback(() => {
     chrome.runtime.sendMessage({
@@ -75,10 +64,13 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
       sessionId: session.id,
       minutes: breakMinutes,
     });
-    setBreakActive(true);
-    setBreakSecondsLeft(breakMinutes * 60);
     setCardScreen('main');
   }, [session.id, breakMinutes]);
+
+  const GREEN = '#90EE90';
+  const YELLOW = '#FFD580';
+  // Main timer is yellow during break, green otherwise
+  const timerColor = isOnBreak ? YELLOW : GREEN;
 
   return (
     <div style={s.card}>
@@ -93,15 +85,15 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
       {/* Main screen */}
       {cardScreen === 'main' && (
         <>
-          {/* Countdown or break indicator */}
-          {breakActive ? (
-            <div style={s.breakDisplay}>
-              <div style={s.breakIcon}>☕</div>
-              <div style={s.breakCountdown}>{formatCountdown(breakSecondsLeft)}</div>
-              <div style={s.breakLabel}>on break</div>
+          {/* Main session countdown — always visible, yellow on break */}
+          <div style={{ ...s.countdown, color: timerColor }}>{formatCountdown(remaining)}</div>
+
+          {/* Break ongoing indicator */}
+          {isOnBreak && (
+            <div style={s.breakRow}>
+              <span style={s.breakLabel}>Break ongoing</span>
+              <span style={s.breakCountdown}>{formatCountdown(breakSecondsLeft)}</span>
             </div>
-          ) : (
-            <div style={s.countdown}>{formatCountdown(remaining)}</div>
           )}
 
           {/* Stats */}
@@ -111,23 +103,21 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
                 {session.violations_count} violation{session.violations_count !== 1 ? 's' : ''}
               </span>
             ) : (
-              <span style={s.noViolations}>No violations — keep going! 💪</span>
+              <span style={s.noViolations}>No violations</span>
             )}
           </div>
 
-          {/* Break button */}
-          {session.allow_breaks && (
+          {/* Break button — only show if not currently on break */}
+          {session.allow_breaks && !isOnBreak && (
             <div style={{ marginTop: 14 }}>
               {hasBreakTime ? (
                 <button
                   style={s.breakBtn}
                   onClick={() => { setBreakMinutes(1); setCardScreen('breakPicker'); }}
                 >
-                  ☕ Take a break
+                  Take a break
                   <span style={s.breakBtnSub}>{remainingBreakMin} min remaining</span>
                 </button>
-              ) : breakActive ? (
-                <div style={s.breakBtnDisabled}>On break</div>
               ) : (
                 <div style={s.breakBtnDisabled}>No break time available</div>
               )}
@@ -141,7 +131,6 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
         <div style={{ textAlign: 'center', padding: '8px 0' }}>
           <div style={{ color: '#E0E0E0', fontSize: 14, marginBottom: 16 }}>Choose break duration</div>
 
-          {/* Picker */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, marginBottom: 16 }}>
             <button
               style={s.arrowBtn}
@@ -167,13 +156,16 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
   );
 }
 
+const GREEN = '#90EE90';
+const YELLOW = '#FFD580';
+
 const s: Record<string, React.CSSProperties> = {
   card: {
     width: 320,
     margin: '0 auto',
     padding: 20,
     borderRadius: 14,
-    border: '2px solid #90EE90',
+    border: `2px solid ${GREEN}`,
     backgroundColor: '#252525',
   },
   header: {
@@ -193,30 +185,46 @@ const s: Record<string, React.CSSProperties> = {
   countdown: {
     textAlign: 'center',
     fontSize: 42, fontWeight: 200,
-    color: '#90EE90',
     fontVariantNumeric: 'tabular-nums',
     margin: '8px 0', letterSpacing: 2,
+    // color set inline (green or yellow)
   },
-  breakDisplay: {
-    textAlign: 'center', margin: '8px 0',
+  breakRow: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 4,
+    padding: '6px 12px',
+    borderRadius: 8,
+    backgroundColor: `${GREEN}12`,
+    border: `1px solid ${GREEN}30`,
   },
-  breakIcon: { fontSize: 28, marginBottom: 4 },
+  breakLabel: {
+    fontSize: 12,
+    color: GREEN,
+    fontWeight: 500,
+    letterSpacing: 0.5,
+  },
   breakCountdown: {
-    fontSize: 36, fontWeight: 200,
-    color: '#FFD580', fontVariantNumeric: 'tabular-nums', letterSpacing: 2,
+    fontSize: 18,
+    fontWeight: 300,
+    color: GREEN,
+    fontVariantNumeric: 'tabular-nums',
+    letterSpacing: 1,
   },
-  breakLabel: { fontSize: 12, color: '#FFD580', opacity: 0.7, marginTop: 2 },
   stats: { textAlign: 'center', marginTop: 8 },
   violations: { fontSize: 13, fontWeight: 500, color: '#DC3545' },
-  noViolations: { fontSize: 13, fontWeight: 400, color: '#999' },
+  noViolations: { fontSize: 13, fontWeight: 400, color: '#666' },
   breakBtn: {
     width: '100%', padding: '12px 16px',
-    borderRadius: 10, border: '1.5px solid #90EE90',
-    background: 'rgba(144,238,144,0.15)', color: '#90EE90',
+    borderRadius: 10, border: `1.5px solid ${GREEN}`,
+    background: `${GREEN}26`, color: GREEN,
     fontSize: 14, fontWeight: 500, cursor: 'pointer',
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
   },
-  breakBtnSub: { fontSize: 11, color: 'rgba(144,238,144,0.65)', fontWeight: 400 },
+  breakBtnSub: { fontSize: 11, color: `${GREEN}A6`, fontWeight: 400 },
   breakBtnDisabled: {
     width: '100%', padding: '12px 16px',
     borderRadius: 10, border: '1.5px solid rgba(255,255,255,0.12)',
@@ -233,8 +241,8 @@ const s: Record<string, React.CSSProperties> = {
   pickerLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 0 },
   confirmBreakBtn: {
     width: '100%', padding: '11px 16px',
-    borderRadius: 10, border: '1.5px solid #90EE90',
-    background: 'rgba(144,238,144,0.18)', color: '#90EE90',
+    borderRadius: 10, border: `1.5px solid ${GREEN}`,
+    background: `${GREEN}2E`, color: GREEN,
     fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 8,
   },
   backBtn: {

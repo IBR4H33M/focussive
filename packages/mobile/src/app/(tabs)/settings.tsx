@@ -21,6 +21,7 @@ import { userApi } from '@/utils/api';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { hasRequiredPermissions, requestUsageStatsPermission, requestOverlayPermission } from '@focussive/app-blocker';
+import { useThemeContext, type ThemePreference } from '@/utils/theme';
 
 // ─── TimeFormatToggle ─────────────────────────────────────────────────────────
 function TimeFormatToggle({
@@ -101,9 +102,55 @@ function TimeFormatToggle({
   );
 }
 
+// ─── ThemeModeToggle ─────────────────────────────────────────────────────────
+function ThemeModeToggle({
+  preference,
+  onSelect,
+  theme,
+}: {
+  preference: ThemePreference;
+  onSelect: (p: ThemePreference) => void;
+  theme: any;
+}) {
+  const options: { key: ThemePreference; label: string }[] = [
+    { key: 'system', label: 'System' },
+    { key: 'light', label: 'Light' },
+    { key: 'dark', label: 'Dark' },
+  ];
+  const isSystem = preference === 'system';
+
+  return (
+    <View style={{ flexDirection: 'row', backgroundColor: theme.surface, borderRadius: 10, padding: 2, gap: 2 }}>
+      {options.map((opt) => {
+        const active = preference === opt.key;
+        return (
+          <TouchableOpacity
+            key={opt.key}
+            onPress={() => onSelect(opt.key)}
+            style={{
+              flex: 1,
+              paddingVertical: 7,
+              borderRadius: 8,
+              alignItems: 'center',
+              backgroundColor: active ? theme.accent : 'transparent',
+              opacity: isSystem && opt.key !== 'system' ? 0.35 : 1,
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#FFFFFF' : theme.textSecondary }}>
+              {opt.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function SettingsScreen() {
   const theme = useTheme();
+  const themeCtx = useThemeContext();
   const { user, logout } = useAuth();
   const router = useRouter();
 
@@ -296,8 +343,22 @@ export default function SettingsScreen() {
           <TimeFormatToggle use24Hour={use24Hour} onToggle={toggleTimeFormat} theme={theme} />
         </View>
 
+        <View style={[styles.menuItem, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+          <Text style={[styles.menuText, { color: theme.text }]}>Appearance</Text>
+          <ThemeModeToggle
+            preference={themeCtx.preference}
+            onSelect={(p) => themeCtx.setPreference(p)}
+            theme={theme}
+          />
+        </View>
+      </View>
+
+      {/* System */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SYSTEM</Text>
+
         <TouchableOpacity style={styles.menuItem} onPress={checkPermissions}>
-          <Text style={[styles.menuText, { color: theme.text }]}>App Blocker Permissions</Text>
+          <Text style={[styles.menuText, { color: theme.text }]}>App permissions</Text>
           <Ionicons name="shield-checkmark-outline" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>

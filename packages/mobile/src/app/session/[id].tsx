@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/utils/theme';
 import { sessionApi, appGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
-import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, formatDuration, formatTime } from '@focussive/shared';
+import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, formatDuration, formatTime, formatCountdown } from '@focussive/shared';
 import type { Session, AppGroup } from '@focussive/shared';
 
 const WEEKDAYS: { key: Weekday; label: string }[] = [
@@ -31,6 +31,17 @@ const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.SATURDAY, label: 'Sat' },
   { key: Weekday.SUNDAY, label: 'Sun' },
 ];
+
+// Small countdown for the break ongoing indicator on session detail
+function BreakDetailCountdown({ breakEndsAt }: { breakEndsAt: string }) {
+  const [left, setLeft] = useState(Math.max(0, Math.floor((new Date(breakEndsAt).getTime() - Date.now()) / 1000)));
+  useEffect(() => {
+    const iv = setInterval(() => setLeft(Math.max(0, Math.floor((new Date(breakEndsAt).getTime() - Date.now()) / 1000))), 1000);
+    return () => clearInterval(iv);
+  }, [breakEndsAt]);
+  return <Text style={{ color: '#90EE90', fontSize: 16, fontWeight: '300', fontVariant: ['tabular-nums'] }}>{formatCountdown(left)}</Text>;
+}
+
 
 export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -126,6 +137,30 @@ export default function SessionDetailScreen() {
     );
   }
 
+  function handleCancelSession() {
+    if (!session) return;
+    Alert.alert(
+      'Cancel Session',
+      `End "${session.name}" now? Your progress will be saved.`,
+      [
+        { text: 'Keep Going', style: 'cancel' },
+        {
+          text: 'Cancel Session',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await sessionApi.cancel(session.id);
+              await refreshSessions();
+              router.back();
+            } catch (error) {
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to cancel session');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   async function handleSave() {
     if (!editName.trim()) {
       Alert.alert('Error', 'Session name is required');
@@ -187,6 +222,8 @@ export default function SessionDetailScreen() {
 
   const isActive = session.status === SessionStatus.ACTIVE;
   const isEditable = !isActive;
+  const isOnBreak = (session as any).is_on_break ?? false;
+  const breakEndsAt: string | null = (session as any).break_ends_at ?? null;
   const breakRemaining = Math.floor((session.break_used_seconds != null
     ? Math.max(0, ((session.max_break_minutes ?? 0) * 60) - session.break_used_seconds)
     : (session.max_break_minutes ?? 0) * 60) / 60);
@@ -255,15 +292,14 @@ export default function SessionDetailScreen() {
           </View>
         )}
 
-        {/* Take a Break button — active sessions with allow_breaks */}
-        {isActive && session.allow_breaks && (
+        {/* Take a Break button — active sessions with allow_breaks, not currently on break */}
+        {isActive && session.allow_breaks && !isOnBreak && (
           <View style={{ paddingHorizontal: 0, marginBottom: 12 }}>
             {breakRemaining > 0 ? (
               <TouchableOpacity
                 style={[styles.breakBtn, { borderColor: '#90EE90' }]}
                 onPress={() => { setBreakPickerMinutes(1); setBreakModalVisible(true); }}
               >
-                <Ionicons name="cafe-outline" size={18} color="#90EE90" />
                 <Text style={styles.breakBtnText}>Take a break</Text>
                 <Text style={styles.breakBtnSub}>{breakRemaining} min remaining</Text>
               </TouchableOpacity>
@@ -273,6 +309,27 @@ export default function SessionDetailScreen() {
               </View>
             )}
           </View>
+        )}
+
+        {/* Break ongoing indicator on session detail */}
+        {isActive && isOnBreak && (
+          <View style={[styles.breakOngoingRow, { borderColor: '#90EE9040', backgroundColor: '#90EE9010' }]}>
+            <Text style={styles.breakOngoingLabel}>Break ongoing</Text>
+            {breakEndsAt && (
+              <BreakDetailCountdown breakEndsAt={breakEndsAt} />
+            )}
+          </View>
+        )}
+
+        {/* Cancel Session button — active sessions only */}
+        {isActive && (
+          <TouchableOpacity
+            style={[styles.cancelSessionBtn, { borderColor: theme.danger }]}
+            onPress={handleCancelSession}
+          >
+            <Ionicons name="stop-circle-outline" size={16} color={theme.danger} />
+            <Text style={[styles.cancelSessionBtnText, { color: theme.danger }]}>Cancel Session</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
 
@@ -523,4 +580,8 @@ const styles = StyleSheet.create({
   breakBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 14, borderWidth: 1.5, marginTop: 12 },
   breakBtnText: { color: '#90EE90', fontSize: 15, fontWeight: '600' },
   breakBtnSub: { color: 'rgba(144,238,144,0.65)', fontSize: 12 },
+  breakOngoingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, marginTop: 12, marginBottom: 4 },
+  breakOngoingLabel: { color: '#90EE90', fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
+  cancelSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 1.5, marginTop: 16 },
+  cancelSessionBtnText: { fontSize: 14, fontWeight: '500' },
 });

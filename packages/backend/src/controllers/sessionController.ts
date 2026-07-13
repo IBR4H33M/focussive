@@ -361,8 +361,6 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     start_time: session.start_time,
     status: SessionStatus.CANCELLED,
     violations_count: violationsCount || 0,
-    app_violations_count: appViolationsCount || 0,
-    web_violations_count: webViolationsCount || 0,
     cancellation_reason: reason || null,
     cancelled_at: now,
   });
@@ -382,7 +380,7 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
 export async function startBreak(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
   const { id } = req.params;
-  const { source = 'manual' } = req.body;
+  const { source = 'manual', minutes } = req.body;
 
   const { data: session } = await supabase
     .from('sessions')
@@ -418,6 +416,11 @@ export async function startBreak(req: AuthRequest, res: Response): Promise<void>
     .eq('session_id', id)
     .is('ended_at', null);
 
+  // Compute planned duration (capped to remaining)
+  const plannedSeconds = minutes
+    ? Math.min(Math.max(1, Number(minutes)) * 60, remainingSeconds)
+    : remainingSeconds;
+
   const breakId = uuidv4();
   const { data: breakRecord, error } = await supabase
     .from('session_breaks')
@@ -426,6 +429,7 @@ export async function startBreak(req: AuthRequest, res: Response): Promise<void>
       session_id: id,
       user_id: userId,
       source,
+      duration_seconds: plannedSeconds, // Store planned so clients can compute break_ends_at
     })
     .select()
     .single();
@@ -538,11 +542,36 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
         ? Math.max(0, maxBreakSeconds - (session.break_used_seconds || 0))
         : 0;
 
+      // Check for an active (open) break
+      let isOnBreak = false;
+      let breakEndsAt: string | null = null;
+      if (session.allow_breaks) {
+        const { data: openBreak } = await supabase
+          .from('session_breaks')
+          .select('id, started_at, duration_seconds')
+          .eq('session_id', session.id)
+          .is('ended_at', null)
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (openBreak) {
+          isOnBreak = true;
+          // If we know the planned duration, compute end time
+          if (openBreak.duration_seconds) {
+            const endsMs = new Date(openBreak.started_at).getTime() + openBreak.duration_seconds * 1000;
+            breakEndsAt = new Date(endsMs).toISOString();
+          }
+        }
+      }
+
       return {
         ...session,
         violations_count: count || 0,
         allowlist: allowlist || [],
         remaining_break_seconds: remainingBreakSeconds,
+        is_on_break: isOnBreak,
+        break_ends_at: breakEndsAt,
       };
     })
   );

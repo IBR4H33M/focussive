@@ -1,8 +1,8 @@
 // ============================================================
-// Focussive Mobile — Theme System
+// Focussive Mobile — Theme System (no JSX — safe as .ts)
 // ============================================================
 
-import { useColorScheme } from 'react-native';
+import { createContext, useContext } from 'react';
 
 export interface ThemeColors {
   background: string;
@@ -49,12 +49,32 @@ export const darkTheme: ThemeColors = {
   card: '#1E1E1E',
 };
 
+// 'system' | 'dark' | 'light'
+export type ThemePreference = 'system' | 'dark' | 'light';
+export const THEME_STORAGE_KEY = 'theme_preference';
+
+export interface ThemeContextValue {
+  theme: ThemeColors;
+  isDark: boolean;
+  preference: ThemePreference;
+  setPreference: (pref: ThemePreference) => Promise<void>;
+}
+
+export const ThemeContext = createContext<ThemeContextValue>({
+  theme: darkTheme,
+  isDark: true,
+  preference: 'system',
+  setPreference: async () => {},
+});
+
 export function useTheme(): ThemeColors {
-  const colorScheme = useColorScheme();
-  return colorScheme === 'dark' ? darkTheme : lightTheme;
+  return useContext(ThemeContext).theme;
+}
+
+export function useThemeContext(): ThemeContextValue {
+  return useContext(ThemeContext);
 }
 
 export function useIsDark(): boolean {
-  const colorScheme = useColorScheme();
-  return colorScheme === 'dark';
+  return useContext(ThemeContext).isDark;
 }

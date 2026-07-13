@@ -149,10 +149,10 @@ export const sessionApi = {
   start: (id: string) =>
     apiRequest(`/sessions/${id}/start`, { method: 'POST' }),
 
-  startBreak: (id: string, source: 'manual' | 'violation' = 'manual') =>
+  startBreak: (id: string, source: 'manual' | 'violation' = 'manual', minutes?: number) =>
     apiRequest<{ id: string; remaining_break_seconds: number }>(
       `/sessions/${id}/break/start`,
-      { method: 'POST', body: { source } }
+      { method: 'POST', body: { source, minutes } }
     ),
 
   endBreak: (id: string, break_id?: string) =>

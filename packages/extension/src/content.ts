@@ -1,8 +1,8 @@
 // ============================================================
-// Focussive Extension — Content Script
+// Focussive Extension — Content Script (Violation Overlay)
 // ============================================================
 
-// Handles violation overlay injection into web pages
+// ─── Element refs ─────────────────────────────────────────────
 
 let overlayElement: HTMLDivElement | null = null;
 let currentSessionId = '';
@@ -25,9 +25,9 @@ chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
 });
 
 // ─── State ────────────────────────────────────────────────────
-type Screen = 'idle' | 'selectBreak' | 'selectAllow';
+type OverlayScreen = 'idle' | 'selectBreak' | 'selectAllow';
 
-let screen: Screen = 'idle';
+let overlayScreen: OverlayScreen = 'idle';
 let breakMinutes = 1;
 let allowMinutes = 1;
 let breakAvailable = false;
@@ -42,7 +42,7 @@ function showOverlay(sessionId: string, websiteName: string, allowBreaks: boolea
   currentWebsiteName = websiteName;
   breakAvailable = allowBreaks && remainingBreakSeconds > 0;
   breakMaxMinutes = Math.floor(remainingBreakSeconds / 60) || 1;
-  screen = 'idle';
+  overlayScreen = 'idle';
   breakMinutes = 1;
   allowMinutes = 1;
 
@@ -67,47 +67,44 @@ function hideOverlay() {
 function renderScreen() {
   if (!overlayElement) return;
 
-  if (screen === 'idle') renderIdle();
-  else if (screen === 'selectBreak') renderPicker('break');
-  else if (screen === 'selectAllow') renderPicker('allow');
+  if (overlayScreen === 'idle') renderIdle();
+  else if (overlayScreen === 'selectBreak') renderPicker('break');
+  else if (overlayScreen === 'selectAllow') renderPicker('allow');
 }
 
 function renderIdle() {
   if (!overlayElement) return;
 
-  const breakDisabledText = breakAvailable ? '' : 'No break time available';
-  const breakBtnStyle = breakAvailable
-    ? `background: rgba(144,238,144,0.2); border: 1.5px solid #90EE90; color: #90EE90; cursor: pointer;`
-    : `background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.3); cursor: default;`;
-
   overlayElement.innerHTML = `
-    <div style="text-align:center; padding:32px; max-width:360px; margin:0 auto; width:100%;">
-      <h2 style="color:white; font-size:24px; font-weight:600; margin:0 0 8px;">
+    <div style="text-align:center; padding:36px 28px; max-width:380px; margin:0 auto; width:100%;">
+      <h2 style="color:white; font-size:26px; font-weight:700; margin:0 0 10px; letter-spacing:0.3px;">
         Distraction Detected
       </h2>
-      <p style="color:rgba(255,255,255,0.85); font-size:15px; font-weight:300; margin:0 0 40px;">
-        You're visiting <strong>${currentWebsiteName}</strong> during a focus session
+      <p style="color:rgba(255,255,255,0.8); font-size:14px; font-weight:300; margin:0 0 36px; line-height:1.5;">
+        You're visiting <strong style="font-weight:600;">${currentWebsiteName}</strong> during a focus session
       </p>
 
-      <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+
         <!-- Exit -->
-        <button id="foc-exit" style="${BTN_BASE} background:#2a2a2a; border:1.5px solid rgba(255,255,255,0.15); color:white;">
+        <button id="foc-exit" style="${BTN_BASE} background:rgba(0,0,0,0.55); border:1.5px solid rgba(255,255,255,0.25); color:white;">
           Exit page
         </button>
 
-        <!-- Take a break -->
+        <!-- Take a break — only if break time available -->
         ${breakAvailable
-          ? `<button id="foc-break" style="${BTN_BASE} ${breakBtnStyle}">
-               ☕ Take a break
-               <span style="display:block; font-size:12px; margin-top:3px; color:rgba(144,238,144,0.7);">${breakMaxMinutes} min remaining</span>
+          ? `<button id="foc-break" style="${BTN_BASE} background:rgba(30,80,30,0.75); border:1.5px solid #90EE90; color:#90EE90;">
+               Take a break
+               <span style="display:block; font-size:11px; margin-top:3px; color:rgba(144,238,144,0.75);">${breakMaxMinutes} min remaining</span>
              </button>`
-          : `<div style="${BTN_BASE} ${breakBtnStyle} cursor:default;">${breakDisabledText}</div>`
+          : ''
         }
 
         <!-- Allow anyway -->
-        <button id="foc-allow" style="${BTN_BASE} background:rgba(255,255,255,0.1); border:1.5px solid rgba(255,255,255,0.2); color:white;">
+        <button id="foc-allow" style="${BTN_BASE} background:rgba(60,20,20,0.7); border:1.5px solid rgba(255,100,100,0.5); color:rgba(255,180,180,0.9);">
           Allow anyway
         </button>
+
       </div>
     </div>
   `;
@@ -119,19 +116,23 @@ function renderIdle() {
 
   if (breakAvailable) {
     document.getElementById('foc-break')?.addEventListener('click', () => {
-      screen = 'selectBreak';
+      overlayScreen = 'selectBreak';
       breakMinutes = 1;
       renderScreen();
     });
   }
 
   document.getElementById('foc-allow')?.addEventListener('click', () => {
-    screen = 'selectAllow';
+    overlayScreen = 'selectAllow';
     allowMinutes = 1;
     renderScreen();
   });
 
-  attachHoverEffects(['foc-exit', ...(breakAvailable ? ['foc-break'] : []), 'foc-allow']);
+  attachHoverEffects([
+    'foc-exit',
+    ...(breakAvailable ? ['foc-break'] : []),
+    'foc-allow',
+  ]);
 }
 
 function renderPicker(mode: 'break' | 'allow') {
@@ -140,33 +141,36 @@ function renderPicker(mode: 'break' | 'allow') {
   const isBreak = mode === 'break';
   const max = isBreak ? breakMaxMinutes : 5;
   const current = isBreak ? breakMinutes : allowMinutes;
-  const title = isBreak ? 'Take a break' : 'Allow anyway';
+
+  const title = isBreak ? 'Take a break' : 'WARNING!';
   const subtitle = isBreak
-    ? 'Choose break duration'
-    : 'This will be counted as distracted time';
+    ? "Breaks don't count as distracted time"
+    : 'You are getting distracted within a focus session!';
+  const titleColor = isBreak ? '#90EE90' : '#FF6B6B';
+  const subtitleColor = isBreak ? 'rgba(255,255,255,0.7)' : 'rgba(255,180,180,0.85)';
   const confirmLabel = isBreak ? `Start ${current} min break` : `Allow ${current} min`;
   const confirmStyle = isBreak
-    ? `background:rgba(144,238,144,0.2); border:1.5px solid #90EE90; color:#90EE90;`
-    : `background:rgba(255,255,255,0.12); border:1.5px solid rgba(255,255,255,0.25); color:white;`;
+    ? `background:rgba(30,80,30,0.8); border:1.5px solid #90EE90; color:#90EE90;`
+    : `background:rgba(80,20,20,0.8); border:1.5px solid #FF6B6B; color:#FF6B6B;`;
 
   overlayElement.innerHTML = `
-    <div style="text-align:center; padding:32px; max-width:360px; margin:0 auto; width:100%;">
-      <h2 style="color:white; font-size:24px; font-weight:600; margin:0 0 8px;">${title}</h2>
-      <p style="color:rgba(255,255,255,0.85); font-size:15px; font-weight:300; margin:0 0 32px;">${subtitle}</p>
+    <div style="text-align:center; padding:36px 28px; max-width:380px; margin:0 auto; width:100%;">
+      <h2 style="color:${titleColor}; font-size:26px; font-weight:700; margin:0 0 8px;">${title}</h2>
+      <p style="color:${subtitleColor}; font-size:13px; font-weight:400; margin:0 0 28px; line-height:1.5;">${subtitle}</p>
 
       <!-- Picker -->
-      <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:36px;">
-        <button id="foc-up" style="background:none; border:none; color:rgba(255,255,255,0.65); font-size:22px; cursor:pointer; padding:10px 40px;">▲</button>
+      <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:32px;">
+        <button id="foc-up" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:24px; cursor:pointer; padding:8px 48px; transition:color 0.15s;">▲</button>
         <div>
-          <span id="foc-num" style="color:white; font-size:72px; font-weight:200; line-height:1;">${current}</span>
-          <div style="color:rgba(255,255,255,0.55); font-size:16px; margin-top:-4px;">min</div>
+          <span id="foc-num" style="color:white; font-size:76px; font-weight:200; line-height:1;">${current}</span>
+          <div style="color:rgba(255,255,255,0.5); font-size:15px; margin-top:-6px;">min</div>
         </div>
-        <button id="foc-down" style="background:none; border:none; color:rgba(255,255,255,0.65); font-size:22px; cursor:pointer; padding:10px 40px;">▼</button>
+        <button id="foc-down" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:24px; cursor:pointer; padding:8px 48px; transition:color 0.15s;">▼</button>
       </div>
 
-      <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
         <button id="foc-confirm" style="${BTN_BASE} ${confirmStyle}">${confirmLabel}</button>
-        <button id="foc-back" style="background:none; border:none; color:rgba(255,255,255,0.45); font-size:14px; cursor:pointer; padding:12px;">Back</button>
+        <button id="foc-back" style="background:none; border:none; color:rgba(255,255,255,0.4); font-size:13px; cursor:pointer; padding:10px;">Back</button>
       </div>
     </div>
   `;
@@ -190,41 +194,68 @@ function renderPicker(mode: 'break' | 'allow') {
     renderScreen();
   });
 
+  // Arrow hover effects
+  ['foc-up', 'foc-down'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('mouseenter', () => { el.style.color = 'white'; el.style.transform = 'scale(1.15)'; });
+    el.addEventListener('mouseleave', () => { el.style.color = 'rgba(255,255,255,0.7)'; el.style.transform = 'scale(1)'; });
+  });
+
   // Confirm
   document.getElementById('foc-confirm')?.addEventListener('click', () => {
     if (isBreak) {
-      chrome.runtime.sendMessage({
-        type: 'START_BREAK',
-        sessionId: currentSessionId,
-        minutes: breakMinutes,
-      });
-      hideOverlay();
+      confirmBreak();
     } else {
-      chrome.runtime.sendMessage({
-        type: 'VIOLATION_RESPONSE',
-        sessionId: currentSessionId,
-        websiteName: currentWebsiteName,
-        action: 'allow_anyway',
-        durationSeconds: allowMinutes * 60,
-      });
-      hideOverlay();
+      confirmAllow();
     }
   });
 
+  attachHoverEffects(['foc-confirm']);
+
   // Back
   document.getElementById('foc-back')?.addEventListener('click', () => {
-    screen = 'idle';
+    overlayScreen = 'idle';
     renderScreen();
   });
+}
+
+// ─── Actions ─────────────────────────────────────────────────
+
+function confirmBreak() {
+  chrome.runtime.sendMessage({
+    type: 'START_BREAK',
+    sessionId: currentSessionId,
+    minutes: breakMinutes,
+  });
+  hideOverlay();
+}
+
+function confirmAllow() {
+  const durationSeconds = allowMinutes * 60;
+  chrome.runtime.sendMessage({
+    type: 'VIOLATION_RESPONSE',
+    sessionId: currentSessionId,
+    websiteName: currentWebsiteName,
+    action: 'allow_anyway',
+    durationSeconds,
+  });
+  hideOverlay();
+
+  // Re-show overlay after the allow window expires
+  setTimeout(() => {
+    showOverlay(currentSessionId, currentWebsiteName, breakAvailable, breakMaxMinutes * 60);
+  }, durationSeconds * 1000);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
 
 const BTN_BASE = `
   width:100%; padding:14px 24px; border-radius:12px;
-  font-size:15px; font-weight:500;
+  font-size:15px; font-weight:500; cursor:pointer;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   box-sizing:border-box; text-align:center;
+  transition: transform 0.12s, opacity 0.12s;
 `;
 
 function applyBaseStyles(el: HTMLDivElement) {
@@ -232,14 +263,15 @@ function applyBaseStyles(el: HTMLDivElement) {
     position: fixed;
     top: 0; left: 0;
     width: 100vw; height: 100vh;
-    background: rgba(220, 53, 69, 0.65);
+    background: rgba(160, 30, 40, 0.82);
     z-index: 999999;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   `;
 }
 
@@ -248,10 +280,18 @@ function attachHoverEffects(ids: string[]) {
     const btn = document.getElementById(id);
     if (!btn) return;
     btn.addEventListener('mouseenter', () => {
-      btn.style.opacity = '0.85';
+      btn.style.transform = 'translateY(-1px) scale(1.02)';
+      btn.style.opacity = '0.88';
     });
     btn.addEventListener('mouseleave', () => {
+      btn.style.transform = 'translateY(0) scale(1)';
       btn.style.opacity = '1';
+    });
+    btn.addEventListener('mousedown', () => {
+      btn.style.transform = 'translateY(0) scale(0.98)';
+    });
+    btn.addEventListener('mouseup', () => {
+      btn.style.transform = 'translateY(-1px) scale(1.02)';
     });
   });
 }

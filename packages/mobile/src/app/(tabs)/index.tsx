@@ -79,17 +79,15 @@ export default function HomeScreen() {
             {activeSessions.map((session) => (
               <SessionCard
                 key={session.id}
-                session={session as Session & { violations_count?: number; pause_count?: number }}
+                session={session as Session & { violations_count?: number }}
                 isActive
-                onCancel={handleCancel}
                 onRefresh={refreshSessions}
               />
             ))}
             {pausedSessions.map((session) => (
               <SessionCard
                 key={session.id}
-                session={session as Session & { violations_count?: number; pause_count?: number }}
-                onCancel={handleCancel}
+                session={session as Session & { violations_count?: number }}
                 onRefresh={refreshSessions}
               />
             ))}
