@@ -5,11 +5,20 @@
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Alert } from 'react-native';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SessionProvider } from '@/context/SessionContext';
 import { ThemeProvider } from '@/utils/ThemeProvider';
 import { useTheme, useIsDark } from '@/utils/theme';
+import {
+  hasRequiredPermissions,
+  requestUsageStatsPermission,
+  requestOverlayPermission,
+} from '@focussive/app-blocker';
+import { setupNotificationHandler } from '@/utils/sessionReminders';
+
+// Configure foreground notification display once at module load
+setupNotificationHandler();
 
 function RootLayoutContent() {
   const theme = useTheme();
@@ -31,6 +40,35 @@ function RootLayoutContent() {
       router.replace('/(auth)/login' as never);
     }
   }, [isAuthenticated, isLoading, segments]);
+
+  // Check app permissions once the user is authenticated
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+    (async () => {
+      try {
+        const granted = await hasRequiredPermissions();
+        if (!granted) {
+          Alert.alert(
+            'Permissions Required',
+            'Focussive needs Usage Access and Display Over Other Apps permissions to block distracting apps during focus sessions.',
+            [
+              { text: 'Later', style: 'cancel' },
+              {
+                text: 'Grant Usage Access',
+                onPress: () => requestUsageStatsPermission(),
+              },
+              {
+                text: 'Grant Overlay',
+                onPress: () => requestOverlayPermission(),
+              },
+            ]
+          );
+        }
+      } catch {
+        // Not on Android or module unavailable — skip silently
+      }
+    })();
+  }, [isAuthenticated, isLoading]);
 
   // Show a spinner while checking auth state on startup
   if (isLoading) {

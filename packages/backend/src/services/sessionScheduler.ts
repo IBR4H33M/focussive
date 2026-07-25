@@ -174,6 +174,8 @@ async function completeExpiredSessions() {
           start_time: session.start_time,
           status: SessionStatus.COMPLETED,
           violations_count: violationsCount || 0,
+          app_violations_count: appViolationsCount || 0,
+          web_violations_count: webViolationsCount || 0,
         });
 
         if (insertError) {

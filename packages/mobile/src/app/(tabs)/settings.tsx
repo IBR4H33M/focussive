@@ -2,7 +2,7 @@
 // Focussive Mobile — Settings Screen
 // ============================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,8 +20,14 @@ import { useAuth } from '@/context/AuthContext';
 import { userApi } from '@/utils/api';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { hasRequiredPermissions, requestUsageStatsPermission, requestOverlayPermission } from '@focussive/app-blocker';
+import {
+  hasUsageStatsPermission,
+  hasOverlayPermission,
+  requestUsageStatsPermission,
+  requestOverlayPermission,
+} from '@focussive/app-blocker';
 import { useThemeContext, type ThemePreference } from '@/utils/theme';
+import { getReminderMinutes, setReminderMinutes, scheduleSessionReminders } from '@/utils/sessionReminders';
 
 // ─── TimeFormatToggle ─────────────────────────────────────────────────────────
 function TimeFormatToggle({
@@ -164,10 +170,72 @@ export default function SettingsScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [use24Hour, setUse24Hour] = useState(true);
 
+  // Session reminder state
+  const [reminderMinutes, setReminderMinutesState] = useState(15);
+  const [reminderModalVisible, setReminderModalVisible] = useState(false);
+  const [reminderInputValue, setReminderInputValue] = useState('15');
+
+  // Permission accordion state
+  const [permAccordionOpen, setPermAccordionOpen] = useState(false);
+  const [hasUsageStats, setHasUsageStats] = useState<boolean | null>(null);
+  const [hasOverlay, setHasOverlay] = useState<boolean | null>(null);
+  const accordionAnim = useRef(new Animated.Value(0)).current;
+
+  const allPermsGranted =
+    hasUsageStats === true && hasOverlay === true;
+  const permsMissing =
+    hasUsageStats === false || hasOverlay === false;
+
   useEffect(() => {
     fetchProfile();
     loadTimeFormat();
+    checkPermissionStatuses();
+    loadReminderMinutes();
   }, []);
+
+  async function checkPermissionStatuses() {
+    try {
+      const [usage, overlay] = await Promise.all([
+        hasUsageStatsPermission(),
+        hasOverlayPermission(),
+      ]);
+      setHasUsageStats(usage);
+      setHasOverlay(overlay);
+    } catch {
+      // Not Android or module unavailable
+    }
+  }
+
+  async function loadReminderMinutes() {
+    const mins = await getReminderMinutes();
+    setReminderMinutesState(mins);
+    setReminderInputValue(String(mins));
+  }
+
+  async function saveReminderMinutes() {
+    const parsed = parseInt(reminderInputValue, 10);
+    if (isNaN(parsed) || parsed <= 0 || parsed > 1440) {
+      Alert.alert('Invalid Value', 'Please enter a number between 1 and 1440 minutes.');
+      return;
+    }
+    await setReminderMinutes(parsed);
+    setReminderMinutesState(parsed);
+    setReminderModalVisible(false);
+    // Reschedule reminders with new offset (fire and forget)
+    scheduleSessionReminders([]).catch(() => {});
+    Alert.alert('Saved', `You'll be reminded ${parsed} minute${parsed !== 1 ? 's' : ''} before each session.`);
+  }
+
+  function togglePermAccordion() {
+    const toValue = permAccordionOpen ? 0 : 1;
+    setPermAccordionOpen(!permAccordionOpen);
+    Animated.spring(accordionAnim, {
+      toValue,
+      useNativeDriver: false,
+      tension: 120,
+      friction: 14,
+    }).start();
+  }
 
   async function loadTimeFormat() {
     try {
@@ -279,20 +347,8 @@ export default function SettingsScreen() {
   }
 
   async function checkPermissions() {
-    const hasPerms = await hasRequiredPermissions();
-    if (hasPerms) {
-      Alert.alert('Permissions Granted', 'App blocker has all required permissions.');
-    } else {
-      Alert.alert(
-        'Permissions Required',
-        'You need to grant Usage Access and Display Over Other Apps permissions to use Mobile Focus.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Grant Usage Access', onPress: () => requestUsageStatsPermission() },
-          { text: 'Grant Overlay', onPress: () => requestOverlayPermission() },
-        ]
-      );
-    }
+    // Refresh statuses first
+    await checkPermissionStatuses();
   }
 
   return (
@@ -328,10 +384,6 @@ export default function SettingsScreen() {
           <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(auth)/extension-qr' as never)}>
-          <Text style={[styles.menuText, { color: theme.text }]}>Connect Extension</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
       </View>
 
       {/* Preferences */}
@@ -351,15 +403,131 @@ export default function SettingsScreen() {
             theme={theme}
           />
         </View>
+
+        {/* Session Reminder */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            setReminderInputValue(String(reminderMinutes));
+            setReminderModalVisible(true);
+          }}
+          activeOpacity={0.7}
+        >
+          <View>
+            <Text style={[styles.menuText, { color: theme.text }]}>Session Reminder</Text>
+            <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
+              {reminderMinutes} min before session
+            </Text>
+          </View>
+          <Ionicons name="notifications-outline" size={20} color={theme.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       {/* System */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SYSTEM</Text>
 
-        <TouchableOpacity style={styles.menuItem} onPress={checkPermissions}>
-          <Text style={[styles.menuText, { color: theme.text }]}>App permissions</Text>
-          <Ionicons name="shield-checkmark-outline" size={20} color={theme.textSecondary} />
+        {/* App Permissions Accordion */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={togglePermAccordion}
+          activeOpacity={0.7}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+            <Text style={[styles.menuText, { color: theme.text }]}>App permissions</Text>
+            {permsMissing && (
+              <Ionicons name="warning-outline" size={16} color={theme.danger} />
+            )}
+            {allPermsGranted && (
+              <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
+            )}
+          </View>
+          <Animated.View
+            style={{
+              transform: [{
+                rotate: accordionAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', '180deg'],
+                }),
+              }],
+            }}
+          >
+            <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+          </Animated.View>
+        </TouchableOpacity>
+
+        {/* Accordion body */}
+        {permAccordionOpen && (
+          <View
+            style={[
+              styles.accordionBody,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
+            {/* Usage Access */}
+            <TouchableOpacity
+              style={styles.permRow}
+              onPress={() => {
+                requestUsageStatsPermission();
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.permTitle, { color: theme.text }]}>Usage Access</Text>
+                <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                  Required to detect which app is in the foreground
+                </Text>
+              </View>
+              {hasUsageStats === null ? (
+                <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+              ) : hasUsageStats ? (
+                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+              ) : (
+                <Ionicons name="warning" size={22} color={theme.danger} />
+              )}
+            </TouchableOpacity>
+
+            <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
+
+            {/* Overlay */}
+            <TouchableOpacity
+              style={styles.permRow}
+              onPress={() => {
+                requestOverlayPermission();
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.permTitle, { color: theme.text }]}>Display Over Other Apps</Text>
+                <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                  Required to show the block overlay on top of apps
+                </Text>
+              </View>
+              {hasOverlay === null ? (
+                <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+              ) : hasOverlay ? (
+                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+              ) : (
+                <Ionicons name="warning" size={22} color={theme.danger} />
+              )}
+            </TouchableOpacity>
+
+            {/* Refresh button */}
+            {!allPermsGranted && (
+              <TouchableOpacity
+                style={[styles.refreshPermsBtn, { backgroundColor: theme.accent }]}
+                onPress={checkPermissionStatuses}
+              >
+                <Ionicons name="refresh" size={14} color="#fff" />
+                <Text style={styles.refreshPermsBtnText}>Re-check permissions</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(auth)/extension-qr' as never)}>
+          <Text style={[styles.menuText, { color: theme.text }]}>Connect Extension</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -458,6 +626,80 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Session Reminder Modal */}
+      <Modal visible={reminderModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Session Reminder</Text>
+            <Text style={[styles.reminderModalDesc, { color: theme.textSecondary }]}>
+              How many minutes before a session should you be notified?
+            </Text>
+
+            {/* Quick presets */}
+            <View style={styles.reminderPresets}>
+              {[5, 10, 15, 30, 60].map((preset) => (
+                <TouchableOpacity
+                  key={preset}
+                  style={[
+                    styles.reminderPresetBtn,
+                    {
+                      backgroundColor:
+                        reminderInputValue === String(preset)
+                          ? theme.accent
+                          : theme.surface,
+                    },
+                  ]}
+                  onPress={() => setReminderInputValue(String(preset))}
+                >
+                  <Text
+                    style={[
+                      styles.reminderPresetText,
+                      {
+                        color:
+                          reminderInputValue === String(preset)
+                            ? '#FFFFFF'
+                            : theme.textSecondary,
+                      },
+                    ]}
+                  >
+                    {preset >= 60 ? `${preset / 60}h` : `${preset}m`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Custom input */}
+            <View style={styles.reminderCustomRow}>
+              <TextInput
+                style={[styles.reminderInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+                placeholder="Custom minutes"
+                placeholderTextColor={theme.textSecondary}
+                value={reminderInputValue}
+                onChangeText={setReminderInputValue}
+                keyboardType="numeric"
+                maxLength={4}
+              />
+              <Text style={[{ color: theme.textSecondary, fontSize: 14 }]}>min</Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: theme.surface }]}
+                onPress={() => setReminderModalVisible(false)}
+              >
+                <Text style={{ color: theme.textSecondary }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: theme.accent }]}
+                onPress={saveReminderMinutes}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -490,4 +732,49 @@ const styles = StyleSheet.create({
   input: { height: 48, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300', marginBottom: 12 },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   modalBtn: { flex: 1, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  // Accordion
+  accordionBody: {
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  permRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  permDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
+  permTitle: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  permDesc: { fontSize: 12, fontWeight: '300', lineHeight: 16 },
+  refreshPermsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    margin: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  refreshPermsBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  // Session reminder
+  reminderSubtext: { fontSize: 12, fontWeight: '300', marginTop: 2 },
+  reminderModalDesc: { fontSize: 14, fontWeight: '300', marginBottom: 16, lineHeight: 20 },
+  reminderPresets: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  reminderPresetBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  reminderPresetText: { fontSize: 13, fontWeight: '600' },
+  reminderCustomRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  reminderInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    fontWeight: '300',
+    borderWidth: 1,
+  },
 });
+

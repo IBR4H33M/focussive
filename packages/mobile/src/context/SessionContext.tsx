@@ -15,6 +15,7 @@ import { sessionApi, appGroupApi, violationApi } from '@/utils/api';
 import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
 import { type Session, type AppGroup, ViolationAction } from '@focussive/shared';
+import { scheduleSessionReminders } from '@/utils/sessionReminders';
 
 // Poll every 30 seconds — aggressive 5s polling was causing Supabase rate-limits
 const POLL_INTERVAL_MS = 30_000;
@@ -93,14 +94,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         sessionApi.getAll(),
       ]);
 
+      const allSessions = allRes.data as Session[];
+
       dispatch({
         type: 'SET_SESSIONS',
         payload: {
           active: activeRes.data as Session[],
           upcoming: upcomingRes.data as Session[],
-          all: allRes.data as Session[],
+          all: allSessions,
         },
       });
+
+      // Schedule/refresh local notification reminders based on latest sessions
+      scheduleSessionReminders(allSessions).catch(() => {});
     } catch (error) {
       dispatch({
         type: 'SET_ERROR',

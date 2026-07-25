@@ -271,15 +271,24 @@ export async function deleteSession(req: AuthRequest, res: Response): Promise<vo
     throw new AppError('Cannot delete an active session. Cancel it first.', 400, 'SESSION_ACTIVE');
   }
 
-  const { error } = await supabase
+  const { data: deleted, error } = await supabase
     .from('sessions')
     .delete()
     .eq('id', id)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select();
 
   if (error) {
+    console.error('Delete session error:', error);
     throw new AppError('Failed to delete session', 500, 'DELETE_ERROR');
   }
+
+  if (!deleted || deleted.length === 0) {
+    console.error(`Session ${id} was found but delete() matched 0 rows.`);
+    throw new AppError('Failed to delete session - row not affected', 500, 'DELETE_FAILED');
+  }
+
+  console.log(`Successfully deleted session ${id}`);
 
   res.status(204).send();
 }
@@ -361,6 +370,8 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     start_time: session.start_time,
     status: SessionStatus.CANCELLED,
     violations_count: violationsCount || 0,
+    app_violations_count: appViolationsCount || 0,
+    web_violations_count: webViolationsCount || 0,
     cancellation_reason: reason || null,
     cancelled_at: now,
   });

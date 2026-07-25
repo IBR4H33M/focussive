@@ -31,6 +31,14 @@ export function requestOverlayPermission() {
   return AppBlockerModule.requestOverlayPermission();
 }
 
+export async function hasUsageStatsPermission(): Promise<boolean> {
+  return await AppBlockerModule.hasUsageStatsPermission();
+}
+
+export async function hasOverlayPermission(): Promise<boolean> {
+  return await AppBlockerModule.hasOverlayPermission();
+}
+
 export async function hasRequiredPermissions(): Promise<boolean> {
   return await AppBlockerModule.hasRequiredPermissions();
 }
