@@ -13,6 +13,7 @@ import type { Session } from '@focussive/shared';
 const REMINDER_MINUTES_KEY = 'session_reminder_minutes';
 const DEFAULT_REMINDER_MINUTES = 15;
 const SCHEDULED_IDS_KEY = 'session_reminder_ids';
+const LATE_FIRED_KEY = 'session_reminder_late_fired';
 
 // ─── Permissions ──────────────────────────────────────────────
 
@@ -101,6 +102,29 @@ async function formatStartTime(startTime: string): Promise<string> {
 }
 
 /**
+ * Track sessions we've already sent a "late" reminder for (i.e. the configured
+ * lead time had already elapsed by the time we scheduled), keyed by
+ * "sessionId_dateString". Prevents re-firing the same late reminder on every
+ * 30s poll while the session is still upcoming.
+ */
+async function getLateFiredMap(): Promise<Record<string, number>> {
+  try {
+    const raw = await AsyncStorage.getItem(LATE_FIRED_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function pruneAndSaveLateFired(map: Record<string, number>): Promise<void> {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  for (const key of Object.keys(map)) {
+    if (map[key] < cutoff) delete map[key];
+  }
+  await AsyncStorage.setItem(LATE_FIRED_KEY, JSON.stringify(map));
+}
+
+/**
  * Schedule reminder notifications for all upcoming (scheduled) sessions.
  * Cancels previous reminders first to avoid duplicates.
  */
@@ -114,6 +138,8 @@ export async function scheduleSessionReminders(sessions: Session[]): Promise<voi
     const reminderMinutes = await getReminderMinutes();
     const now = new Date();
     const scheduledIds: string[] = [];
+    const lateFired = await getLateFiredMap();
+    let lateFiredChanged = false;
 
     // Only consider sessions with status 'scheduled' (not active/completed)
     const upcomingSessions = sessions.filter(
@@ -132,10 +158,10 @@ export async function scheduleSessionReminders(sessions: Session[]): Promise<voi
 
       for (const date of datesToCheck) {
         const sessionStart = parseSessionTime(session.start_time, date);
-        const reminderFireAt = new Date(sessionStart.getTime() - reminderMinutes * 60 * 1000);
+        const msUntilStart = sessionStart.getTime() - now.getTime();
 
-        // Only schedule if the reminder time is in the future (at least 10s away)
-        if (reminderFireAt.getTime() - now.getTime() < 10_000) continue;
+        // Session already started (or about to) — too late to notify at all
+        if (msUntilStart < 10_000) continue;
 
         // For "today" sessions, only schedule for today
         const schedule = (session as any).schedule;
@@ -155,8 +181,24 @@ export async function scheduleSessionReminders(sessions: Session[]): Promise<voi
           if (!scheduleDays.includes(dateStr)) continue;
         }
 
+        const reminderFireAt = new Date(sessionStart.getTime() - reminderMinutes * 60 * 1000);
+        const isLate = reminderFireAt.getTime() - now.getTime() < 10_000;
+
+        // The configured lead time has already elapsed (session is sooner than
+        // the reminder threshold) — fire immediately instead of dropping it,
+        // but only once per session occurrence so we don't spam on every poll.
+        if (isLate) {
+          const occurrenceKey = `${session.id}_${date.toDateString()}`;
+          if (lateFired[occurrenceKey]) continue;
+          lateFired[occurrenceKey] = now.getTime();
+          lateFiredChanged = true;
+        }
+
+        const fireAt = isLate ? new Date(now.getTime() + 3_000) : reminderFireAt;
+        const leadMinutes = isLate ? Math.max(1, Math.round(msUntilStart / 60_000)) : reminderMinutes;
+
         const formattedTime = await formatStartTime(session.start_time);
-        const countdown = formatCountdown(reminderMinutes);
+        const countdown = formatCountdown(leadMinutes);
 
         const id = await Notifications.scheduleNotificationAsync({
           content: {
@@ -167,7 +209,7 @@ export async function scheduleSessionReminders(sessions: Session[]): Promise<voi
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: reminderFireAt,
+            date: fireAt,
           },
         });
 
@@ -180,6 +222,9 @@ export async function scheduleSessionReminders(sessions: Session[]): Promise<voi
 
     if (scheduledIds.length > 0) {
       await AsyncStorage.setItem(SCHEDULED_IDS_KEY, JSON.stringify(scheduledIds));
+    }
+    if (lateFiredChanged) {
+      await pruneAndSaveLateFired(lateFired);
     }
   } catch (e) {
     console.warn('[Reminders] Failed to schedule session reminders:', e);

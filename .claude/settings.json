@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo *)",
+      "Bash(adb devices *)",
+      "Bash(node -e \"console.log\\(require.resolve\\('expo-router/package.json'\\)\\)\")",
+      "Bash(powershell -Command \"Get-Item 'node_modules\\\\expo-router' -ErrorAction SilentlyContinue | Select-Object Name, LinkType, Target\")"
+    ]
+  }
+}

@@ -3,18 +3,20 @@
 // ============================================================
 
 import React from 'react';
-import { StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/utils/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// Floating pill ("island") tab bar dimensions
+const ISLAND_HEIGHT = 62;
+const ISLAND_SIDE_MARGIN = 22;
+
 export default function TabLayout() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
-  const TAB_BAR_PADDING_BOTTOM = Math.max(insets.bottom, 12);
-  const TAB_BAR_HEIGHT = 56 + TAB_BAR_PADDING_BOTTOM;
+  const ISLAND_BOTTOM_MARGIN = Math.max(insets.bottom, 12) + 8;
 
   return (
     <Tabs
@@ -31,12 +33,19 @@ export default function TabLayout() {
           letterSpacing: 1,
         },
         tabBarStyle: {
-          backgroundColor: theme.background,
-          borderTopColor: theme.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          height: TAB_BAR_HEIGHT,
-          paddingBottom: TAB_BAR_PADDING_BOTTOM,
-          paddingTop: 8,
+          backgroundColor: theme.island,
+          borderTopWidth: 0,
+          borderRadius: ISLAND_HEIGHT / 2,
+          height: ISLAND_HEIGHT,
+          marginHorizontal: ISLAND_SIDE_MARGIN,
+          marginBottom: ISLAND_BOTTOM_MARGIN,
+          paddingTop: 6,
+          paddingBottom: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.2,
+          shadowRadius: 14,
+          elevation: 12,
         },
         tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: theme.textSecondary,
@@ -51,8 +60,8 @@ export default function TabLayout() {
         options={{
           title: 'Sessions',
           headerTitle: 'Focussive',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'timer' : 'timer-outline'} size={22} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="locate-outline" size={20} color={color} />
           ),
         }}
       />
@@ -60,8 +69,8 @@ export default function TabLayout() {
         name="app-groups"
         options={{
           title: 'Groups',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'layers' : 'layers-outline'} size={22} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="layers-outline" size={20} color={color} />
           ),
         }}
       />
@@ -69,8 +78,8 @@ export default function TabLayout() {
         name="stats"
         options={{
           title: 'Stats',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={22} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="bar-chart-outline" size={20} color={color} />
           ),
         }}
       />
@@ -78,8 +87,8 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={22} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="settings-outline" size={20} color={color} />
           ),
         }}
       />
