@@ -33,7 +33,7 @@ export const lightTheme: ThemeColors = {
   dangerBg: 'rgba(217, 48, 37, 0.1)',
   white: '#FFFFFF',
   card: '#FFFFFF',
-  island: '#D2D2D8',
+  island: '#2E8B4A',
 };
 
 export const darkTheme: ThemeColors = {
@@ -49,7 +49,7 @@ export const darkTheme: ThemeColors = {
   dangerBg: 'rgba(224, 82, 96, 0.15)',
   white: '#FFFFFF',
   card: '#1E1E1E',
-  island: '#0A0A0A',
+  island: '#1D5A34',
 };
 
 // 'system' | 'dark' | 'light'

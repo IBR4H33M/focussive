@@ -210,7 +210,8 @@ export async function scheduleSessionReminders(sessions: Session[]): Promise<voi
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: fireAt,
-          },
+            channelId: 'default',
+          } as any,
         });
 
         scheduledIds.push(id);
@@ -247,4 +248,13 @@ export function setupNotificationHandler(): void {
       shouldShowList: true,
     }),
   });
+
+  if (Platform.OS === 'android') {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'Session Reminders',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#2E8B4A',
+    }).catch(() => {});
+  }
 }

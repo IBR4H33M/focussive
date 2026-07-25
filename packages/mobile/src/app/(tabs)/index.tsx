@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 160,
   },
   section: {
     marginBottom: 24,
@@ -194,8 +194,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
+    bottom: 94,
+    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,

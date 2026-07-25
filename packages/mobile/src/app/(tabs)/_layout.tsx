@@ -10,13 +10,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Floating pill ("island") tab bar dimensions
 const ISLAND_HEIGHT = 62;
-const ISLAND_SIDE_MARGIN = 22;
+const ISLAND_SIDE_MARGIN = 32;
 
 export default function TabLayout() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
-  const ISLAND_BOTTOM_MARGIN = Math.max(insets.bottom, 12) + 8;
+  const ISLAND_BOTTOM_MARGIN = Math.max(insets.bottom, 12) + 6;
 
   return (
     <Tabs
@@ -33,25 +33,27 @@ export default function TabLayout() {
           letterSpacing: 1,
         },
         tabBarStyle: {
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          marginHorizontal: 20,
+          bottom: ISLAND_BOTTOM_MARGIN,
           backgroundColor: theme.island,
           borderTopWidth: 0,
           borderRadius: ISLAND_HEIGHT / 2,
           height: ISLAND_HEIGHT,
-          marginHorizontal: ISLAND_SIDE_MARGIN,
-          marginBottom: ISLAND_BOTTOM_MARGIN,
           paddingTop: 6,
-          paddingBottom: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.2,
-          shadowRadius: 14,
-          elevation: 12,
+          paddingBottom: 4,
+          paddingHorizontal: 16,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderWidth: 0,
         },
-        tabBarActiveTintColor: theme.accent,
-        tabBarInactiveTintColor: theme.textSecondary,
+        tabBarActiveTintColor: '#FFFFFF',
+        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.55)',
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '400',
+          fontWeight: '500',
         },
       }}
     >
@@ -61,7 +63,7 @@ export default function TabLayout() {
           title: 'Sessions',
           headerTitle: 'Focussive',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="locate-outline" size={20} color={color} />
+            <Ionicons name="disc-outline" size={20} color={color} />
           ),
         }}
       />
@@ -70,7 +72,7 @@ export default function TabLayout() {
         options={{
           title: 'Groups',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="layers-outline" size={20} color={color} />
+            <Ionicons name="grid-outline" size={20} color={color} />
           ),
         }}
       />
@@ -79,7 +81,7 @@ export default function TabLayout() {
         options={{
           title: 'Stats',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="bar-chart-outline" size={20} color={color} />
+            <Ionicons name="analytics-outline" size={20} color={color} />
           ),
         }}
       />
@@ -88,7 +90,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="settings-outline" size={20} color={color} />
+            <Ionicons name="options-outline" size={20} color={color} />
           ),
         }}
       />
