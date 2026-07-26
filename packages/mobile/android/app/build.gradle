@@ -97,6 +97,14 @@ android {
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
+    // Keep native (CMake/ninja) build output outside the deeply-nested project
+    // path — Windows' 260-char path limit is otherwise hit by generated New
+    // Architecture codegen object files (e.g. react-native-gesture-handler's).
+    externalNativeBuild {
+        cmake {
+            buildStagingDirectory "C:/rnbuild/focussive-app"
+        }
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')

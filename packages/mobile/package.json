@@ -20,8 +20,8 @@
     "@react-navigation/bottom-tabs": "latest",
     "@react-navigation/native": "latest",
     "@react-navigation/native-stack": "latest",
+    "@expo/vector-icons": "latest",
     "expo": "latest",
-    "expo-av": "latest",
     "expo-camera": "latest",
     "expo-constants": "latest",
     "expo-dev-client": "latest",
@@ -29,6 +29,7 @@
     "expo-notifications": "latest",
     "expo-router": "latest",
     "expo-secure-store": "latest",
+    "expo-splash-screen": "latest",
     "expo-status-bar": "latest",
     "react": "latest",
     "react-dom": "latest",
@@ -38,7 +39,8 @@
     "react-native-safe-area-context": "latest",
     "react-native-screens": "latest",
     "react-native-svg": "latest",
-    "react-native-web": "latest"
+    "react-native-web": "latest",
+    "react-native-worklets": "0.10.0"
   },
   "devDependencies": {
     "@types/react": "latest",
