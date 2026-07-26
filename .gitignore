@@ -19,9 +19,17 @@ build/
 *.mobileprovision
 *.orig.*
 
-# iOS / Android
-ios/
-android/
+# iOS / Android — native source is committed; only ignore generated build output
+**/android/.gradle/
+**/android/.cxx/
+**/android/.kotlin/
+**/android/local.properties
+**/android/app/release/
+**/android/app/debug/
+**/ios/Pods/
+**/ios/build/
+**/ios/*.xcworkspace/
+**/ios/DerivedData/
 
 # TypeScript
 *.tsbuildinfo
