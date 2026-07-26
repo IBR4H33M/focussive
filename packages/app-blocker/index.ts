@@ -53,3 +53,67 @@ export function addListener(eventName: 'onBreakEnded', listener: (event: BreakEn
 export function addListener(eventName: string, listener: (event: any) => void): EventSubscription {
   return AppBlockerModule.addListener(eventName, listener);
 }
+
+// ─── Live session notifications (native chronometer, non-dismissible) ──────
+
+/**
+ * Schedule (or idempotently update) a grey "session starts soon" notification
+ * whose countdown ticks natively down to `targetAtMillis`. Fires at
+ * `fireAtMillis` via AlarmManager — survives the app being killed.
+ */
+export function scheduleReminderNotification(
+  id: number,
+  sessionId: string,
+  title: string,
+  body: string,
+  targetAtMillis: number,
+  timeoutAtMillis: number,
+  fireAtMillis: number,
+) {
+  return AppBlockerModule.scheduleReminderNotification(
+    id, sessionId, title, body, targetAtMillis, timeoutAtMillis, fireAtMillis,
+  );
+}
+
+/**
+ * Schedule (or idempotently update) a green "session running" notification
+ * whose countdown ticks natively down to `targetAtMillis` (the session end).
+ */
+export function scheduleActiveNotification(
+  id: number,
+  sessionId: string,
+  title: string,
+  body: string,
+  targetAtMillis: number,
+  timeoutAtMillis: number,
+  fireAtMillis: number,
+) {
+  return AppBlockerModule.scheduleActiveNotification(
+    id, sessionId, title, body, targetAtMillis, timeoutAtMillis, fireAtMillis,
+  );
+}
+
+/** Silently refresh an already-posted running notification (e.g. violation count changed). */
+export function updateActiveNotification(
+  id: number,
+  sessionId: string,
+  title: string,
+  body: string,
+  targetAtMillis: number,
+  timeoutAtMillis: number,
+) {
+  return AppBlockerModule.updateActiveNotification(id, sessionId, title, body, targetAtMillis, timeoutAtMillis);
+}
+
+/** Cancel a pending alarm and/or dismiss a live session notification by id. */
+export function cancelSessionNotification(id: number) {
+  return AppBlockerModule.cancelSessionNotification(id);
+}
+
+export async function hasExactAlarmPermission(): Promise<boolean> {
+  return await AppBlockerModule.hasExactAlarmPermission();
+}
+
+export function requestExactAlarmPermission() {
+  return AppBlockerModule.requestExactAlarmPermission();
+}

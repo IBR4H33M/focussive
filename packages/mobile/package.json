@@ -2,7 +2,7 @@
   "name": "@focussive/mobile",
   "version": "0.1.0",
   "private": true,
-  "main": "node_modules/expo/AppEntry.js",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -12,19 +12,24 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@focussive/app-blocker": "workspace:*",
     "@focussive/shared": "workspace:*",
     "@react-native-async-storage/async-storage": "latest",
+    "@react-native-community/datetimepicker": "latest",
     "@react-native-community/netinfo": "latest",
     "@react-navigation/bottom-tabs": "latest",
     "@react-navigation/native": "latest",
     "@react-navigation/native-stack": "latest",
-    "@react-native-community/datetimepicker": "latest",
     "expo": "latest",
-    "expo-dev-client": "latest",
     "expo-av": "latest",
     "expo-camera": "latest",
+    "expo-constants": "latest",
+    "expo-dev-client": "latest",
+    "expo-linking": "latest",
     "expo-notifications": "latest",
+    "expo-router": "latest",
     "expo-secure-store": "latest",
+    "expo-status-bar": "latest",
     "react": "latest",
     "react-dom": "latest",
     "react-native": "latest",
@@ -32,8 +37,8 @@
     "react-native-qrcode-svg": "latest",
     "react-native-safe-area-context": "latest",
     "react-native-screens": "latest",
-    "react-native-web": "latest",
-    "react-native-svg": "latest"
+    "react-native-svg": "latest",
+    "react-native-web": "latest"
   },
   "devDependencies": {
     "@types/react": "latest",

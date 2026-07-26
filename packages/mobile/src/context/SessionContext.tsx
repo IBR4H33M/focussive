@@ -95,18 +95,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ]);
 
       const allSessions = allRes.data as Session[];
+      const activeSessions = activeRes.data as Session[];
 
       dispatch({
         type: 'SET_SESSIONS',
         payload: {
-          active: activeRes.data as Session[],
+          active: activeSessions,
           upcoming: upcomingRes.data as Session[],
           all: allSessions,
         },
       });
 
       // Schedule/refresh local notification reminders based on latest sessions
-      scheduleSessionReminders(allSessions).catch(() => {});
+      scheduleSessionReminders(allSessions, activeSessions).catch(() => {});
     } catch (error) {
       dispatch({
         type: 'SET_ERROR',
@@ -206,7 +207,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               app_name: event.packageName,
               duration_seconds: (event.allowMinutes ?? 5) * 60,
               action_taken: ViolationAction.ALLOW_ANYWAY,
-            } as import('@focussive/shared').CreateViolationRequest);
+            } as Record<string, unknown>);
           } catch (e) {
             console.error('Failed to record violation:', e);
           }

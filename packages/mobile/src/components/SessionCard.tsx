@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { useSessions } from '@/context/SessionContext';
 import { formatDuration, formatCountdown, getRemainingSeconds } from '@focussive/shared';
 import type { Session } from '@focussive/shared';
@@ -48,6 +48,7 @@ const TIMER_YELLOW = '#FFD580';
 
 export default function SessionCard({ session, isActive }: SessionCardProps) {
   const theme = useTheme();
+  const isDark = useIsDark();
   const router = useRouter();
 
   const isActiveSession = session.status === SessionStatus.ACTIVE || isActive;
@@ -94,7 +95,7 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
 
   const timeRange = formatTimeRange(session.start_time, session.duration);
   const durationLabel = formatDuration(session.duration);
-  const timerColor = isActiveSession ? (isOnBreak ? TIMER_YELLOW : TIMER_GREEN) : theme.text;
+  const timerColor = isActiveSession ? (isOnBreak ? TIMER_YELLOW : (isDark ? theme.accent : theme.accentDark)) : theme.text;
 
   return (
     <TouchableOpacity
@@ -127,7 +128,7 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
 
       {/* Break ongoing row */}
       {isActiveSession && isOnBreak && (
-        <View style={[styles.breakRow, { borderColor: `${TIMER_GREEN}40`, backgroundColor: `${TIMER_GREEN}10` }]}>
+        <View style={[styles.breakRow, { borderColor: `${isDark ? theme.accent : theme.accentDark}40`, backgroundColor: `${isDark ? theme.accent : theme.accentDark}10` }]}> 
           <Text style={styles.breakLabel}>Break ongoing</Text>
           <Text style={styles.breakCountdown}>{formatCountdown(breakLeft)}</Text>
         </View>
@@ -203,8 +204,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   durationBig: {
-    fontSize: 22,
-    fontWeight: '300',
+    fontSize: 40,
+    fontWeight: '400',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
@@ -226,8 +227,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   breakCountdown: {
-    fontSize: 16,
-    fontWeight: '300',
+    fontSize: 18,
+    fontWeight: '600',
     color: TIMER_GREEN,
     fontVariant: ['tabular-nums'],
   },

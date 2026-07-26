@@ -5,7 +5,8 @@
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, Alert } from 'react-native';
+import { View, ActivityIndicator, Alert, Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SessionProvider } from '@/context/SessionContext';
 import { ThemeProvider } from '@/utils/ThemeProvider';
@@ -14,6 +15,8 @@ import {
   hasRequiredPermissions,
   requestUsageStatsPermission,
   requestOverlayPermission,
+  hasExactAlarmPermission,
+  requestExactAlarmPermission,
 } from '@focussive/app-blocker';
 import { setupNotificationHandler } from '@/utils/sessionReminders';
 
@@ -26,6 +29,27 @@ function RootLayoutContent() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+
+  useEffect(() => {
+    const openSessionFromNotification = (response: Notifications.NotificationResponse) => {
+      const sessionId = response.notification.request.content.data?.sessionId;
+      if (typeof sessionId === 'string' && sessionId.length > 0) {
+        router.push(`/session/${sessionId}` as never);
+      }
+    };
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(openSessionFromNotification);
+
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) {
+          openSessionFromNotification(response);
+        }
+      })
+      .catch(() => {});
+
+    return () => subscription.remove();
+  }, [router]);
 
   useEffect(() => {
     if (isLoading) return; // wait until auth state is known
@@ -61,6 +85,29 @@ function RootLayoutContent() {
                 text: 'Grant Overlay',
                 onPress: () => requestOverlayPermission(),
               },
+            ]
+          );
+        }
+      } catch {
+        // Not on Android or module unavailable — skip silently
+      }
+    })();
+  }, [isAuthenticated, isLoading]);
+
+  // Exact-alarm permission — needed so session reminder/running notifications
+  // fire at the precise second even if the app has been killed (Android 12+).
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || Platform.OS !== 'android') return;
+    (async () => {
+      try {
+        const granted = await hasExactAlarmPermission();
+        if (!granted) {
+          Alert.alert(
+            'Allow Precise Alarms',
+            'Focussive needs permission to schedule exact alarms so session reminders and countdown notifications fire on time.',
+            [
+              { text: 'Later', style: 'cancel' },
+              { text: 'Allow', onPress: () => requestExactAlarmPermission() },
             ]
           );
         }

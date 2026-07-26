@@ -16,10 +16,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { sessionApi, appGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
-import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, formatDuration, formatTime, formatCountdown } from '@focussive/shared';
+import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, formatDuration, formatTime, formatCountdown, getRemainingSeconds } from '@focussive/shared';
 import type { Session, AppGroup } from '@focussive/shared';
 
 const WEEKDAYS: { key: Weekday; label: string }[] = [
@@ -46,6 +46,7 @@ function BreakDetailCountdown({ breakEndsAt }: { breakEndsAt: string }) {
 export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
+  const isDark = useIsDark();
   const router = useRouter();
   const navigation = useNavigation();
   const { refreshSessions, handleBreak } = useSessions();
@@ -108,7 +109,7 @@ export default function SessionDetailScreen() {
     setEditScheduleDays((session.schedule_days as Weekday[]) || []);
     setEditMobileFocus(session.mobile_focus || false);
     setEditBrowserFocus(session.browser_focus || false);
-    setEditGroupId(session.app_group_id as string | null || null);
+    setEditGroupId(session.app_group_ids?.[0] ?? null);
     setEditWebsites((session.blocked_websites as string[]) || []);
     setEditModalVisible(true);
   }
@@ -227,6 +228,8 @@ export default function SessionDetailScreen() {
   const breakRemaining = Math.floor((session.break_used_seconds != null
     ? Math.max(0, ((session.max_break_minutes ?? 0) * 60) - session.break_used_seconds)
     : (session.max_break_minutes ?? 0) * 60) / 60);
+  const activeGreen = isDark ? theme.accent : theme.accentDark;
+  const liveRemaining = isActive ? getRemainingSeconds(session) : 0;
 
   return (
     <>
@@ -242,6 +245,15 @@ export default function SessionDetailScreen() {
             {isActive ? 'Active' : session.status.charAt(0).toUpperCase() + session.status.slice(1)}
           </Text>
         </View>
+
+        {isActive && (
+          <View style={[styles.liveBanner, { borderColor: `${activeGreen}35`, backgroundColor: `${activeGreen}10` }]}> 
+            <Text style={[styles.liveBannerLabel, { color: activeGreen }]}>Session running</Text>
+            <Text style={[styles.liveBannerName, { color: theme.text }]} numberOfLines={1}>{session.name}</Text>
+            <Text style={[styles.liveBannerCountdown, { color: activeGreen }]}>{formatCountdown(liveRemaining)}</Text>
+            <Text style={[styles.liveBannerMeta, { color: theme.textSecondary }]}>remaining until this session ends</Text>
+          </View>
+        )}
 
         {/* Name */}
         <Text style={[styles.sessionName, { color: theme.text }]}>{session.name}</Text>
@@ -313,7 +325,7 @@ export default function SessionDetailScreen() {
 
         {/* Break ongoing indicator on session detail */}
         {isActive && isOnBreak && (
-          <View style={[styles.breakOngoingRow, { borderColor: '#90EE9040', backgroundColor: '#90EE9010' }]}>
+          <View style={[styles.breakOngoingRow, { borderColor: `${activeGreen}40`, backgroundColor: `${activeGreen}10` }]}> 
             <Text style={styles.breakOngoingLabel}>Break ongoing</Text>
             {breakEndsAt && (
               <BreakDetailCountdown breakEndsAt={breakEndsAt} />
@@ -424,7 +436,7 @@ export default function SessionDetailScreen() {
           <View style={styles.scheduleRow}>
             {[
               { key: ScheduleType.TODAY, label: 'Today' },
-              { key: ScheduleType.SPECIFIC_DAYS, label: 'Specific Days' },
+              { key: ScheduleType.SCHEDULED, label: 'Specific Days' },
               { key: ScheduleType.RECURRING, label: 'Recurring' },
             ].map(opt => (
               <TouchableOpacity
@@ -539,6 +551,11 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   statusBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 16 },
   statusText: { fontSize: 13, fontWeight: '500' },
+  liveBanner: { borderRadius: 18, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 18, marginBottom: 16 },
+  liveBannerLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
+  liveBannerName: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  liveBannerCountdown: { fontSize: 42, fontWeight: '800', fontVariant: ['tabular-nums'], lineHeight: 48 },
+  liveBannerMeta: { fontSize: 13, fontWeight: '300', marginTop: 4 },
   sessionName: { fontSize: 28, fontWeight: '300', letterSpacing: 0.5, marginBottom: 24 },
   card: { borderRadius: 12, borderWidth: 1, padding: 4, marginBottom: 16 },
   detailRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 0 },

@@ -28,6 +28,7 @@ import {
 } from '@focussive/app-blocker';
 import { useThemeContext, type ThemePreference } from '@/utils/theme';
 import { getReminderMinutes, setReminderMinutes, scheduleSessionReminders } from '@/utils/sessionReminders';
+import { useSessions } from '@/context/SessionContext';
 
 // ─── TimeFormatToggle ─────────────────────────────────────────────────────────
 function TimeFormatToggle({
@@ -158,6 +159,7 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const themeCtx = useThemeContext();
   const { user, logout } = useAuth();
+  const { allSessions, activeSessions } = useSessions();
   const router = useRouter();
 
   const [profile, setProfile] = useState<{ name: string; email: string; age?: number } | null>(null);
@@ -222,7 +224,7 @@ export default function SettingsScreen() {
     setReminderMinutesState(parsed);
     setReminderModalVisible(false);
     // Reschedule reminders with new offset (fire and forget)
-    scheduleSessionReminders([]).catch(() => {});
+    scheduleSessionReminders(allSessions, activeSessions).catch(() => {});
     Alert.alert('Saved', `You'll be reminded ${parsed} minute${parsed !== 1 ? 's' : ''} before each session.`);
   }
 
