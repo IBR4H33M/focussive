@@ -24,7 +24,14 @@ const origins = (process.env.CORS_ORIGINS || "")
 app.use(helmet());
 app.use(
   cors({
-    origin: origins.length > 0 ? origins : true,
+    origin: (origin, callback) => {
+      // Non-browser clients (mobile app, curl, Postman) send no Origin header.
+      if (!origin) return callback(null, true);
+      // Chrome extension IDs vary between dev/unpacked and published builds.
+      if (origin.startsWith("chrome-extension://")) return callback(null, true);
+      if (origins.length === 0 || origins.includes(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true
   })
 );

@@ -64,7 +64,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiUrl": "http://192.168.10.211:3000",
+      "apiUrl": "https://focussive.onrender.com",
       "router": {},
       "eas": {
         "projectId": "c71a2169-5cb4-452a-b07c-61809b84ac9c"

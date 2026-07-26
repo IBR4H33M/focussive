@@ -2,14 +2,18 @@ services:
   - type: web
     name: focussive-backend
     runtime: node
-    buildCommand: pnpm install && pnpm -F @focussive/backend build
+    buildCommand: pnpm install && pnpm -F @focussive/shared build && pnpm -F @focussive/backend build
     startCommand: pnpm -F @focussive/backend start
     envVars:
       - key: NODE_ENV
         value: production
       - key: SUPABASE_URL
         sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
+      - key: SUPABASE_SECRET_KEY
         sync: false
-      - key: PORT
-        value: 3000
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

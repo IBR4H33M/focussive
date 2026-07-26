@@ -2,7 +2,7 @@
 // Focussive Extension — API Client (with auto token refresh)
 // ============================================================
 
-const API_URL = 'http://localhost:3000';
+const API_URL = 'https://focussive.onrender.com';
 
 // ─── Token helpers ────────────────────────────────────────────
 async function getToken(): Promise<string | null> {
