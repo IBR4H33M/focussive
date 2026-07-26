@@ -103,7 +103,7 @@ function formatCountdown(minutes: number): string {
 }
 
 function violationsLabel(count: number): string {
-  return count > 0 ? `${count} violation${count !== 1 ? 's' : ''}` : 'No violations';
+  return `Violations: ${count}`;
 }
 
 /** Deterministic 32-bit hash so the same occurrence always maps to the same notification id. */
@@ -170,8 +170,8 @@ async function scheduleAndroidNativeNotifications(
       nativeScheduleReminder(
         reminderId,
         session.id,
-        `${session.name} starts soon`,
-        `Starts at ${formattedStart} · Ends at ${formattedEnd}`,
+        `${session.name} is scheduled at ${formattedStart}`,
+        `Ends at ${formattedEnd}`,
         sessionStart.getTime(),
         sessionStart.getTime(),
         reminderFireAt.getTime(),
@@ -185,11 +185,12 @@ async function scheduleAndroidNativeNotifications(
         nativeScheduleActive(
           activeId,
           session.id,
-          session.name,
-          `Session running · ${violationsLabel(0)} · Ends at ${formattedEnd}`,
+          `Session ${session.name} is running`,
+          `Ends at ${formattedEnd}`,
           sessionEnd.getTime(),
           sessionEnd.getTime(),
           sessionStart.getTime(),
+          violationsLabel(0),
         );
         activeAlarmArmed = true;
       }
@@ -210,11 +211,12 @@ async function scheduleAndroidNativeNotifications(
     nativeScheduleActive(
       activeId,
       session.id,
-      session.name,
-      `Session running · ${violationsLabel(violations)} · Ends at ${formattedEnd}`,
+      `Session ${session.name} is running`,
+      `Ends at ${formattedEnd}`,
       endAt,
       endAt,
       now.getTime(),
+      violationsLabel(violations),
     );
   }
 

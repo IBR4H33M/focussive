@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: focussive-backend
+    runtime: node
+    buildCommand: pnpm install && pnpm -F @focussive/backend build
+    startCommand: pnpm -F @focussive/backend start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: PORT
+        value: 3000

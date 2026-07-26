@@ -15,6 +15,7 @@ import {
   Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { useTheme } from '@/utils/theme';
 import { useAuth } from '@/context/AuthContext';
 import { userApi } from '@/utils/api';
@@ -25,6 +26,8 @@ import {
   hasOverlayPermission,
   requestUsageStatsPermission,
   requestOverlayPermission,
+  hasExactAlarmPermission,
+  requestExactAlarmPermission,
 } from '@focussive/app-blocker';
 import { useThemeContext, type ThemePreference } from '@/utils/theme';
 import { getReminderMinutes, setReminderMinutes, scheduleSessionReminders } from '@/utils/sessionReminders';
@@ -64,10 +67,12 @@ function TimeFormatToggle({
         flexDirection: 'row',
         backgroundColor: theme.surface,
         borderRadius: 10,
-        padding: 2,
+        paddingHorizontal: 2,
+        paddingVertical: 2,
+        paddingBottom: 6,
         position: 'relative',
         width: PILL_W * 2 + 4,
-        height: 36,
+        height: 40,
       }}
     >
       {/* Sliding accent pill */}
@@ -127,7 +132,7 @@ function ThemeModeToggle({
   const isSystem = preference === 'system';
 
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: theme.surface, borderRadius: 10, padding: 2, gap: 2 }}>
+    <View style={{ flexDirection: 'row', backgroundColor: theme.surface, borderRadius: 10, paddingHorizontal: 2, paddingVertical: 2, paddingBottom: 6, gap: 2 }}>
       {options.map((opt) => {
         const active = preference === opt.key;
         return (
@@ -181,12 +186,14 @@ export default function SettingsScreen() {
   const [permAccordionOpen, setPermAccordionOpen] = useState(false);
   const [hasUsageStats, setHasUsageStats] = useState<boolean | null>(null);
   const [hasOverlay, setHasOverlay] = useState<boolean | null>(null);
+  const [hasExactAlarm, setHasExactAlarm] = useState<boolean | null>(null);
+  const [hasNotifications, setHasNotifications] = useState<boolean | null>(null);
   const accordionAnim = useRef(new Animated.Value(0)).current;
 
   const allPermsGranted =
-    hasUsageStats === true && hasOverlay === true;
+    hasUsageStats === true && hasOverlay === true && hasExactAlarm === true && hasNotifications === true;
   const permsMissing =
-    hasUsageStats === false || hasOverlay === false;
+    hasUsageStats === false || hasOverlay === false || hasExactAlarm === false || hasNotifications === false;
 
   useEffect(() => {
     fetchProfile();
@@ -197,12 +204,23 @@ export default function SettingsScreen() {
 
   async function checkPermissionStatuses() {
     try {
-      const [usage, overlay] = await Promise.all([
+      const [usage, overlay, exactAlarm, notifPerm] = await Promise.all([
         hasUsageStatsPermission(),
         hasOverlayPermission(),
+        hasExactAlarmPermission(),
+        (async () => {
+          try {
+            const perms = await Notifications.getPermissionsAsync();
+            return perms.granted;
+          } catch {
+            return null;
+          }
+        })(),
       ]);
       setHasUsageStats(usage);
       setHasOverlay(overlay);
+      setHasExactAlarm(exactAlarm);
+      setHasNotifications(notifPerm);
     } catch {
       // Not Android or module unavailable
     }
@@ -358,7 +376,7 @@ export default function SettingsScreen() {
 
       {/* Profile Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PROFILE</Text>
+        <Text style={[styles.sectionTitle, { color: '#2E8B4A', fontWeight: '700' }]}>PROFILE</Text>
 
         <View style={styles.profileRow}>
           <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
@@ -387,10 +405,11 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
       </View>
+      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* Preferences */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PREFERENCES</Text>
+        <Text style={[styles.sectionTitle, { color: '#2E8B4A', fontWeight: '700' }]}>PREFERENCES</Text>
 
         <View style={styles.menuItem}>
           <Text style={[styles.menuText, { color: theme.text }]}>Time Format</Text>
@@ -424,10 +443,11 @@ export default function SettingsScreen() {
           <Ionicons name="notifications-outline" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
+      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* System */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SYSTEM</Text>
+        <Text style={[styles.sectionTitle, { color: '#2E8B4A', fontWeight: '700' }]}>SYSTEM</Text>
 
         {/* App Permissions Accordion */}
         <TouchableOpacity
@@ -514,6 +534,57 @@ export default function SettingsScreen() {
               )}
             </TouchableOpacity>
 
+            <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
+
+            {/* Exact Alarm */}
+            <TouchableOpacity
+              style={styles.permRow}
+              onPress={() => {
+                requestExactAlarmPermission();
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.permTitle, { color: theme.text }]}>Allow Precise Alarms</Text>
+                <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                  Required for accurate session reminder notifications
+                </Text>
+              </View>
+              {hasExactAlarm === null ? (
+                <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+              ) : hasExactAlarm ? (
+                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+              ) : (
+                <Ionicons name="warning" size={22} color={theme.danger} />
+              )}
+            </TouchableOpacity>
+
+            <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
+
+            {/* Notifications */}
+            <TouchableOpacity
+              style={styles.permRow}
+              onPress={() => {
+                Notifications.requestPermissionsAsync();
+                setTimeout(() => checkPermissionStatuses(), 500);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.permTitle, { color: theme.text }]}>Allow Notifications</Text>
+                <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                  Required to send session reminders and alerts
+                </Text>
+              </View>
+              {hasNotifications === null ? (
+                <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+              ) : hasNotifications ? (
+                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+              ) : (
+                <Ionicons name="warning" size={22} color={theme.danger} />
+              )}
+            </TouchableOpacity>
+
             {/* Refresh button */}
             {!allPermsGranted && (
               <TouchableOpacity
@@ -528,20 +599,25 @@ export default function SettingsScreen() {
         )}
 
         <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(auth)/extension-qr' as never)}>
-          <Text style={[styles.menuText, { color: theme.text }]}>Connect Extension</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          <Text style={[styles.menuText, { color: theme.text }]}>Extension</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          </View>
         </TouchableOpacity>
       </View>
+      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* Data */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>DATA</Text>
+        <Text style={[styles.sectionTitle, { color: '#2E8B4A', fontWeight: '700' }]}>DATA</Text>
 
         <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/history/manage' as never)}>
           <Text style={[styles.menuText, { color: theme.text }]}>Manage History</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
+      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* Actions */}
       <View style={styles.section}>
@@ -553,6 +629,7 @@ export default function SettingsScreen() {
           <Text style={[styles.deleteText, { color: theme.danger }]}>Delete Account</Text>
         </TouchableOpacity>
       </View>
+      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       <Text style={[styles.version, { color: theme.textSecondary }]}>Focussive v1.0.0</Text>
 
@@ -710,6 +787,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   section: { marginBottom: 32 },
   sectionTitle: { fontSize: 12, fontWeight: '600', letterSpacing: 2, marginBottom: 16 },
+  sectionDivider: { height: StyleSheet.hairlineWidth, marginBottom: 32 },
   profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 16 },
   avatar: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: 22, fontWeight: '600', color: '#1a1a1a' },
@@ -721,8 +799,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(128,128,128,0.2)',
   },
   menuText: { fontSize: 16, fontWeight: '300' },
   logoutText: { fontSize: 16, fontWeight: '500' },

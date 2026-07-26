@@ -216,11 +216,12 @@ class AppBlockerModule : Module() {
      */
     Function("scheduleActiveNotification") {
         id: Int, sessionId: String, title: String, body: String,
-        targetAtMillis: Double, timeoutAtMillis: Double, fireAtMillis: Double ->
+        targetAtMillis: Double, timeoutAtMillis: Double, fireAtMillis: Double, violationsText: String? ->
       val context = appContext.reactContext ?: return@Function null
       SessionNotifications.schedule(
         context, id, sessionId, title, body,
         targetAtMillis.toLong(), timeoutAtMillis.toLong(), fireAtMillis.toLong(), isActive = true,
+        violationsText = violationsText,
       )
       return@Function null
     }
@@ -228,11 +229,12 @@ class AppBlockerModule : Module() {
     /** Silently refresh an already-posted running notification (e.g. new violation count). */
     Function("updateActiveNotification") {
         id: Int, sessionId: String, title: String, body: String,
-        targetAtMillis: Double, timeoutAtMillis: Double ->
+        targetAtMillis: Double, timeoutAtMillis: Double, violationsText: String? ->
       val context = appContext.reactContext ?: return@Function null
       SessionNotifications.post(
         context, id, sessionId, title, body,
         targetAtMillis.toLong(), timeoutAtMillis.toLong(), isActive = true,
+        violationsText = violationsText,
       )
       return@Function null
     }

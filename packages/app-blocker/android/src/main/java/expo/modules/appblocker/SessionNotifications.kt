@@ -10,12 +10,16 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
+import android.widget.RemoteViews
 
 /**
  * Posts and schedules the two live, non-dismissible session notifications:
  * an upcoming-session reminder (grey) and a running-session status (green).
  * Both use Android's native chronometer so the on-screen countdown ticks
- * every second without any app process running.
+ * every second without any app process running, and both render a large,
+ * card-like countdown via a custom expanded layout (matching the in-app
+ * session card style) instead of the default small notification text.
  */
 object SessionNotifications {
     private const val CHANNEL_REMINDER = "session-reminder"
@@ -58,6 +62,28 @@ object SessionNotifications {
         )
     }
 
+    /** Build the large, card-like expanded layout with a live countdown. */
+    private fun buildExpandedView(
+        context: Context,
+        title: String,
+        targetAtMillis: Long,
+        isActive: Boolean,
+        violationsText: String?,
+    ): RemoteViews {
+        val layout = if (isActive) R.layout.notification_active else R.layout.notification_reminder
+        val views = RemoteViews(context.packageName, layout)
+        views.setTextViewText(R.id.notif_title, title)
+
+        // Chronometer uses elapsedRealtime as its clock base, not wall-clock time.
+        val base = SystemClock.elapsedRealtime() + (targetAtMillis - System.currentTimeMillis())
+        views.setChronometer(R.id.notif_chronometer, base, null, true)
+
+        if (isActive) {
+            views.setTextViewText(R.id.notif_violations, violationsText ?: "No violations")
+        }
+        return views
+    }
+
     /** Post (or silently update) a live notification immediately. */
     fun post(
         context: Context,
@@ -68,6 +94,7 @@ object SessionNotifications {
         targetAtMillis: Long,
         timeoutAtMillis: Long,
         isActive: Boolean,
+        violationsText: String? = null,
     ) {
         ensureChannels(context)
         val channel = if (isActive) CHANNEL_ACTIVE else CHANNEL_REMINDER
@@ -90,11 +117,14 @@ object SessionNotifications {
             .setColor(if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
             .setContentIntent(openSessionIntent(context, sessionId, id))
 
-        // Chronometer countdown needs API 24+ — degrade gracefully below that.
+        // Chronometer countdown + custom large expanded view need API 24+ — degrade
+        // gracefully to the plain collapsed template below that.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             builder.setUsesChronometer(true)
             builder.setChronometerCountDown(true)
             builder.setPriority(if (isActive) Notification.PRIORITY_HIGH else Notification.PRIORITY_DEFAULT)
+            builder.setStyle(Notification.DecoratedCustomViewStyle())
+            builder.setCustomBigContentView(buildExpandedView(context, title, targetAtMillis, isActive, violationsText))
         }
 
         val timeoutMs = timeoutAtMillis - System.currentTimeMillis()
@@ -117,12 +147,13 @@ object SessionNotifications {
         timeoutAtMillis: Long,
         fireAtMillis: Long,
         isActive: Boolean,
+        violationsText: String? = null,
     ) {
         val now = System.currentTimeMillis()
 
         // Already due (or nearly so) — post right away instead of dropping it.
         if (fireAtMillis <= now + 1000) {
-            post(context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive)
+            post(context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText)
             return
         }
 
@@ -135,6 +166,7 @@ object SessionNotifications {
             putExtra("targetAtMillis", targetAtMillis)
             putExtra("timeoutAtMillis", timeoutAtMillis)
             putExtra("isActive", isActive)
+            putExtra("violationsText", violationsText)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context, id, intent,

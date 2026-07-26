@@ -19,7 +19,8 @@ class SessionAlarmReceiver : BroadcastReceiver() {
         val targetAtMillis = intent.getLongExtra("targetAtMillis", 0L)
         val timeoutAtMillis = intent.getLongExtra("timeoutAtMillis", 0L)
         val isActive = intent.getBooleanExtra("isActive", false)
+        val violationsText = intent.getStringExtra("violationsText")
 
-        SessionNotifications.post(context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive)
+        SessionNotifications.post(context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText)
     }
 }

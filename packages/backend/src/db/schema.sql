@@ -124,6 +124,8 @@ CREATE TABLE IF NOT EXISTS session_history (
   end_time VARCHAR(10),
   status VARCHAR(50) NOT NULL,
   violations_count INTEGER DEFAULT 0,
+  app_violations_count INTEGER DEFAULT 0,
+  web_violations_count INTEGER DEFAULT 0,
   cancellation_reason TEXT,
   cancelled_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()

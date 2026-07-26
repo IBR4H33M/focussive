@@ -78,6 +78,7 @@ export function scheduleReminderNotification(
 /**
  * Schedule (or idempotently update) a green "session running" notification
  * whose countdown ticks natively down to `targetAtMillis` (the session end).
+ * `violationsText` is shown on its own line in the expanded, card-style view.
  */
 export function scheduleActiveNotification(
   id: number,
@@ -87,9 +88,10 @@ export function scheduleActiveNotification(
   targetAtMillis: number,
   timeoutAtMillis: number,
   fireAtMillis: number,
+  violationsText: string,
 ) {
   return AppBlockerModule.scheduleActiveNotification(
-    id, sessionId, title, body, targetAtMillis, timeoutAtMillis, fireAtMillis,
+    id, sessionId, title, body, targetAtMillis, timeoutAtMillis, fireAtMillis, violationsText,
   );
 }
 
@@ -101,8 +103,11 @@ export function updateActiveNotification(
   body: string,
   targetAtMillis: number,
   timeoutAtMillis: number,
+  violationsText: string,
 ) {
-  return AppBlockerModule.updateActiveNotification(id, sessionId, title, body, targetAtMillis, timeoutAtMillis);
+  return AppBlockerModule.updateActiveNotification(
+    id, sessionId, title, body, targetAtMillis, timeoutAtMillis, violationsText,
+  );
 }
 
 /** Cancel a pending alarm and/or dismiss a live session notification by id. */
