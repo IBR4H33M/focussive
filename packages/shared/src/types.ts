@@ -30,8 +30,11 @@ export enum Weekday {
   SUNDAY = 'sunday',
 }
 
+export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
 export enum ViolationAction {
   ALLOW_ANYWAY = 'allow_anyway',
+  MARK_NECESSARY = 'mark_necessary',
   CLOSED = 'closed',
 }
 

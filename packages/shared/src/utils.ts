@@ -35,3 +35,143 @@ export const getDayOfWeek = (date: Date): DayOfWeek => {
   if (!day) throw new Error("Invalid day index");
   return day;
 };
+
+export const isValidEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+export const isValidPassword = (password: string): boolean =>
+  password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password);
+
+export const generateQRCode = (): string => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let code = "";
+  for (let i = 0; i < 32; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+};
+
+interface OverlapCheckSession {
+  start_time: string;
+  duration: number;
+  schedule: string;
+  schedule_days: string[];
+}
+
+const timeRangesOverlap = (aStart: number, aDuration: number, bStart: number, bDuration: number): boolean => {
+  return aStart < bStart + bDuration && bStart < aStart + aDuration;
+};
+
+type ScheduleWindow =
+  | { type: "today" }
+  | { type: "weekdays"; days: string[] }
+  | { type: "dates"; dates: string[] };
+
+const scheduleWindowOf = (session: OverlapCheckSession): ScheduleWindow => {
+  if (session.schedule === "recurring") {
+    return { type: "weekdays", days: session.schedule_days.map((d) => d.toLowerCase()) };
+  }
+  if (session.schedule === "scheduled") {
+    return { type: "dates", dates: session.schedule_days };
+  }
+  return { type: "today" };
+};
+
+const daysIntersect = (a: OverlapCheckSession, b: OverlapCheckSession): boolean => {
+  const today = new Date();
+  const todayName = getDayOfWeek(today);
+  const todayDate = today.toISOString().split("T")[0];
+
+  const aWindow = scheduleWindowOf(a);
+  const bWindow = scheduleWindowOf(b);
+
+  const asDateList = (w: ScheduleWindow): string[] | null => (w.type === "dates" ? w.dates : null);
+  const asWeekdayList = (w: ScheduleWindow): string[] | null => (w.type === "weekdays" ? w.days : null);
+
+  if (aWindow.type === "today" && bWindow.type === "today") return true;
+  if (aWindow.type === "today") {
+    const bDays = asWeekdayList(bWindow);
+    if (bDays) return bDays.includes(todayName);
+    const bDates = asDateList(bWindow);
+    if (bDates) return bDates.includes(todayDate);
+  }
+  if (bWindow.type === "today") {
+    const aDays = asWeekdayList(aWindow);
+    if (aDays) return aDays.includes(todayName);
+    const aDates = asDateList(aWindow);
+    if (aDates) return aDates.includes(todayDate);
+  }
+
+  const aDays = asWeekdayList(aWindow);
+  const bDays = asWeekdayList(bWindow);
+  if (aDays && bDays) return aDays.some((d) => bDays.includes(d));
+
+  const aDates = asDateList(aWindow);
+  const bDates = asDateList(bWindow);
+  if (aDates && bDates) return aDates.some((d) => bDates.includes(d));
+
+  const weekdays = aDays ?? bDays;
+  const dates = aDates ?? bDates;
+  if (weekdays && dates) {
+    return dates.some((dateStr) => weekdays.includes(getDayOfWeek(new Date(dateStr))));
+  }
+
+  return false;
+};
+
+export const isSessionOverlap = (a: OverlapCheckSession, b: OverlapCheckSession): boolean => {
+  if (!daysIntersect(a, b)) return false;
+  return timeRangesOverlap(toMinutes(a.start_time), a.duration, toMinutes(b.start_time), b.duration);
+};
+
+/** Formats an ISO timestamp as a human-readable date, e.g. "Jul 27, 2026". */
+export const formatDate = (isoString: string): string => {
+  const date = new Date(isoString);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+/** Formats a "HH:mm" time string as a 12-hour clock time, e.g. "2:30 PM". */
+export const formatTime = (time: string): string => {
+  const [hStr, mStr] = time.split(":");
+  let h = parseInt(hStr ?? "0", 10);
+  const m = parseInt(mStr ?? "0", 10);
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m.toString().padStart(2, "0")} ${ampm}`;
+};
+
+/** Formats a countdown in seconds as "MM:SS", or "H:MM:SS" once past an hour. */
+export const formatCountdown = (totalSeconds: number): string => {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  if (hrs > 0) {
+    return `${hrs}:${pad(mins)}:${pad(secs)}`;
+  }
+  return `${pad(mins)}:${pad(secs)}`;
+};
+
+/** Seconds remaining until an active session (by `started_at` + `duration`) ends. */
+export const getRemainingSeconds = (session: { started_at?: string; duration: number }): number => {
+  if (!session.started_at) return session.duration * 60;
+  const startedAtMs = new Date(session.started_at).getTime();
+  const endAtMs = startedAtMs + session.duration * 60_000;
+  return Math.max(0, Math.floor((endAtMs - Date.now()) / 1000));
+};
+
+/** Whether a URL's hostname matches (or is a subdomain of) an entry in `blockedList`. */
+export const isBlockedWebsite = (url: string, blockedList: string[]): boolean => {
+  if (blockedList.length === 0) return false;
+  let hostname: string;
+  try {
+    hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return false;
+  }
+  return blockedList.some((entry) => {
+    const normalized = entry.toLowerCase().replace(/^www\./, "").trim();
+    if (!normalized) return false;
+    return hostname === normalized || hostname.endsWith(`.${normalized}`);
+  });
+};
