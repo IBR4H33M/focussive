@@ -75,14 +75,22 @@ async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Pr
 
   // Get response text first
   const text = await response.text();
-  
+
   // Try to parse as JSON
   let data: any;
   try {
     data = text ? JSON.parse(text) : {};
-  } catch (error) {
-    // If JSON parsing fails, throw a more informative error
-    console.error('Failed to parse JSON response:', text);
+  } catch {
+    // Not JSON. For an error status the body is usually a plain-text reason
+    // (e.g. a proxy or rate-limiter response), which is far more useful to
+    // report than a generic parse failure.
+    if (!response.ok) {
+      throw new ApiError(
+        text.trim() || `Request failed with status ${response.status}`,
+        response.status === 429 ? 'RATE_LIMITED' : 'ERROR',
+        response.status
+      );
+    }
     throw new ApiError(
       `Server returned invalid JSON: ${text.substring(0, 100)}`,
       'INVALID_RESPONSE',

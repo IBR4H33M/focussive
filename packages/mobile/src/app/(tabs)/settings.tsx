@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useTheme } from '@/utils/theme';
 import { useAuth } from '@/context/AuthContext';
-import { userApi } from '@/utils/api';
+import { userApi, sessionApi } from '@/utils/api';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -84,7 +84,7 @@ function TimeFormatToggle({
           width: PILL_W,
           height: 32,
           borderRadius: 8,
-          backgroundColor: '#2D7A3A',
+          backgroundColor: theme.accentDark,
           transform: [{ translateX }],
         }}
       />
@@ -144,7 +144,7 @@ function ThemeModeToggle({
               paddingVertical: 7,
               borderRadius: 8,
               alignItems: 'center',
-              backgroundColor: active ? '#2D7A3A' : 'transparent',
+              backgroundColor: active ? theme.accentDark : 'transparent',
               opacity: isSystem && opt.key !== 'system' ? 0.35 : 1,
             }}
             activeOpacity={0.7}
@@ -193,6 +193,13 @@ export default function SettingsScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const permissionsRef = useRef<View>(null);
 
+  // Backend connectivity check state
+  const [versionTapCount, setVersionTapCount] = useState(0);
+  const [backendStatus, setBackendStatus] = useState<'idle' | 'checking' | 'online' | 'offline'>('idle');
+  const [lastCheckedTime, setLastCheckedTime] = useState<string | null>(null);
+  const [spinnerChar, setSpinnerChar] = useState('/');
+  const spinnerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const allPermsGranted =
     hasUsageStats === true && hasOverlay === true && hasExactAlarm === true && hasNotifications === true;
   const permsMissing =
@@ -222,6 +229,13 @@ export default function SettingsScreen() {
       checkPermissionStatuses();
     }, [])
   );
+
+  // Cleanup spinner interval on unmount
+  useEffect(() => {
+    return () => {
+      if (spinnerIntervalRef.current) clearInterval(spinnerIntervalRef.current);
+    };
+  }, []);
 
   async function checkPermissionStatuses() {
     try {
@@ -294,6 +308,43 @@ export default function SettingsScreen() {
       await AsyncStorage.setItem('time_format', newFormat ? '24' : '12');
     } catch {
       Alert.alert('Error', 'Failed to save time format');
+    }
+  }
+
+  async function checkBackendConnectivity() {
+    setBackendStatus('checking');
+    const spinnerChars = ['/', '\\', '-'];
+    let spinnerIndex = 0;
+
+    if (spinnerIntervalRef.current) clearInterval(spinnerIntervalRef.current);
+    spinnerIntervalRef.current = setInterval(() => {
+      setSpinnerChar(spinnerChars[spinnerIndex]);
+      spinnerIndex = (spinnerIndex + 1) % spinnerChars.length;
+    }, 200);
+
+    try {
+      await sessionApi.getAll();
+      setBackendStatus('online');
+    } catch (error) {
+      console.log('Backend check failed:', error);
+      setBackendStatus('offline');
+    }
+
+    if (spinnerIntervalRef.current) clearInterval(spinnerIntervalRef.current);
+    setSpinnerChar('/');
+
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    setLastCheckedTime(`${date} ${time}`);
+  }
+
+  function handleVersionTap() {
+    const newCount = versionTapCount + 1;
+    setVersionTapCount(newCount);
+    if (newCount >= 5) {
+      setVersionTapCount(0);
+      checkBackendConnectivity();
     }
   }
 
@@ -397,7 +448,7 @@ export default function SettingsScreen() {
 
       {/* Profile Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: '#2E8B4A', fontWeight: '700' }]}>PROFILE</Text>
+        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: '700' }]}>PROFILE</Text>
 
         <View style={styles.profileRow}>
           <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
@@ -430,7 +481,7 @@ export default function SettingsScreen() {
 
       {/* Preferences */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: '#2E8B4A', fontWeight: '700' }]}>PREFERENCES</Text>
+        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: '700' }]}>PREFERENCES</Text>
 
         <View style={styles.menuItem}>
           <Text style={[styles.menuText, { color: theme.text }]}>Time Format</Text>
@@ -468,7 +519,7 @@ export default function SettingsScreen() {
 
       {/* System */}
       <View style={styles.section} ref={permissionsRef}>
-        <Text style={[styles.sectionTitle, { color: '#2E8B4A', fontWeight: '700' }]}>SYSTEM</Text>
+        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: '700' }]}>SYSTEM</Text>
 
         {/* App Permissions Accordion */}
         <TouchableOpacity
@@ -482,7 +533,7 @@ export default function SettingsScreen() {
               <Ionicons name="warning-outline" size={16} color={theme.danger} />
             )}
             {allPermsGranted && (
-              <Ionicons name="checkmark-circle" size={16} color="#2D7A3A" />
+              <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
             )}
           </View>
           <Animated.View
@@ -524,9 +575,9 @@ export default function SettingsScreen() {
               {hasUsageStats === null ? (
                 <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
               ) : hasUsageStats ? (
-                <Ionicons name="checkmark-circle" size={22} color="#2D7A3A" />
+                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
               ) : (
-                <Ionicons name="warning" size={22} color="#2D7A3A" />
+                <Ionicons name="warning" size={22} color={theme.danger} />
               )}
             </TouchableOpacity>
 
@@ -549,9 +600,9 @@ export default function SettingsScreen() {
               {hasOverlay === null ? (
                 <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
               ) : hasOverlay ? (
-                <Ionicons name="checkmark-circle" size={22} color="#2D7A3A" />
+                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
               ) : (
-                <Ionicons name="warning" size={22} color="#2D7A3A" />
+                <Ionicons name="warning" size={22} color={theme.danger} />
               )}
             </TouchableOpacity>
 
@@ -574,9 +625,9 @@ export default function SettingsScreen() {
               {hasExactAlarm === null ? (
                 <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
               ) : hasExactAlarm ? (
-                <Ionicons name="checkmark-circle" size={22} color="#2D7A3A" />
+                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
               ) : (
-                <Ionicons name="warning" size={22} color="#2D7A3A" />
+                <Ionicons name="warning" size={22} color={theme.danger} />
               )}
             </TouchableOpacity>
 
@@ -600,9 +651,9 @@ export default function SettingsScreen() {
               {hasNotifications === null ? (
                 <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
               ) : hasNotifications ? (
-                <Ionicons name="checkmark-circle" size={22} color="#2D7A3A" />
+                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
               ) : (
-                <Ionicons name="warning" size={22} color="#2D7A3A" />
+                <Ionicons name="warning" size={22} color={theme.danger} />
               )}
             </TouchableOpacity>
 
@@ -612,16 +663,65 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(auth)/extension-qr' as never)}>
           <Text style={[styles.menuText, { color: theme.text }]}>Extension</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="checkmark-circle" size={16} color="#2D7A3A" />
+            <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
           </View>
         </TouchableOpacity>
+
+        {/* Version */}
+        <View style={[styles.menuItem, { flexDirection: 'column', alignItems: 'stretch', gap: 4 }]}>
+          <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7}>
+            <Text style={[styles.menuText, { color: theme.text }]}>Version</Text>
+            <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>v1.0.0</Text>
+          </TouchableOpacity>
+
+          {backendStatus !== 'idle' && (
+            <View style={{ marginTop: 8, paddingTop: 8, borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth }}>
+              {backendStatus === 'checking' && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>Checking</Text>
+                  <Text style={{ fontSize: 14, color: theme.textSecondary, fontWeight: '600', fontFamily: 'monospace' }}>
+                    {spinnerChar}
+                  </Text>
+                </View>
+              )}
+
+              {backendStatus === 'online' && (
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="checkmark-circle" size={14} color={theme.accent} />
+                    <Text style={{ fontSize: 13, color: theme.accent, fontWeight: '600' }}>Server online</Text>
+                  </View>
+                  {lastCheckedTime && (
+                    <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>
+                      Last checked: {lastCheckedTime}
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {backendStatus === 'offline' && (
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="close-circle" size={14} color="#FF6B6B" />
+                    <Text style={{ fontSize: 13, color: '#FF6B6B', fontWeight: '600' }}>Server offline</Text>
+                  </View>
+                  {lastCheckedTime && (
+                    <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>
+                      Last checked: {lastCheckedTime}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       </View>
       <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* Data */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: '#2E8B4A', fontWeight: '700' }]}>DATA</Text>
+        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: '700' }]}>DATA</Text>
 
         <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/history/manage' as never)}>
           <Text style={[styles.menuText, { color: theme.text }]}>Manage History</Text>
@@ -736,7 +836,7 @@ export default function SettingsScreen() {
                     {
                       backgroundColor:
                         reminderInputValue === String(preset)
-                          ? '#2D7A3A'
+                          ? theme.accentDark
                           : theme.surface,
                     },
                   ]}

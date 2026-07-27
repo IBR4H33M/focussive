@@ -32,14 +32,31 @@ const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.SUNDAY, label: 'Sun' },
 ];
 
+// Break accent. Raw Saffron sits at ~1.7:1 on the light Cosmic latte
+// background, so light mode uses a darkened variant of the same hue.
+const BREAK_ACCENT_DARK = '#F6C531';
+const BREAK_ACCENT_LIGHT = '#9A5B00';
+
 // Small countdown for the break ongoing indicator on session detail
 function BreakDetailCountdown({ breakEndsAt }: { breakEndsAt: string }) {
+  const isDark = useIsDark();
   const [left, setLeft] = useState(Math.max(0, Math.floor((new Date(breakEndsAt).getTime() - Date.now()) / 1000)));
   useEffect(() => {
     const iv = setInterval(() => setLeft(Math.max(0, Math.floor((new Date(breakEndsAt).getTime() - Date.now()) / 1000))), 1000);
     return () => clearInterval(iv);
   }, [breakEndsAt]);
-  return <Text style={{ color: '#90EE90', fontSize: 16, fontWeight: '300', fontVariant: ['tabular-nums'] }}>{formatCountdown(left)}</Text>;
+  return (
+    <Text
+      style={{
+        color: isDark ? BREAK_ACCENT_DARK : BREAK_ACCENT_LIGHT,
+        fontSize: 16,
+        fontWeight: '300',
+        fontVariant: ['tabular-nums'],
+      }}
+    >
+      {formatCountdown(left)}
+    </Text>
+  );
 }
 
 
@@ -309,10 +326,12 @@ export default function SessionDetailScreen() {
           <View style={{ paddingHorizontal: 0, marginBottom: 12 }}>
             {breakRemaining > 0 ? (
               <TouchableOpacity
-                style={[styles.breakBtn, { borderColor: '#90EE90' }]}
+                style={[styles.breakBtn, { borderColor: isDark ? BREAK_ACCENT_DARK : BREAK_ACCENT_LIGHT }]}
                 onPress={() => { setBreakPickerMinutes(1); setBreakModalVisible(true); }}
               >
-                <Text style={styles.breakBtnText}>Take a break</Text>
+                <Text style={[styles.breakBtnText, { color: isDark ? BREAK_ACCENT_DARK : BREAK_ACCENT_LIGHT }]}>
+                  Take a break
+                </Text>
                 <Text style={styles.breakBtnSub}>{breakRemaining} min remaining</Text>
               </TouchableOpacity>
             ) : (
@@ -326,7 +345,9 @@ export default function SessionDetailScreen() {
         {/* Break ongoing indicator on session detail */}
         {isActive && isOnBreak && (
           <View style={[styles.breakOngoingRow, { borderColor: `${activeGreen}40`, backgroundColor: `${activeGreen}10` }]}> 
-            <Text style={styles.breakOngoingLabel}>Break ongoing</Text>
+            <Text style={[styles.breakOngoingLabel, { color: isDark ? BREAK_ACCENT_DARK : BREAK_ACCENT_LIGHT }]}>
+              Break ongoing
+            </Text>
             {breakEndsAt && (
               <BreakDetailCountdown breakEndsAt={breakEndsAt} />
             )}
@@ -595,10 +616,10 @@ const styles = StyleSheet.create({
   deleteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1, borderRadius: 12 },
   deleteBtnText: { fontSize: 14, fontWeight: '500' },
   breakBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 14, borderWidth: 1.5, marginTop: 12 },
-  breakBtnText: { color: '#90EE90', fontSize: 15, fontWeight: '600' },
-  breakBtnSub: { color: 'rgba(144,238,144,0.65)', fontSize: 12 },
+  breakBtnText: { fontSize: 15, fontWeight: '600' },
+  breakBtnSub: { color: '#8A7A5C', fontSize: 12 },
   breakOngoingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, marginTop: 12, marginBottom: 4 },
-  breakOngoingLabel: { color: '#90EE90', fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
+  breakOngoingLabel: { fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
   cancelSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 1.5, marginTop: 16 },
   cancelSessionBtnText: { fontSize: 14, fontWeight: '500' },
 });

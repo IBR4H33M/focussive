@@ -456,7 +456,7 @@ export function setupNotificationHandler(): void {
       name: 'Session Reminders',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#2E8B4A',
+      lightColor: '#8BA794',
     }).catch(() => {});
   }
 }

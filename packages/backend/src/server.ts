@@ -14,6 +14,11 @@ import { startScheduler } from "./services/sessionScheduler";
 
 const app = express();
 
+// Render (and most PaaS) put the app behind a reverse proxy. Without this,
+// req.ip is the proxy's address for every request, so all clients share a
+// single rate-limit bucket and legitimate users get 429s.
+app.set("trust proxy", 1);
+
 const origins = (process.env.CORS_ORIGINS || "")
   .split(",")
   .map((origin) => origin.trim())

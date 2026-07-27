@@ -15,17 +15,21 @@ import android.widget.RemoteViews
 
 /**
  * Posts and schedules the two live, non-dismissible session notifications:
- * an upcoming-session reminder (grey) and a running-session status (green).
- * Both use Android's native chronometer so the on-screen countdown ticks
- * every second without any app process running, and both render a large,
- * card-like countdown via a custom expanded layout (matching the in-app
- * session card style) instead of the default small notification text.
+ * an upcoming-session reminder and a running-session status.
+ *
+ * Both use Android's native chronometer so the on-screen countdown ticks every
+ * second without any app process running, and both use fully custom collapsed
+ * and expanded layouts (a deep-blue surface with a large countdown) so the text
+ * stays legible over any wallpaper.
  */
 object SessionNotifications {
     private const val CHANNEL_REMINDER = "session-reminder"
     private const val CHANNEL_ACTIVE = "session-active"
-    private val COLOR_REMINDER = Color.parseColor("#9E9E9E")
-    private val COLOR_ACTIVE = Color.parseColor("#2E8B4A")
+    private val COLOR_REMINDER = Color.parseColor("#BAC6B8")
+    private val COLOR_ACTIVE = Color.parseColor("#8BA794")
+
+    /** Dark notification surface — matches the custom layout backgrounds. */
+    private val COLOR_SURFACE = Color.parseColor("#3D4654")
 
     private fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -62,18 +66,24 @@ object SessionNotifications {
         )
     }
 
-    private fun formatCountdown(remainingSeconds: Long): String {
-        val hours = remainingSeconds / 3600
-        val minutes = (remainingSeconds % 3600) / 60
-        val seconds = remainingSeconds % 60
-        return if (hours > 0) {
-            String.format("%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            String.format("%02d:%02d", minutes, seconds)
+    /**
+     * Wire up a Chronometer to tick down to [targetAtMillis].
+     *
+     * Chronometer's clock is elapsedRealtime, not wall-clock, so the base has to
+     * be translated. Countdown mode must be set on the *view* — setting it on the
+     * Notification.Builder only affects the system template's own chronometer, so
+     * without this the widget counts up from a future base and renders a leading
+     * minus sign.
+     */
+    private fun bindChronometer(views: RemoteViews, targetAtMillis: Long) {
+        val base = SystemClock.elapsedRealtime() + (targetAtMillis - System.currentTimeMillis())
+        views.setChronometer(R.id.notif_chronometer, base, null, true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            views.setChronometerCountDown(R.id.notif_chronometer, true)
         }
     }
 
-    /** Build the large, card-like expanded layout with a live countdown. */
+    /** Build the large, card-like expanded layout with the live countdown. */
     private fun buildExpandedView(
         context: Context,
         title: String,
@@ -84,15 +94,29 @@ object SessionNotifications {
         val layout = if (isActive) R.layout.notification_active else R.layout.notification_reminder
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, title)
-
-        // Format countdown without "-" prefix
-        val remainingSeconds = (targetAtMillis - System.currentTimeMillis()) / 1000
-        val formattedTime = formatCountdown(remainingSeconds.coerceAtLeast(0))
-        views.setTextViewText(R.id.notif_chronometer, formattedTime)
+        bindChronometer(views, targetAtMillis)
 
         if (isActive) {
             views.setTextViewText(R.id.notif_violations, violationsText ?: "No violations")
         }
+        return views
+    }
+
+    /**
+     * Collapsed row — same deep-blue surface as the expanded view so the
+     * notification looks intentional whether or not the user expands it.
+     * Android caps collapsed custom views at ~48dp, so this is a single row.
+     */
+    private fun buildCollapsedView(
+        context: Context,
+        title: String,
+        targetAtMillis: Long,
+        isActive: Boolean,
+    ): RemoteViews {
+        val views = RemoteViews(context.packageName, R.layout.notification_collapsed)
+        views.setTextViewText(R.id.notif_title, title)
+        views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
+        bindChronometer(views, targetAtMillis)
         return views
     }
 
@@ -126,13 +150,16 @@ object SessionNotifications {
             .setOnlyAlertOnce(true)
             .setWhen(targetAtMillis)
             .setShowWhen(true)
-            .setColor(if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
+            .setColor(COLOR_SURFACE)
+            .setColorized(true)
             .setContentIntent(openSessionIntent(context, sessionId, id))
 
-        // Custom large expanded view with formatted countdown — high priority to keep expanded
+        // Fully custom views (no DecoratedCustomViewStyle) so our deep-blue surface
+        // fills the notification body edge-to-edge instead of sitting in the
+        // system's inset card. Needs API 24+; older devices get the plain template.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             builder.setPriority(Notification.PRIORITY_HIGH)
-            builder.setStyle(Notification.DecoratedCustomViewStyle())
+            builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive))
             builder.setCustomBigContentView(buildExpandedView(context, title, targetAtMillis, isActive, violationsText))
         }
 

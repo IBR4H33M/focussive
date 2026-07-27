@@ -20,36 +20,50 @@ export interface ThemeColors {
   island: string;
 }
 
+// Light mode. Palette: Fern green #587042, Sage #A9B494, Cosmic latte #FAF7E6,
+// Jasmine #F8DE8C, Saffron #F6C531.
+//
+// Sage and Jasmine are too light to carry text on the Cosmic latte background
+// (~1.9:1 and ~1.3:1), so they are used only as fills/borders. Text tones are
+// darkened variants of Fern green, which keeps the palette's hue family while
+// clearing the 4.5:1 WCAG AA threshold for body text.
 export const lightTheme: ThemeColors = {
-  background: '#F2F2F7',
-  surface: '#E8E8ED',
-  surfaceAlt: '#EFEFEF',
-  text: '#111111',
-  textSecondary: '#6B6B6B',
-  accent: '#2E8B4A',
-  accentDark: '#1A5C30',
-  border: '#D8D8DC',
-  danger: '#D93025',
-  dangerBg: 'rgba(217, 48, 37, 0.1)',
+  background: '#FAF7E6',
+  surface: '#EDEBD8',
+  surfaceAlt: '#E3E4D0',
+  text: '#2E3B22',
+  textSecondary: '#5A6B48',
+  accent: '#587042',
+  accentDark: '#3D5730',
+  border: '#C9D0B6',
+  danger: '#9A5B00',
+  dangerBg: 'rgba(246, 197, 49, 0.18)',
   white: '#FFFFFF',
   card: '#FFFFFF',
-  island: '#2E8B4A',
+  island: '#587042',
 };
 
+// Dark mode. Palette: Space cadet #2F3456, Paynes gray #5D6E75,
+// Cambridge blue #8BA794, Ash gray #BAC6B8, Alabaster #E9E4DC.
+//
+// Surfaces stay in the Space cadet family so the light palette tones
+// (Cambridge blue, Ash gray, Alabaster) all read as text above 4.5:1.
+// Paynes gray is reserved for borders — as a fill it left secondary text
+// at only ~2.1:1.
 export const darkTheme: ThemeColors = {
-  background: '#121212',
-  surface: '#1E1E1E',
-  surfaceAlt: '#1A1A1A',
-  text: '#E0E0E0',
-  textSecondary: '#999999',
-  accent: '#4CAF72',
-  accentDark: '#2D6A40',
-  border: '#2A2A2A',
-  danger: '#E05260',
-  dangerBg: 'rgba(224, 82, 96, 0.15)',
+  background: '#2F3456',
+  surface: '#3A4062',
+  surfaceAlt: '#454B6E',
+  text: '#E9E4DC',
+  textSecondary: '#BAC6B8',
+  accent: '#8BA794',
+  accentDark: '#5D6E75',
+  border: '#5D6E75',
+  danger: '#F6C531',
+  dangerBg: 'rgba(246, 197, 49, 0.15)',
   white: '#FFFFFF',
-  card: '#1E1E1E',
-  island: '#1D5A34',
+  card: '#5d6e75',
+  island: '#8BA794',
 };
 
 // 'system' | 'dark' | 'light'

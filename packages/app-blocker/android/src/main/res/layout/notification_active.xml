@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="@drawable/notification_bg"
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="12dp"
-    android:background="#4D4D4D">
+    android:paddingTop="12dp"
+    android:paddingBottom="14dp">
 
     <TextView
         android:id="@+id/notif_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="16sp"
-        android:textColor="?android:attr/textColorPrimary"
+        android:textColor="#FFFFFF"
         android:maxLines="2"
         android:ellipsize="end" />
 
@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginTop="16dp">
+        android:layout_marginTop="10dp">
 
         <TextView
             android:id="@+id/notif_label"
@@ -33,24 +33,23 @@
             android:text="Remaining time"
             android:textSize="12sp"
             android:letterSpacing="0.03"
-            android:textColor="#9E9E9E" />
+            android:textColor="#BAC6B8" />
 
-        <TextView
+        <Chronometer
             android:id="@+id/notif_chronometer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="34sp"
-            android:textColor="#2E8B4A"
+            android:textColor="#8BA794"
             android:fontFamily="sans-serif-light"
-            android:gravity="end"
-            android:text="00:00" />
+            android:gravity="end" />
     </LinearLayout>
 
     <TextView
         android:id="@+id/notif_violations"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         android:textSize="13sp"
-        android:textColor="#9E9E9E" />
+        android:textColor="#BAC6B8" />
 </LinearLayout>

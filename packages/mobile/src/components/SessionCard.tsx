@@ -43,8 +43,10 @@ function getBreakSecondsLeft(breakEndsAt: string | null | undefined): number {
   return Math.max(0, Math.floor((new Date(breakEndsAt).getTime() - Date.now()) / 1000));
 }
 
-const TIMER_GREEN = '#90EE90';
-const TIMER_YELLOW = '#FFD580';
+// Break state uses the palette's Saffron; the darker variant keeps it legible
+// on the light Cosmic latte background, where raw Saffron is only ~1.7:1.
+const TIMER_BREAK_DARK = '#9A5B00';
+const TIMER_BREAK_LIGHT = '#F6C531';
 
 export default function SessionCard({ session, isActive }: SessionCardProps) {
   const theme = useTheme();
@@ -95,7 +97,10 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
 
   const timeRange = formatTimeRange(session.start_time, session.duration);
   const durationLabel = formatDuration(session.duration);
-  const timerColor = isActiveSession ? (isOnBreak ? TIMER_YELLOW : (isDark ? theme.accent : theme.accentDark)) : theme.text;
+  const breakColor = isDark ? TIMER_BREAK_LIGHT : TIMER_BREAK_DARK;
+  const timerColor = isActiveSession
+    ? (isOnBreak ? breakColor : (isDark ? theme.accent : theme.accentDark))
+    : theme.text;
 
   return (
     <TouchableOpacity
@@ -128,9 +133,11 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
 
       {/* Break ongoing row */}
       {isActiveSession && isOnBreak && (
-        <View style={[styles.breakRow, { borderColor: `${isDark ? theme.accent : theme.accentDark}40`, backgroundColor: `${isDark ? theme.accent : theme.accentDark}10` }]}> 
-          <Text style={styles.breakLabel}>Break ongoing</Text>
-          <Text style={styles.breakCountdown}>{formatCountdown(breakLeft)}</Text>
+        <View style={[styles.breakRow, { borderColor: `${isDark ? theme.accent : theme.accentDark}40`, backgroundColor: `${isDark ? theme.accent : theme.accentDark}10` }]}>
+          <Text style={[styles.breakLabel, { color: isDark ? theme.accent : theme.accentDark }]}>Break ongoing</Text>
+          <Text style={[styles.breakCountdown, { color: isDark ? theme.accent : theme.accentDark }]}>
+            {formatCountdown(breakLeft)}
+          </Text>
         </View>
       )}
 
@@ -165,14 +172,14 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 10,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   headerRight: {
     flexDirection: 'row',
@@ -180,7 +187,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   name: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '500',
     flex: 1,
   },
@@ -196,11 +203,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   timeRange: {
-    fontSize: 13,
-    fontWeight: '300',
+    fontSize: 16,
+    fontWeight: '500',
     flex: 1,
   },
   durationBig: {
@@ -222,14 +229,12 @@ const styles = StyleSheet.create({
   },
   breakLabel: {
     fontSize: 12,
-    color: TIMER_GREEN,
     fontWeight: '500',
     letterSpacing: 0.3,
   },
   breakCountdown: {
     fontSize: 18,
     fontWeight: '600',
-    color: TIMER_GREEN,
     fontVariant: ['tabular-nums'],
   },
   footer: {
