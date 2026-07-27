@@ -6,7 +6,8 @@
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
     android:paddingTop="8dp"
-    android:paddingBottom="12dp">
+    android:paddingBottom="12dp"
+    android:background="#4D4D4D">
 
     <TextView
         android:id="@+id/notif_title"
@@ -22,7 +23,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginTop="10dp">
+        android:layout_marginTop="16dp">
 
         <TextView
             android:id="@+id/notif_label"
@@ -34,13 +35,14 @@
             android:letterSpacing="0.03"
             android:textColor="#9E9E9E" />
 
-        <Chronometer
+        <TextView
             android:id="@+id/notif_chronometer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="34sp"
             android:textColor="#9E9E9E"
             android:fontFamily="sans-serif-light"
-            android:gravity="end" />
+            android:gravity="end"
+            android:text="00:00" />
     </LinearLayout>
 </LinearLayout>

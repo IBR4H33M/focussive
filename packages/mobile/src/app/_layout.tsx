@@ -2,10 +2,10 @@
 // Focussive Mobile — Root Layout
 // ============================================================
 
-import React, { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Stack, useRouter, useSegments, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SessionProvider } from '@/context/SessionContext';
@@ -19,6 +19,7 @@ import {
   requestExactAlarmPermission,
 } from '@focussive/app-blocker';
 import { setupNotificationHandler } from '@/utils/sessionReminders';
+import PermissionModal from '@/components/PermissionModal';
 
 // Configure foreground notification display once at module load
 setupNotificationHandler();
@@ -29,6 +30,7 @@ function RootLayoutContent() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
 
   useEffect(() => {
     const openSessionFromNotification = (response: Notifications.NotificationResponse) => {
@@ -65,57 +67,43 @@ function RootLayoutContent() {
     }
   }, [isAuthenticated, isLoading, segments]);
 
-  // Check app permissions once the user is authenticated
-  useEffect(() => {
-    if (isLoading || !isAuthenticated) return;
-    (async () => {
-      try {
-        const granted = await hasRequiredPermissions();
-        if (!granted) {
-          Alert.alert(
-            'Permissions Required',
-            'Focussive needs Usage Access and Display Over Other Apps permissions to block distracting apps during focus sessions.',
-            [
-              { text: 'Later', style: 'cancel' },
-              {
-                text: 'Grant Usage Access',
-                onPress: () => requestUsageStatsPermission(),
-              },
-              {
-                text: 'Grant Overlay',
-                onPress: () => requestOverlayPermission(),
-              },
-            ]
-          );
-        }
-      } catch {
-        // Not on Android or module unavailable — skip silently
-      }
-    })();
-  }, [isAuthenticated, isLoading]);
+  // Check all app permissions once the user is authenticated
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isLoading || !isAuthenticated) return;
+      (async () => {
+        try {
+          const [hasRequired, hasExactAlarm, notifStatus] = await Promise.all([
+            hasRequiredPermissions(),
+            Platform.OS === 'android' ? hasExactAlarmPermission() : Promise.resolve(true),
+            Notifications.getPermissionsAsync(),
+          ]);
 
-  // Exact-alarm permission — needed so session reminder/running notifications
-  // fire at the precise second even if the app has been killed (Android 12+).
-  useEffect(() => {
-    if (isLoading || !isAuthenticated || Platform.OS !== 'android') return;
-    (async () => {
-      try {
-        const granted = await hasExactAlarmPermission();
-        if (!granted) {
-          Alert.alert(
-            'Allow Precise Alarms',
-            'Focussive needs permission to schedule exact alarms so session reminders and countdown notifications fire on time.',
-            [
-              { text: 'Later', style: 'cancel' },
-              { text: 'Allow', onPress: () => requestExactAlarmPermission() },
-            ]
-          );
+          const notifGranted = notifStatus.granted;
+          const allGranted = hasRequired && hasExactAlarm && notifGranted;
+
+          if (!allGranted) {
+            setShowPermissionModal(true);
+          }
+        } catch {
+          // Not on Android or module unavailable — skip silently
         }
-      } catch {
-        // Not on Android or module unavailable — skip silently
-      }
-    })();
-  }, [isAuthenticated, isLoading]);
+      })();
+    }, [isLoading, isAuthenticated])
+  );
+
+  const handleGrantPermissions = async () => {
+    try {
+      await Promise.all([
+        requestUsageStatsPermission(),
+        requestOverlayPermission(),
+        Platform.OS === 'android' ? requestExactAlarmPermission() : Promise.resolve(),
+        Notifications.requestPermissionsAsync(),
+      ]);
+    } catch {
+      // Ignore errors
+    }
+  };
 
   // Show a spinner while checking auth state on startup
   if (isLoading) {
@@ -129,6 +117,11 @@ function RootLayoutContent() {
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      <PermissionModal
+        visible={showPermissionModal}
+        onDismiss={() => setShowPermissionModal(false)}
+        onGrantPermissions={handleGrantPermissions}
+      />
       <Stack
         screenOptions={{
           headerShown: false,

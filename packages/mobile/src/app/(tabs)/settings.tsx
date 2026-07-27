@@ -19,7 +19,7 @@ import * as Notifications from 'expo-notifications';
 import { useTheme } from '@/utils/theme';
 import { useAuth } from '@/context/AuthContext';
 import { userApi } from '@/utils/api';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   hasUsageStatsPermission,
@@ -84,7 +84,7 @@ function TimeFormatToggle({
           width: PILL_W,
           height: 32,
           borderRadius: 8,
-          backgroundColor: theme.accent,
+          backgroundColor: '#2D7A3A',
           transform: [{ translateX }],
         }}
       />
@@ -144,7 +144,7 @@ function ThemeModeToggle({
               paddingVertical: 7,
               borderRadius: 8,
               alignItems: 'center',
-              backgroundColor: active ? theme.accent : 'transparent',
+              backgroundColor: active ? '#2D7A3A' : 'transparent',
               opacity: isSystem && opt.key !== 'system' ? 0.35 : 1,
             }}
             activeOpacity={0.7}
@@ -166,6 +166,7 @@ export default function SettingsScreen() {
   const { user, logout } = useAuth();
   const { allSessions, activeSessions } = useSessions();
   const router = useRouter();
+  const params = useLocalSearchParams<{ expandPermissions?: string }>();
 
   const [profile, setProfile] = useState<{ name: string; email: string; age?: number } | null>(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -183,12 +184,14 @@ export default function SettingsScreen() {
   const [reminderInputValue, setReminderInputValue] = useState('15');
 
   // Permission accordion state
-  const [permAccordionOpen, setPermAccordionOpen] = useState(false);
+  const [permAccordionOpen, setPermAccordionOpen] = useState(params.expandPermissions === 'true');
   const [hasUsageStats, setHasUsageStats] = useState<boolean | null>(null);
   const [hasOverlay, setHasOverlay] = useState<boolean | null>(null);
   const [hasExactAlarm, setHasExactAlarm] = useState<boolean | null>(null);
   const [hasNotifications, setHasNotifications] = useState<boolean | null>(null);
-  const accordionAnim = useRef(new Animated.Value(0)).current;
+  const accordionAnim = useRef(new Animated.Value(params.expandPermissions === 'true' ? 1 : 0)).current;
+  const scrollViewRef = useRef<ScrollView>(null);
+  const permissionsRef = useRef<View>(null);
 
   const allPermsGranted =
     hasUsageStats === true && hasOverlay === true && hasExactAlarm === true && hasNotifications === true;
@@ -201,6 +204,24 @@ export default function SettingsScreen() {
     checkPermissionStatuses();
     loadReminderMinutes();
   }, []);
+
+  // Scroll to permissions section if coming from permission modal
+  useEffect(() => {
+    if (params.expandPermissions === 'true' && permissionsRef.current && scrollViewRef.current) {
+      setTimeout(() => {
+        permissionsRef.current?.measureInWindow((x, y) => {
+          scrollViewRef.current?.scrollTo({ y: y - 60, animated: true });
+        });
+      }, 100);
+    }
+  }, [params.expandPermissions]);
+
+  // Auto-check permissions when returning to Settings
+  useFocusEffect(
+    React.useCallback(() => {
+      checkPermissionStatuses();
+    }, [])
+  );
 
   async function checkPermissionStatuses() {
     try {
@@ -372,7 +393,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView ref={scrollViewRef} style={[styles.container, { backgroundColor: theme.background }]}>
 
       {/* Profile Section */}
       <View style={styles.section}>
@@ -446,7 +467,7 @@ export default function SettingsScreen() {
       <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* System */}
-      <View style={styles.section}>
+      <View style={styles.section} ref={permissionsRef}>
         <Text style={[styles.sectionTitle, { color: '#2E8B4A', fontWeight: '700' }]}>SYSTEM</Text>
 
         {/* App Permissions Accordion */}
@@ -461,7 +482,7 @@ export default function SettingsScreen() {
               <Ionicons name="warning-outline" size={16} color={theme.danger} />
             )}
             {allPermsGranted && (
-              <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
+              <Ionicons name="checkmark-circle" size={16} color="#2D7A3A" />
             )}
           </View>
           <Animated.View
@@ -503,9 +524,9 @@ export default function SettingsScreen() {
               {hasUsageStats === null ? (
                 <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
               ) : hasUsageStats ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+                <Ionicons name="checkmark-circle" size={22} color="#2D7A3A" />
               ) : (
-                <Ionicons name="warning" size={22} color={theme.danger} />
+                <Ionicons name="warning" size={22} color="#2D7A3A" />
               )}
             </TouchableOpacity>
 
@@ -528,9 +549,9 @@ export default function SettingsScreen() {
               {hasOverlay === null ? (
                 <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
               ) : hasOverlay ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+                <Ionicons name="checkmark-circle" size={22} color="#2D7A3A" />
               ) : (
-                <Ionicons name="warning" size={22} color={theme.danger} />
+                <Ionicons name="warning" size={22} color="#2D7A3A" />
               )}
             </TouchableOpacity>
 
@@ -553,9 +574,9 @@ export default function SettingsScreen() {
               {hasExactAlarm === null ? (
                 <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
               ) : hasExactAlarm ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+                <Ionicons name="checkmark-circle" size={22} color="#2D7A3A" />
               ) : (
-                <Ionicons name="warning" size={22} color={theme.danger} />
+                <Ionicons name="warning" size={22} color="#2D7A3A" />
               )}
             </TouchableOpacity>
 
@@ -579,29 +600,19 @@ export default function SettingsScreen() {
               {hasNotifications === null ? (
                 <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
               ) : hasNotifications ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+                <Ionicons name="checkmark-circle" size={22} color="#2D7A3A" />
               ) : (
-                <Ionicons name="warning" size={22} color={theme.danger} />
+                <Ionicons name="warning" size={22} color="#2D7A3A" />
               )}
             </TouchableOpacity>
 
-            {/* Refresh button */}
-            {!allPermsGranted && (
-              <TouchableOpacity
-                style={[styles.refreshPermsBtn, { backgroundColor: theme.accent }]}
-                onPress={checkPermissionStatuses}
-              >
-                <Ionicons name="refresh" size={14} color="#fff" />
-                <Text style={styles.refreshPermsBtnText}>Re-check permissions</Text>
-              </TouchableOpacity>
-            )}
           </View>
         )}
 
         <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(auth)/extension-qr' as never)}>
           <Text style={[styles.menuText, { color: theme.text }]}>Extension</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
+            <Ionicons name="checkmark-circle" size={16} color="#2D7A3A" />
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
           </View>
         </TouchableOpacity>
@@ -725,7 +736,7 @@ export default function SettingsScreen() {
                     {
                       backgroundColor:
                         reminderInputValue === String(preset)
-                          ? theme.accent
+                          ? '#2D7A3A'
                           : theme.surface,
                     },
                   ]}
@@ -828,16 +839,6 @@ const styles = StyleSheet.create({
   permDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
   permTitle: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
   permDesc: { fontSize: 12, fontWeight: '300', lineHeight: 16 },
-  refreshPermsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    margin: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  refreshPermsBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   // Session reminder
   reminderSubtext: { fontSize: 12, fontWeight: '300', marginTop: 2 },
   reminderModalDesc: { fontSize: 14, fontWeight: '300', marginBottom: 16, lineHeight: 20 },

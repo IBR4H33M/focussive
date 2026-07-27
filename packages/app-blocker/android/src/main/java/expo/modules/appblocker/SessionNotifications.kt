@@ -62,6 +62,17 @@ object SessionNotifications {
         )
     }
 
+    private fun formatCountdown(remainingSeconds: Long): String {
+        val hours = remainingSeconds / 3600
+        val minutes = (remainingSeconds % 3600) / 60
+        val seconds = remainingSeconds % 60
+        return if (hours > 0) {
+            String.format("%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format("%02d:%02d", minutes, seconds)
+        }
+    }
+
     /** Build the large, card-like expanded layout with a live countdown. */
     private fun buildExpandedView(
         context: Context,
@@ -74,9 +85,10 @@ object SessionNotifications {
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, title)
 
-        // Chronometer uses elapsedRealtime as its clock base, not wall-clock time.
-        val base = SystemClock.elapsedRealtime() + (targetAtMillis - System.currentTimeMillis())
-        views.setChronometer(R.id.notif_chronometer, base, null, true)
+        // Format countdown without "-" prefix
+        val remainingSeconds = (targetAtMillis - System.currentTimeMillis()) / 1000
+        val formattedTime = formatCountdown(remainingSeconds.coerceAtLeast(0))
+        views.setTextViewText(R.id.notif_chronometer, formattedTime)
 
         if (isActive) {
             views.setTextViewText(R.id.notif_violations, violationsText ?: "No violations")
@@ -117,12 +129,9 @@ object SessionNotifications {
             .setColor(if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
             .setContentIntent(openSessionIntent(context, sessionId, id))
 
-        // Chronometer countdown + custom large expanded view need API 24+ — degrade
-        // gracefully to the plain collapsed template below that.
+        // Custom large expanded view with formatted countdown — high priority to keep expanded
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            builder.setUsesChronometer(true)
-            builder.setChronometerCountDown(true)
-            builder.setPriority(if (isActive) Notification.PRIORITY_HIGH else Notification.PRIORITY_DEFAULT)
+            builder.setPriority(Notification.PRIORITY_HIGH)
             builder.setStyle(Notification.DecoratedCustomViewStyle())
             builder.setCustomBigContentView(buildExpandedView(context, title, targetAtMillis, isActive, violationsText))
         }
