@@ -9,9 +9,9 @@ import {
   exportHistory,
   deleteHistoryEntry,
   deleteAllHistory,
-} from '../controllers/historyController.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+} from '../controllers/historyController';
+import { authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 

@@ -2,7 +2,7 @@
 // Focussive Backend — Session Scheduler
 // ============================================================
 
-import supabase from '../config/supabase.js';
+import supabase from '../config/supabase';
 import { SessionStatus, ScheduleType, Weekday } from '@focussive/shared';
 import { v4 as uuidv4 } from 'uuid';
 

@@ -3,9 +3,9 @@
 // ============================================================
 
 import type { Response } from 'express';
-import supabase from '../config/supabase.js';
-import { AppError } from '../middleware/errorHandler.js';
-import type { AuthRequest } from '../middleware/auth.js';
+import supabase from '../config/supabase';
+import { AppError } from '../middleware/errorHandler';
+import type { AuthRequest } from '../middleware/auth';
 
 // GET /history
 export async function getHistory(req: AuthRequest, res: Response): Promise<void> {

@@ -15,9 +15,9 @@ import {
   getUpcomingSessions,
   startBreak,
   endBreak,
-} from '../controllers/sessionController.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+} from '../controllers/sessionController';
+import { authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 

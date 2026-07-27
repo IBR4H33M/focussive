@@ -3,9 +3,9 @@
 // ============================================================
 
 import { Router } from 'express';
-import { registerDevice, removeDevice } from '../controllers/deviceController.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import { registerDevice, removeDevice } from '../controllers/deviceController';
+import { authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 

@@ -8,9 +8,9 @@ import {
   createWebsiteGroup,
   updateWebsiteGroup,
   deleteWebsiteGroup,
-} from '../controllers/websiteGroupController.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+} from '../controllers/websiteGroupController';
+import { authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 router.use(authMiddleware);

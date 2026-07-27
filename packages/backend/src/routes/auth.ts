@@ -3,9 +3,9 @@
 // ============================================================
 
 import { Router } from 'express';
-import { signup, login, qrGenerate, qrLogin, verify, refreshToken } from '../controllers/authController.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import { signup, login, qrGenerate, qrLogin, verify, refreshToken } from '../controllers/authController';
+import { authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 

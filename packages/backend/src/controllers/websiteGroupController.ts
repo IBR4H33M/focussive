@@ -4,9 +4,9 @@
 
 import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import supabase from '../config/supabase.js';
-import { AppError } from '../middleware/errorHandler.js';
-import type { AuthRequest } from '../middleware/auth.js';
+import supabase from '../config/supabase';
+import { AppError } from '../middleware/errorHandler';
+import type { AuthRequest } from '../middleware/auth';
 
 const DEFAULT_SOCIAL_MEDIA_GROUP = {
   name: 'Social Media',

@@ -9,9 +9,9 @@ import {
   updateAppGroup,
   deleteAppGroup,
   getAvailableApps,
-} from '../controllers/appGroupController.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+} from '../controllers/appGroupController';
+import { authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 

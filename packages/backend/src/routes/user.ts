@@ -8,9 +8,9 @@ import {
   updateProfile,
   updatePassword,
   deleteAccount,
-} from '../controllers/userController.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+} from '../controllers/userController';
+import { authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 

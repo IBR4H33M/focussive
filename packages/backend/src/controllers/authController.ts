@@ -6,9 +6,9 @@ import type { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import supabase from '../config/supabase.js';
-import { AppError } from '../middleware/errorHandler.js';
-import type { AuthRequest } from '../middleware/auth.js';
+import supabase from '../config/supabase';
+import { AppError } from '../middleware/errorHandler';
+import type { AuthRequest } from '../middleware/auth';
 import { isValidEmail, isValidPassword, generateQRCode } from '@focussive/shared';
 
 const SALT_ROUNDS = 12;

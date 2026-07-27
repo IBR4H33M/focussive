@@ -7,9 +7,9 @@ import {
   createViolation,
   getSessionViolations,
   getViolationStats,
-} from '../controllers/violationController.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+} from '../controllers/violationController';
+import { authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 

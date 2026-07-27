@@ -3,14 +3,14 @@
 // ============================================================
 
 import { Router } from 'express';
-import authRoutes from './auth.js';
-import userRoutes from './user.js';
-import appGroupRoutes from './appGroups.js';
-import websiteGroupRoutes from './websiteGroups.js';
-import sessionRoutes from './sessions.js';
-import historyRoutes from './history.js';
-import violationRoutes from './violations.js';
-import deviceRoutes from './devices.js';
+import authRoutes from './auth';
+import userRoutes from './user';
+import appGroupRoutes from './appGroups';
+import websiteGroupRoutes from './websiteGroups';
+import sessionRoutes from './sessions';
+import historyRoutes from './history';
+import violationRoutes from './violations';
+import deviceRoutes from './devices';
 
 const router = Router();
 

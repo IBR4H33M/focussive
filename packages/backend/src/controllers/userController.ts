@@ -4,9 +4,9 @@
 
 import type { Response } from 'express';
 import bcrypt from 'bcrypt';
-import supabase from '../config/supabase.js';
-import { AppError } from '../middleware/errorHandler.js';
-import type { AuthRequest } from '../middleware/auth.js';
+import supabase from '../config/supabase';
+import { AppError } from '../middleware/errorHandler';
+import type { AuthRequest } from '../middleware/auth';
 import { isValidPassword } from '@focussive/shared';
 
 const SALT_ROUNDS = 12;
