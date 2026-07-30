@@ -48,6 +48,20 @@ function getBreakSecondsLeft(breakEndsAt: string | null | undefined): number {
 const TIMER_BREAK_DARK = '#9A5B00';
 const TIMER_BREAK_LIGHT = '#F6C531';
 
+const ACTIVE_DARK_CARD_BG = '#F6C531';
+const ACTIVE_DARK_CARD_TEXT = '#2F3456';
+const ACTIVE_DARK_CARD_MUTED = '#5D6E75';
+const ACTIVE_DARK_CARD_BORDER = '#2F3456';
+const ACTIVE_DARK_CARD_SUBTLE = 'rgba(47, 52, 86, 0.12)';
+const ACTIVE_DARK_CARD_DANGER = '#7A1F1F';
+
+const ACTIVE_LIGHT_CARD_BG = '#F6C531';
+const ACTIVE_LIGHT_CARD_TEXT = '#2E3B22';
+const ACTIVE_LIGHT_CARD_MUTED = '#5A6B48';
+const ACTIVE_LIGHT_CARD_BORDER = '#3D5730';
+const ACTIVE_LIGHT_CARD_SUBTLE = 'rgba(46, 59, 34, 0.12)';
+const ACTIVE_LIGHT_CARD_DANGER = '#8A3800';
+
 export default function SessionCard({ session, isActive }: SessionCardProps) {
   const theme = useTheme();
   const isDark = useIsDark();
@@ -97,19 +111,63 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
 
   const timeRange = formatTimeRange(session.start_time, session.duration);
   const durationLabel = formatDuration(session.duration);
-  const breakColor = isDark ? TIMER_BREAK_LIGHT : TIMER_BREAK_DARK;
-  const timerColor = isActiveSession
-    ? (isOnBreak ? breakColor : (isDark ? theme.accent : theme.accentDark))
+
+  const cardBackgroundColor = isActiveSession
+    ? (isDark ? ACTIVE_DARK_CARD_BG : ACTIVE_LIGHT_CARD_BG)
+    : theme.card;
+
+  const cardBorderColor = isActiveSession
+    ? (isDark ? ACTIVE_DARK_CARD_BORDER : ACTIVE_LIGHT_CARD_BORDER)
+    : 'transparent';
+
+  const primaryTextColor = isActiveSession
+    ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
     : theme.text;
+
+  const secondaryTextColor = isActiveSession
+    ? (isDark ? ACTIVE_DARK_CARD_MUTED : ACTIVE_LIGHT_CARD_MUTED)
+    : theme.textSecondary;
+
+  const breakColor = isActiveSession
+    ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
+    : (isDark ? TIMER_BREAK_LIGHT : TIMER_BREAK_DARK);
+
+  const timerColor = isActiveSession
+    ? (isOnBreak ? breakColor : (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT))
+    : primaryTextColor;
+
+  const badgeBackgroundColor = isActiveSession
+    ? (isDark ? ACTIVE_DARK_CARD_SUBTLE : ACTIVE_LIGHT_CARD_SUBTLE)
+    : theme.surface;
+
+  const badgeForegroundColor = isActiveSession
+    ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
+    : theme.textSecondary;
+
+  const breakRowBorderColor = isActiveSession
+    ? (isDark ? 'rgba(47, 52, 86, 0.24)' : 'rgba(46, 59, 34, 0.24)')
+    : `${isDark ? theme.accent : theme.accentDark}40`;
+
+  const breakRowBackgroundColor = isActiveSession
+    ? (isDark ? 'rgba(47, 52, 86, 0.08)' : 'rgba(46, 59, 34, 0.08)')
+    : `${isDark ? theme.accent : theme.accentDark}10`;
+
+  const breakTextColor = isActiveSession
+    ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
+    : (isDark ? theme.accent : theme.accentDark);
+
+  const violationColor = isActiveSession
+    ? (isDark ? ACTIVE_DARK_CARD_DANGER : ACTIVE_LIGHT_CARD_DANGER)
+    : theme.danger;
 
   return (
     <TouchableOpacity
       style={[
         styles.card,
         {
-          backgroundColor: theme.card,
+          backgroundColor: cardBackgroundColor,
           borderWidth: isActiveSession ? 1.5 : 0,
-          borderColor: isActiveSession ? theme.accent : 'transparent',
+          borderColor: cardBorderColor,
         },
       ]}
       onPress={() => router.push(`/session/${session.id}` as never)}
@@ -117,7 +175,7 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
     >
       {/* Header row */}
       <View style={styles.header}>
-        <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
+        <Text style={[styles.name, { color: primaryTextColor }]} numberOfLines={1}>
           {session.name}
         </Text>
         <View style={styles.headerRight} />
@@ -125,7 +183,7 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
 
       {/* Time row: range left, main countdown right */}
       <View style={styles.timeRow}>
-        <Text style={[styles.timeRange, { color: theme.textSecondary }]}>{timeRange}</Text>
+        <Text style={[styles.timeRange, { color: secondaryTextColor }]}>{timeRange}</Text>
         <Text style={[styles.durationBig, { color: timerColor }]}>
           {isActiveSession ? formatCountdown(remaining) : durationLabel}
         </Text>
@@ -133,9 +191,9 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
 
       {/* Break ongoing row */}
       {isActiveSession && isOnBreak && (
-        <View style={[styles.breakRow, { borderColor: `${isDark ? theme.accent : theme.accentDark}40`, backgroundColor: `${isDark ? theme.accent : theme.accentDark}10` }]}>
-          <Text style={[styles.breakLabel, { color: isDark ? theme.accent : theme.accentDark }]}>Break ongoing</Text>
-          <Text style={[styles.breakCountdown, { color: isDark ? theme.accent : theme.accentDark }]}>
+        <View style={[styles.breakRow, { borderColor: breakRowBorderColor, backgroundColor: breakRowBackgroundColor }]}>
+          <Text style={[styles.breakLabel, { color: breakTextColor }]}>Break ongoing</Text>
+          <Text style={[styles.breakCountdown, { color: breakTextColor }]}>
             {formatCountdown(breakLeft)}
           </Text>
         </View>
@@ -145,21 +203,21 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
       <View style={styles.footer}>
         <View style={styles.badgesRow}>
           {session.mobile_focus && (
-            <View style={[styles.badge, { backgroundColor: theme.surface }]}>
-              <Ionicons name="phone-portrait-outline" size={12} color={theme.textSecondary} />
-              <Text style={[styles.badgeText, { color: theme.textSecondary }]}>Mobile</Text>
+            <View style={[styles.badge, { backgroundColor: badgeBackgroundColor }]}>
+              <Ionicons name="phone-portrait-outline" size={12} color={badgeForegroundColor} />
+              <Text style={[styles.badgeText, { color: badgeForegroundColor }]}>Mobile</Text>
             </View>
           )}
           {session.browser_focus && (
-            <View style={[styles.badge, { backgroundColor: theme.surface }]}>
-              <Ionicons name="globe-outline" size={12} color={theme.textSecondary} />
-              <Text style={[styles.badgeText, { color: theme.textSecondary }]}>Browser</Text>
+            <View style={[styles.badge, { backgroundColor: badgeBackgroundColor }]}>
+              <Ionicons name="globe-outline" size={12} color={badgeForegroundColor} />
+              <Text style={[styles.badgeText, { color: badgeForegroundColor }]}>Browser</Text>
             </View>
           )}
         </View>
         <View style={styles.statsRow}>
           {(isActiveSession) && (session.violations_count ?? 0) > 0 && (
-            <Text style={[styles.stat, { color: theme.danger }]}>
+            <Text style={[styles.stat, { color: violationColor }]}>
               {session.violations_count} violation{session.violations_count !== 1 ? 's' : ''}
             </Text>
           )}

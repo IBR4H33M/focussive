@@ -5,7 +5,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Floating pill ("island") tab bar dimensions
@@ -14,6 +14,7 @@ const ISLAND_SIDE_MARGIN = 32;
 
 export default function TabLayout() {
   const theme = useTheme();
+  const isDark = useIsDark();
   const insets = useSafeAreaInsets();
 
   const ISLAND_BOTTOM_MARGIN = Math.max(insets.bottom, 12) + 6;
@@ -49,8 +50,8 @@ export default function TabLayout() {
           shadowOpacity: 0,
           borderWidth: 0,
         },
-        tabBarActiveTintColor: '#FFFFFF',
-        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.55)',
+        tabBarActiveTintColor: isDark ? '#2F3456' : '#FFFFFF',
+        tabBarInactiveTintColor: isDark ? 'rgba(47, 52, 86, 0.55)' : 'rgba(255, 255, 255, 0.55)',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
@@ -61,7 +62,6 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Sessions',
-          headerTitle: 'Focussive',
           tabBarIcon: ({ color }) => (
             <Ionicons name="disc-outline" size={20} color={color} />
           ),

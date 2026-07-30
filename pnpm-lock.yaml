@@ -148,6 +148,9 @@ importers:
       '@focussive/app-blocker':
         specifier: workspace:*
         version: link:../app-blocker
+      '@focussive/installed-apps':
+        specifier: workspace:*
+        version: link:../installed-apps
       '@focussive/shared':
         specifier: workspace:*
         version: link:../shared

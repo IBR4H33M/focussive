@@ -12,7 +12,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "prepare": "tsc --build --force"
   },
   "devDependencies": {
     "typescript": "^5.8.0"

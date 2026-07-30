@@ -14,7 +14,7 @@ import {
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { useSessions } from '@/context/SessionContext';
 import SessionCard from '@/components/SessionCard';
 import { sessionApi } from '@/utils/api';
@@ -23,21 +23,26 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const isDark = useIsDark();
   const router = useRouter();
-  const { activeSessions, allSessions, isLoading, refreshSessions } = useSessions();
+  const { activeSessions, upcomingSessions, allSessions, isLoading, refreshSessions } = useSessions();
 
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [cancellingSession, setCancellingSession] = useState<Session | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
   const activeIds = new Set(activeSessions.map((s) => s.id));
+  const nextUpcomingSession = upcomingSessions.find((session) => !activeIds.has(session.id)) ?? null;
+  const nextUpcomingId = nextUpcomingSession?.id ?? null;
 
   // Paused sessions should also appear in the active area (with resume button)
   const pausedSessions = allSessions.filter((s) => s.status === 'paused');
   const pausedIds = new Set(pausedSessions.map((s) => s.id));
 
-  // All scheduled sessions that aren't active or paused
-  const scheduledSessions = allSessions.filter((s) => !activeIds.has(s.id) && !pausedIds.has(s.id));
+  // Remaining sessions after active and the single next upcoming session
+  const scheduledSessions = allSessions.filter(
+    (s) => !activeIds.has(s.id) && !pausedIds.has(s.id) && s.id !== nextUpcomingId,
+  );
 
   function handleCancel(sessionId: string) {
     const session = [...activeSessions, ...pausedSessions].find((s) => s.id === sessionId);
@@ -92,6 +97,17 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Next upcoming session */}
+        {nextUpcomingSession && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>UPCOMING</Text>
+            <SessionCard
+              key={nextUpcomingSession.id}
+              session={nextUpcomingSession as Session & { violations_count?: number; pause_count?: number }}
+            />
+          </View>
+        )}
+
         {/* Scheduled Sessions */}
         {scheduledSessions.length > 0 && (
           <View style={styles.section}>
@@ -116,10 +132,10 @@ export default function HomeScreen() {
 
       {/* FAB - Create Session */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: theme.accentDark }]}
+        style={[styles.fab, { backgroundColor: isDark ? '#F8DE8C' : theme.accentDark }]}
         onPress={() => router.push('/session/create' as never)}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Text style={[styles.fabText, { color: isDark ? '#2E3B22' : '#FFFFFF' }]}>+</Text>
       </TouchableOpacity>
 
       {/* Cancel Confirmation Modal */}

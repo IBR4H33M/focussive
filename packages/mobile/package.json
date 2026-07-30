@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@focussive/app-blocker": "workspace:*",
+    "@focussive/installed-apps": "workspace:*",
     "@focussive/shared": "workspace:*",
     "@react-native-async-storage/async-storage": "latest",
     "@react-native-community/datetimepicker": "latest",
