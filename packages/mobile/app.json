@@ -64,7 +64,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiUrl": "https://focussive.onrender.com",
+      "apiUrl": "https://focussive-backend-cd9ac796ce02.herokuapp.com",
       "router": {},
       "eas": {
         "projectId": "c71a2169-5cb4-452a-b07c-61809b84ac9c"
