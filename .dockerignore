@@ -1,0 +1,28 @@
+# Node modules (reinstalled in Docker)
+**/node_modules/
+
+# Built output (rebuilt in Docker)
+**/dist/
+
+# Mobile & extension packages (not needed for backend)
+packages/mobile/
+packages/extension/
+packages/app-blocker/
+
+# Local env files — secrets go in via fly secrets
+**/.env
+**/.env.local
+**/.env.*
+
+# Dev tooling
+.vscode/
+.idea/
+*.log
+*.tsbuildinfo
+
+# Git
+.git/
+.gitignore
+
+# Android native build
+packages/app-blocker/android/

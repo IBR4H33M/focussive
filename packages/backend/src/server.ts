@@ -46,11 +46,13 @@ app.use(router);
 
 app.use(errorHandler);
 
-const port = Number(process.env.PORT) || 4000;
+const port = Number(process.env.PORT) || 8080;
 
-app.listen(port, () => {
-  if (process.env.NODE_ENV !== "production") {
+app.listen(port, '0.0.0.0', () => {
+  if (process.env.NODE_ENV !== 'production') {
     console.log(`Focussive API running on ${port}`);
+  } else {
+    console.log(`Focussive API started on port ${port}`);
   }
   
   // Start the background session scheduler

@@ -1,0 +1,31 @@
+# ============================================================
+# Focussive Backend — Fly.io configuration
+# ============================================================
+
+app = "focussive-backend"
+primary_region = "sin"          # Singapore — closest to your Supabase (ap-southeast-1)
+
+[build]
+  # Build context is the repo root so Docker can access packages/shared/
+  dockerfile = "packages/backend/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https   = true
+  auto_stop_machines  = "off"   # keep always-on (free tier allows this)
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type       = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
