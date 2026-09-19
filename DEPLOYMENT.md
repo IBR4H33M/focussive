@@ -1,222 +1,336 @@
-# Deployment Guide — Render Backend
+# Focussive — Build & Deployment Guide
 
-## Overview
-The Focussive backend is deployed on [Render.com](https://render.com) at `https://focussive.onrender.com`. This document covers the deployment setup, issues encountered, and fixes applied.
+A unified guide covering mobile app builds (local & cloud), backend deployment (Heroku, Fly.io, Render), database configuration, and Chrome extension setup for the **Focussive** monorepo.
 
-## Architecture
-- **Backend:** Node.js + Express (packages/backend)
-- **Shared Library:** TypeScript utilities used by backend, mobile, and extension (packages/shared)
-- **Database:** Supabase PostgreSQL (via `SUPABASE_SECRET_KEY`)
-- **Module System:** CommonJS (both backend and shared)
+---
 
-## Deployment Configuration
+## 📑 Table of Contents
+1. [Quick Reference Cheatsheet](#-quick-reference-cheatsheet)
+2. [Mobile App Builds (Android)](#-mobile-app-builds-android)
+   - [Local Builds](#local-builds-fast--free)
+   - [Cloud Builds with EAS](#cloud-builds-with-eas-no-android-sdk-required)
+   - [Local vs Cloud Comparison](#local-vs-cloud-builds-comparison)
+   - [Native Modules & Expo Go Warning](#-important-native-modules--expo-go)
+3. [Backend Deployment](#-backend-deployment)
+   - [Heroku (Active Production)](#1-heroku-active-production)
+   - [Fly.io (Docker Containerized)](#2-flyio-containerized-deployment)
+   - [Render (Alternative Option)](#3-rendercom-alternative-deployment)
+   - [Environment Variables](#backend-environment-variables)
+4. [Database Configuration & Migrations](#-database-configuration--migrations)
+5. [Browser Extension Build](#-browser-extension-build)
+6. [Client API Configuration](#-client-api-configuration)
+7. [Troubleshooting & Gotchas](#-troubleshooting--gotchas)
 
-### Render Service Settings
-**Build Command:**
+---
+
+## ⚡ Quick Reference Cheatsheet
+
+### Workspace Root Commands
 ```bash
-pnpm install && pnpm -F @focussive/shared build && pnpm -F @focussive/backend build
+# Install dependencies across all packages
+pnpm install
+
+# Typecheck the whole monorepo
+pnpm typecheck
+
+# Run backend locally
+pnpm dev:backend
+
+# Start Expo Metro bundler
+pnpm dev:mobile
+
+# Build shared TypeScript package
+pnpm build:shared
+
+# Local Android builds
+pnpm build:mobile              # Debug APK (runs on connected device/emulator)
+pnpm build:mobile:release      # Release APK (optimized standalone APK)
+
+# Cloud Android builds (EAS)
+pnpm build:mobile:dev          # Development client APK
+pnpm build:mobile:preview      # Internal preview APK
+pnpm build:mobile:prod         # Production AAB for Google Play Store
+pnpm build:mobile:prod-apk     # Standalone production APK
 ```
 
-**Start Command:**
+---
+
+## 📱 Mobile App Builds (Android)
+
+Focussive Mobile is built with **Expo SDK 56**, **React Native 0.85**, and custom local native modules (`@focussive/app-blocker` and `@focussive/installed-apps`).
+
+### Local Builds (Fast & Free)
+
+**Prerequisites:**
+- Android Studio & Android SDK (platform tools, build tools, NDK)
+- Java JDK 17+
+- Connected Android device with USB debugging enabled OR Android Emulator
+
+#### 1. Debug APK (Development & Testing)
+From workspace root:
 ```bash
-pnpm -F @focussive/backend start
+pnpm build:mobile
+# Or: pnpm -F @focussive/mobile android
+# Or: cd packages/mobile && pnpm android
+```
+- **Output:** `packages/mobile/android/app/build/outputs/apk/debug/app-debug.apk`
+- Starts the Metro bundler and automatically installs the debug APK onto your connected device.
+
+#### 2. Release APK (Optimized, Standalone)
+From workspace root:
+```bash
+pnpm build:mobile:release
+# Or: pnpm -F @focussive/mobile android:release
+# Or: cd packages/mobile && npx expo run:android --variant release
+```
+- **Output:** `packages/mobile/android/app/build/outputs/apk/release/app-release.apk`
+- Bundles JS bytecode into the APK so it runs fully standalone without any Metro bundler connection.
+
+#### 3. Play Store Bundle (AAB)
+```bash
+cd packages/mobile/android
+./gradlew bundleRelease        # On Windows: .\gradlew bundleRelease
+cd ../../..
+```
+- **Output:** `packages/mobile/android/app/build/outputs/bundle/release/app-release.aab`
+
+#### 4. Installing APK directly via ADB
+```bash
+# Install Debug APK
+adb install -r packages/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+
+# Install Release APK
+adb install -r packages/mobile/android/app/build/outputs/apk/release/app-release.apk
 ```
 
-**Environment Variables** (set in Render dashboard):
-- `SUPABASE_URL` — Supabase project URL
-- `SUPABASE_SECRET_KEY` — Service role key (from Supabase → Settings → API)
-- `JWT_SECRET` — Secret for signing JWTs
-- `JWT_REFRESH_SECRET` — Secret for refresh tokens
-- `CORS_ORIGINS` — Leave empty (mobile/extension are auto-allowed)
-- `NODE_ENV` — `production`
+---
 
-### Key Configuration Files
+### Cloud Builds with EAS (No Android SDK Required)
 
-**`render.yaml`** (root)
-```yaml
-buildCommand: pnpm install && pnpm -F @focussive/shared build && pnpm -F @focussive/backend build
-startCommand: pnpm -F @focussive/backend start
+Expo Application Services (EAS) builds your APK or AAB in the cloud on Expo servers.
+
+**Prerequisites:**
+```bash
+# Install EAS CLI globally (one-time)
+npm install -g eas-cli
+
+# Login to your Expo account
+eas login
 ```
-*(Note: Render ignores this file if the service was created via dashboard UI. Settings must be entered manually in Render's web interface.)*
 
-**`packages/shared/tsconfig.json`**
+#### Build Profiles (configured in `packages/mobile/eas.json`):
+
+| Target | Root Script | Direct EAS Command | Output | Purpose |
+|--------|-------------|--------------------|--------|---------|
+| **Dev Client** | `pnpm build:mobile:dev` | `eas build --platform android --profile development` | APK | Dev client with native code embedded |
+| **Preview** | `pnpm build:mobile:preview` | `eas build --platform android --profile preview` | APK | Test APK to share with testers |
+| **Production AAB** | `pnpm build:mobile:prod` | `eas build --platform android --profile production` | AAB | Submitting to Google Play Store |
+| **Production APK** | `pnpm build:mobile:prod-apk` | `eas build --platform android --profile production-apk` | APK | Standalone production APK without Play Store |
+
+---
+
+### Local vs Cloud Builds Comparison
+
+| Feature | Local Build (`pnpm build:mobile`) | Cloud Build (`eas build`) |
+|---------|-----------------------------------|---------------------------|
+| **Speed** | ⚡ Fast (1-3 minutes) | ⏳ ~8-12 minutes queue & build |
+| **Cost** | 🆓 100% Free & Unlimited | 🆓 30 free builds/month on Expo free tier |
+| **Offline** | ✅ Works completely offline | ❌ Requires internet connection |
+| **Tooling** | Requires Android SDK & JDK 17 | Zero SDK tools required on your machine |
+| **Best For** | Daily coding, rapid iteration | Sharing with testers, CI/CD, release builds |
+
+---
+
+### ⚠️ IMPORTANT: Native Modules & Expo Go
+
+> [!WARNING]
+> **Focussive CANNOT be run inside standard Expo Go.**
+
+Focussive contains custom native Android code:
+1. **`@focussive/installed-apps`**: Native package manager queries (`QUERY_ALL_PACKAGES`) to fetch installed applications and app icons.
+2. **`@focussive/app-blocker`**:
+   - Background foreground service (`AppBlockerService`) with `PACKAGE_USAGE_STATS` to detect when blocked apps are launched.
+   - Blocking screen overlay activity (`BlockOverlayActivity`) with `SYSTEM_ALERT_WINDOW`.
+   - Native locked notifications with live chronometer countdowns (`SessionNotifications`):
+     - **Reminder Notification**: Background `#7C8CA6`, locked (`FLAG_NO_CLEAR` & `FLAG_ONGOING_EVENT`), dark red countdown timer (`#8B1E1E`).
+     - **Running Session Notification**: Background `#1E2235`, locked (`FLAG_NO_CLEAR` & `FLAG_ONGOING_EVENT`), light red countdown timer (`#F87171`).
+
+**Always build a native development build (`pnpm build:mobile` or `pnpm build:mobile:dev`) when testing.**
+
+---
+
+## 🌐 Backend Deployment
+
+The Focussive backend is built with **Node.js 22**, **Express**, and **TypeScript**, using **CommonJS** modules. It depends on `@focussive/shared` across the monorepo workspace.
+
+### 1. Heroku (Active Production)
+The production backend is currently deployed on Heroku:
+**Live URL:** `https://focussive-backend-cd9ac796ce02.herokuapp.com`
+
+#### How Heroku Deployment Works:
+1. **`Procfile`** at root declares the web dyno command:
+   ```procfile
+   web: node packages/backend/dist/server.js
+   ```
+2. **`package.json`** defines automated build hooks:
+   - `"heroku-prebuild": "npm install -g pnpm"` — Installs `pnpm` in the Heroku build environment.
+   - `"heroku-postbuild": "pnpm install && pnpm -F @focussive/shared build && pnpm -F @focussive/backend build"` — Compiles the monorepo shared package and backend.
+   - `"start": "node packages/backend/dist/server.js"` — Default startup command.
+
+#### Heroku Deployment Commands:
+```bash
+# Push master to Heroku remote
+git push heroku master
+
+# View live Heroku logs
+heroku logs --tail --app focussive-backend-cd9ac796ce02
+
+# Restart Heroku dynos
+heroku restart --app focussive-backend-cd9ac796ce02
+```
+
+---
+
+### 2. Fly.io (Containerized Deployment)
+Fly.io provides containerized deployment in the Singapore region (`sin`), close to Supabase `ap-southeast-1`.
+
+- **Configuration:** `fly.toml`
+- **Dockerfile:** `packages/backend/Dockerfile` (monorepo multi-stage build caching workspace layers)
+
+#### Fly.io Deployment Commands:
+```bash
+# Deploy to Fly.io
+fly deploy
+
+# Set secrets
+fly secrets set SUPABASE_URL="..." SUPABASE_SECRET_KEY="..." JWT_SECRET="..." JWT_REFRESH_SECRET="..."
+
+# View Fly.io logs
+fly logs
+```
+
+---
+
+### 3. Render.com (Alternative Deployment)
+The backend can also be hosted on Render (`https://focussive.onrender.com`):
+- **Build Command:**
+  ```bash
+  pnpm install && pnpm -F @focussive/shared build && pnpm -F @focussive/backend build
+  ```
+- **Start Command:**
+  ```bash
+  node packages/backend/dist/server.js
+  ```
+- **Cold Starts:** Render's free tier spins down after 15 minutes of inactivity; first response after idle takes ~30 seconds.
+
+---
+
+### Backend Environment Variables
+
+Set these environment variables in your hosting provider (Heroku / Fly.io / Render) or `.env` for local development:
+
+| Variable | Description | Example / Notes |
+|----------|-------------|-----------------|
+| `SUPABASE_URL` | Supabase Project URL | `https://xxxx.supabase.co` |
+| `SUPABASE_SECRET_KEY` | Supabase Service Role Secret Key | Secret service key (bypasses RLS) |
+| `JWT_SECRET` | Secret key used to sign access tokens | High-entropy random string |
+| `JWT_REFRESH_SECRET`| Secret key used to sign refresh tokens | High-entropy random string |
+| `PORT` | HTTP port for Express server | `8080` (Fly/Heroku auto-assigns `PORT`) |
+| `NODE_ENV` | Runtime environment | `production` |
+| `CORS_ORIGINS` | Comma-separated allowed origins | Leave blank to allow mobile & extensions |
+
+---
+
+## 🗄️ Database Configuration & Migrations
+
+The backend uses **Supabase PostgreSQL**.
+
+### 1. Base Schema
+Execute `packages/backend/src/db/schema.sql` in the Supabase SQL Editor to establish:
+- `users` — User authentication & preferences
+- `sessions` — Focus sessions with recurrence and timing
+- `violations` — Recorded app and website access violations
+- `app_groups` & `website_groups` — Blocklists and schedules
+
+### 2. Required Migrations
+If migrating an existing database, ensure the following columns and tables exist:
+- **Session History Counts:**
+  ```sql
+  ALTER TABLE session_history ADD COLUMN IF NOT EXISTS app_violations_count INTEGER DEFAULT 0;
+  ALTER TABLE session_history ADD COLUMN IF NOT EXISTS web_violations_count INTEGER DEFAULT 0;
+  ```
+- **Breaks Tracking:**
+  ```sql
+  ALTER TABLE sessions ADD COLUMN IF NOT EXISTS allow_breaks BOOLEAN DEFAULT false;
+  ALTER TABLE sessions ADD COLUMN IF NOT EXISTS max_break_time INTEGER DEFAULT 5;
+  ALTER TABLE sessions ADD COLUMN IF NOT EXISTS remaining_break_time INTEGER DEFAULT 300;
+  ALTER TABLE sessions ADD COLUMN IF NOT EXISTS is_on_break BOOLEAN DEFAULT false;
+  ALTER TABLE sessions ADD COLUMN IF NOT EXISTS break_ends_at TIMESTAMPTZ;
+  ```
+
+---
+
+## 🧩 Browser Extension Build
+
+The Chrome extension tracks website visits, blocks distraction URLs during active sessions, and syncs via QR code login.
+
+### Building Extension
+From workspace root:
+```bash
+pnpm build:extension
+# Or: cd packages/extension && pnpm build
+```
+- **Output:** `packages/extension/dist`
+
+### Installing in Chrome
+1. Open Google Chrome and navigate to `chrome://extensions`.
+2. Toggle on **Developer mode** in the top-right corner.
+3. Click **Load unpacked**.
+4. Select the directory: `packages/extension/dist`.
+5. The Focussive extension icon will appear in your Chrome toolbar.
+
+---
+
+## 🔌 Client API Configuration
+
+Make sure mobile and extension clients point to the active backend endpoint:
+
+### Mobile Client (`packages/mobile/app.json`)
 ```json
 {
-  "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "outDir": "./dist",
-    "rootDir": "./src"
+  "expo": {
+    "extra": {
+      "apiUrl": "https://focussive-backend-cd9ac796ce02.herokuapp.com"
+    }
   }
 }
 ```
 
-**`packages/backend/tsconfig.json`**
-```json
-{
-  "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "declaration": false
-  }
-}
+### Chrome Extension (`packages/extension/src/utils/api.ts`)
+```typescript
+const API_URL = 'https://focussive-backend-cd9ac796ce02.herokuapp.com';
 ```
 
-**`packages/backend/package.json`** — NO `"type": "module"` (CommonJS, not ES modules)
-
-## Issues Encountered & Fixes
-
-### 1. Missing Exports in `@focussive/shared`
-**Problem:** Backend, mobile, and extension were importing functions (`isValidEmail`, `formatCountdown`, `getRemainingSeconds`, etc.) that never existed in the shared package source. This worked locally because stale cached `dist/` builds masked the gap.
-
-**Root Cause:** Pre-existing authoring gaps in the shared package — incomplete implementation.
-
-**Fix:** Implemented all missing functions and types in `packages/shared/src/utils.ts` and `packages/shared/src/types.ts`:
-- `isValidEmail()` — email format validation
-- `isValidPassword()` — password strength check
-- `generateQRCode()` — random 32-char alphanumeric
-- `isSessionOverlap()` — session collision detection
-- `formatCountdown()` — convert seconds to "MM:SS" or "H:MM:SS"
-- `getRemainingSeconds()` — seconds until active session ends
-- `formatTime()` — format "HH:mm" as "2:30 PM"
-- `formatDate()` — format ISO timestamp as "Jul 27, 2026"
-- `isBlockedWebsite()` — check if URL matches blocked domains
-- `DayOfWeek` type — union of weekday strings
-- `ViolationAction.MARK_NECESSARY` — enum value for "mark as necessary" action
-
-**Lesson:** Fresh builds (like Render's) expose what local caching hides. Test with `rm -rf dist && tsc` to simulate.
-
 ---
 
-### 2. TypeScript Emitting No Output
-**Problem:** Build succeeded but `dist/server.js` didn't exist, causing `node dist/server.js` to fail.
+## 🛠️ Troubleshooting & Gotchas
 
-**Root Cause:** Backend's `tsconfig.json` had `"noEmit": true`, which tells TypeScript to type-check only and skip JavaScript emission.
+### 1. "InstalledApps module is null" or App Blocker not working
+- **Cause:** Running the app in standard Expo Go, or native dependencies weren't compiled.
+- **Fix:** Build a local native APK (`pnpm build:mobile`) or EAS dev build (`pnpm build:mobile:dev`). Do not use Expo Go.
 
-**Fix:** Removed `"noEmit": true` from `packages/backend/tsconfig.json`.
+### 2. Notification design/locking changes not appearing on device
+- **Cause:** Changes to native Android drawables (`notification_bg.xml`, `notification_reminder_bg.xml`), layout XMLs, or `SessionNotifications.kt` live in native Java/Kotlin and cannot be reloaded with JS Fast Refresh.
+- **Fix:** Run a full native rebuild and reinstall: `pnpm build:mobile`.
 
-**Lesson:** `noEmit: true` is for type-checking-only passes (like CI lint jobs), not production builds.
+### 3. Monorepo Build Error: `Cannot find module '@focussive/shared'`
+- **Cause:** The shared package TypeScript source wasn't compiled before the backend or client build.
+- **Fix:** Run `pnpm build:shared` (or `pnpm -F @focussive/shared build`).
 
----
+### 4. CommonJS vs ES Modules Runtime Errors
+- **Cause:** Node.js CommonJS incompatibility (`ERR_UNSUPPORTED_DIR_IMPORT`, `import.meta`).
+- **Fix:** Both `@focussive/backend` and `@focussive/shared` use `"module": "CommonJS"` with `"moduleResolution": "node"`. Do not add `"type": "module"` to `packages/backend/package.json` or `packages/shared/package.json`.
 
-### 3. ES Modules Incompatibility with Node.js
-**Problem:** Runtime error `ERR_UNSUPPORTED_DIR_IMPORT: Directory import ... is not supported resolving ES modules`. Then `ERR_MODULE_NOT_FOUND` when shared was ES modules but backend was CommonJS.
-
-**Root Cause:** Backend was configured for ES modules (`"type": "module"` in package.json, `"module": "ESNext"` in tsconfig). ES modules require:
-1. Explicit `.js` extensions on all relative imports
-2. No directory imports (must be `./routes/index.js`, not `./routes`)
-3. Support for `import.meta.url` syntax
-
-Node.js CommonJS has none of these requirements and doesn't support `import.meta`.
-
-**Fix:** 
-- Changed both packages to CommonJS:
-  - Removed `"type": "module"` from `package.json` files
-  - Changed `"module": "CommonJS"` and `"moduleResolution": "node"` in `tsconfig.json` files
-  - Removed all `.js` extensions from relative imports
-  - Replaced `import.meta.url` with CommonJS's built-in `__dirname` global
-
-**Files Changed:**
-- `packages/backend/tsconfig.json` — module/moduleResolution
-- `packages/backend/package.json` — removed `"type": "module"`
-- `packages/backend/src/server.ts` — removed `import.meta.url` usage
-- `packages/backend/src/test-db.ts` — removed `import.meta.url` usage
-- `packages/backend/src/test-db-connection.ts` — removed `import.meta.url` usage
-- All `packages/backend/src/**/*.ts` — removed `.js` extensions from imports
-- `packages/shared/tsconfig.json` — module/moduleResolution
-- `packages/shared/package.json` — removed `"type": "module"`
-
-**Lesson:** Node.js backends should use CommonJS unless you have a specific reason for ES modules (e.g., top-level await, native ESM-only packages). CommonJS is simpler, more compatible, and the default.
-
----
-
-### 4. CORS Wildcard Bug
-**Problem:** Chrome extension sends requests with no `Origin` header, but backend's CORS config treated `chrome-extension://*` as a literal string (not a wildcard pattern).
-
-**Root Cause:** The `cors` npm package does exact string matching, not wildcard glob matching.
-
-**Fix:** Implemented custom CORS logic in `packages/backend/src/server.ts`:
-```javascript
-cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // No Origin = OK (mobile, curl, etc.)
-    if (origin.startsWith("chrome-extension://")) return callback(null, true); // Any extension ID
-    if (origins.length === 0 || origins.includes(origin)) return callback(null, true);
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true
-})
-```
-
-**Lesson:** Don't rely on CORS package wildcards for dynamic patterns. Implement custom logic when needed.
-
----
-
-## Updating App Clients
-
-### Mobile
-The `apiUrl` in `packages/mobile/app.json` is already set to `https://focussive.onrender.com`. Rebuild to apply:
-```bash
-cd packages/mobile
-npx expo run:android --device
-```
-
-### Browser Extension
-The `API_URL` in `packages/extension/src/utils/api.ts` is already set to `https://focussive.onrender.com`. Reload from `chrome://extensions`.
-
----
-
-## Database Schema
-
-The backend requires the schema defined in `packages/backend/src/db/schema.sql`. Ensure this has been run in your Supabase project. Key tables:
-- `users` — accounts
-- `sessions` — focus sessions
-- `violations` — app/website access violations
-- `session_history` — completed session records (must include `app_violations_count` and `web_violations_count` columns added via migration)
-
----
-
-## Monitoring & Debugging
-
-**Render Logs:** View real-time logs in Render's dashboard → your service → Logs.
-
-**Health Check:** 
-```bash
-curl https://focussive.onrender.com/sessions
-```
-(Will fail with 401 Unauthorized if not authenticated — that's expected. If it times out or 502s, the backend is down.)
-
-**Cold Starts:** Render's free tier spins down after 15 minutes of inactivity. First request after idle takes ~30 seconds. Use Fly.io if this is unacceptable.
-
----
-
-## Future Deployments
-
-When pushing changes:
-1. All fixes to `packages/shared/**/*.ts` require a rebuild of both shared and backend.
-2. Changes to `packages/backend/src/**/*.ts` only require rebuilding backend (shared is unchanged).
-3. Render will auto-redeploy if GitHub is connected; otherwise trigger manually.
-4. Test locally with `rm -rf packages/shared/dist packages/backend/dist && pnpm -F @focussive/shared build && pnpm -F @focussive/backend build`.
-
----
-
-## Troubleshooting
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Cannot find module '@focussive/shared'` | Shared wasn't built | `pnpm -F @focussive/shared build` before building backend |
-| `ERR_MODULE_NOT_FOUND: ... imported from ... (ES modules)` | Mixed module systems | Ensure both packages use CommonJS (`"module": "CommonJS"` in tsconfig) |
-| `node dist/server.js` not found | TypeScript didn't emit | Remove `"noEmit": true` from tsconfig |
-| `Cannot find module ... .js` (CommonJS) | `.js` extensions in imports | Remove `.js` from relative imports in CommonJS |
-| `import.meta.url is not defined` | ES module syntax in CommonJS | Use `__dirname` global or `process.cwd()` instead |
-| `CORS error from extension` | Wildcard pattern not matching | Implement custom CORS logic, not string matching |
-
----
-
-## References
-- Render Docs: https://render.com/docs
-- Supabase API: https://supabase.com/docs/reference/javascript
-- Node.js CommonJS vs ESM: https://nodejs.org/api/esm.html
-
+### 5. CORS Errors with Browser Extension
+- **Cause:** Extension requests do not send an origin header or send `chrome-extension://<id>`.
+- **Fix:** Custom CORS middleware in `packages/backend/src/server.ts` allows any `chrome-extension://` origin automatically.
