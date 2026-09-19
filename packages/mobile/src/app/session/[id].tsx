@@ -95,11 +95,15 @@ export default function SessionDetailScreen() {
       setSession(data);
     } catch {
       Alert.alert('Error', 'Session not found');
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, router]);
 
   useEffect(() => {
     fetchSession();
@@ -145,7 +149,11 @@ export default function SessionDetailScreen() {
             try {
               await sessionApi.delete(session.id);
               await refreshSessions();
-              router.back();
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)');
+              }
             } catch (error) {
               Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete session');
             }
@@ -169,7 +177,11 @@ export default function SessionDetailScreen() {
             try {
               await sessionApi.cancel(session.id);
               await refreshSessions();
-              router.back();
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)');
+              }
             } catch (error) {
               Alert.alert('Error', error instanceof Error ? error.message : 'Failed to cancel session');
             }

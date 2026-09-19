@@ -32,11 +32,15 @@ export default function HistoryDetailScreen() {
       setEntry(data);
     } catch {
       Alert.alert('Error', 'History entry not found');
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, router]);
 
   useEffect(() => {
     fetchEntry();

@@ -289,7 +289,11 @@ export default function CreateSessionScreen() {
         max_break_minutes: allowBreaks ? (parseInt(maxBreakMinutes) || 10) : undefined,
       });
       await refreshSessions();
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (error) {
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to create session');
     } finally {

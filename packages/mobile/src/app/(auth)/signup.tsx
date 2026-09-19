@@ -136,7 +136,13 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(auth)/login');
+            }
+          }}>
             <Text style={[styles.footerText, { color: theme.textSecondary }]}>
               Already have an account?{' '}
               <Text style={{ color: theme.accent, fontWeight: '600' }}>Log In</Text>
