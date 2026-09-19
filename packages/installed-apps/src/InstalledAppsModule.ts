@@ -6,8 +6,20 @@ export type InstalledAppInfo = {
   icon: string; // Base64 data URI, e.g. "data:image/png;base64,..."
 };
 
+export type AppUsageInfo = {
+  id: string;
+  name: string;
+  totalTimeMillis: number;
+  icon?: string;
+};
+
 type InstalledAppsModuleType = {
   getApps(): Promise<InstalledAppInfo[]>;
+  getWeeklyUsageStats?(): Promise<AppUsageInfo[]>;
+  getForegroundApp?(): Promise<any>;
+  hasUsageStatsPermission?(): Promise<boolean>;
+  requestUsageStatsPermission?(): Promise<void>;
+  killApp?(packageName: string): Promise<boolean>;
 };
 
 // The native module only exists after a full APK rebuild.

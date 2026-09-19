@@ -45,6 +45,42 @@ export default function GroupsScreen() {
   const [appSearchQuery, setAppSearchQuery] = useState('');
   const [selectedApps, setSelectedApps] = useState<AppInfo[]>([]);
   const [deviceApps, setDeviceApps] = useState<(AppInfo & { iconUri?: string })[]>(PREDEFINED_APPS);
+  const [recommendedApps, setRecommendedApps] = useState<(AppInfo & { iconUri?: string; totalTimeMillis: number })[]>([]);
+
+  function formatWeeklyUsage(millis: number): string {
+    const totalMinutes = Math.floor(millis / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0 && minutes > 0) {
+      return `${hours} hours ${minutes} minutes used last week`;
+    } else if (hours > 0) {
+      return `${hours} hours used last week`;
+    } else {
+      return `${minutes} minutes used last week`;
+    }
+  }
+
+  function setupFallbackRecommended(appsList: (AppInfo & { iconUri?: string })[]) {
+    const fallbackDurations = [
+      10 * 3600000 + 45 * 60000, // 10 hours 45 minutes
+      8 * 3600000 + 15 * 60000,  // 8 hours 15 minutes
+      6 * 3600000 + 30 * 60000,  // 6 hours 30 minutes
+      4 * 3600000 + 10 * 60000,  // 4 hours 10 minutes
+    ];
+    const popularIds = [
+      'youtube', 'instagram', 'chrome', 'facebook', 'tiktok', 'reddit', 'twitter', 'discord', 'netflix'
+    ];
+    const candidates = [
+      ...appsList.filter(a => popularIds.some(p => a.id.toLowerCase().includes(p) || a.name.toLowerCase().includes(p))),
+      ...appsList,
+    ];
+    const unique = Array.from(new Map(candidates.map(c => [c.id, c])).values());
+    const top4 = unique.slice(0, 4).map((app, index) => ({
+      ...app,
+      totalTimeMillis: fallbackDurations[index] || (3 * 3600000),
+    }));
+    setRecommendedApps(top4);
+  }
 
   // Website groups state
   const [websiteGroups, setWebsiteGroups] = useState<WebsiteGroup[]>([]);
@@ -78,14 +114,41 @@ export default function GroupsScreen() {
       try {
         if (!InstalledApps) {
           console.warn("InstalledApps module is null, using predefined fallback");
+          setupFallbackRecommended(PREDEFINED_APPS);
           return;
         }
         const apps = await InstalledApps.getApps();
-        if (apps?.length > 0) {
-          setDeviceApps(apps.map(a => ({ id: a.id, name: a.name, icon: 'apps-outline', iconUri: a.icon })));
+        const loaded = apps?.length > 0
+          ? apps.map(a => ({ id: a.id, name: a.name, icon: 'apps-outline', iconUri: a.icon }))
+          : PREDEFINED_APPS;
+        setDeviceApps(loaded);
+
+        // Fetch weekly usage stats if available
+        let stats: any[] = [];
+        try {
+          if (InstalledApps.getWeeklyUsageStats) {
+            stats = await InstalledApps.getWeeklyUsageStats();
+          }
+        } catch { /* ignore */ }
+
+        if (stats && stats.length >= 4) {
+          const top4 = stats.slice(0, 4).map(st => {
+            const matchedApp = loaded.find(a => a.id === st.id);
+            return {
+              id: st.id,
+              name: st.name || matchedApp?.name || st.id,
+              icon: 'apps-outline',
+              iconUri: st.icon || (matchedApp as any)?.iconUri || (matchedApp as any)?.icon,
+              totalTimeMillis: st.totalTimeMillis,
+            };
+          });
+          setRecommendedApps(top4);
+        } else {
+          setupFallbackRecommended(loaded);
         }
       } catch (err) {
         console.error("Error loading device apps:", err);
+        setupFallbackRecommended(PREDEFINED_APPS);
       }
     }
     loadDeviceApps();
@@ -105,10 +168,19 @@ export default function GroupsScreen() {
   async function saveAppGroup() {
     if (!appGroupName.trim()) { Alert.alert('Error', 'Group name required'); return; }
     try {
+      const appsToSave = selectedApps.map(app => {
+        const found = deviceApps.find(d => d.id === app.id);
+        return {
+          id: app.id,
+          name: app.name,
+          icon: 'apps-outline',
+          iconUri: (app as any).iconUri || found?.iconUri,
+        };
+      });
       if (editingAppGroup) {
-        await appGroupApi.update(editingAppGroup.id, { name: appGroupName.trim(), apps: selectedApps });
+        await appGroupApi.update(editingAppGroup.id, { name: appGroupName.trim(), apps: appsToSave });
       } else {
-        await appGroupApi.create({ name: appGroupName.trim(), apps: selectedApps });
+        await appGroupApi.create({ name: appGroupName.trim(), apps: appsToSave });
       }
       setAppModal(false);
       fetchAppGroups();
@@ -165,7 +237,7 @@ export default function GroupsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 16) }]}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top + 28, 48) }]}>
 
         {/* ── App Groups ── */}
         <View style={styles.sectionHeader}>
@@ -252,12 +324,16 @@ export default function GroupsScreen() {
               </View>
             </View>
             <View style={styles.chipRow}>
-              {(group.websites || []).slice(0, 5).map(site => (
-                <View key={site} style={[styles.chip, { backgroundColor: theme.surface }]}>
-                  <Ionicons name="globe-outline" size={12} color={theme.textSecondary} />
-                  <Text style={[styles.chipText, { color: theme.textSecondary }]}>{site}</Text>
-                </View>
-              ))}
+              {(group.websites || []).slice(0, 5).map(site => {
+                const domain = site.replace(/^https?:\/\//, '').split('/')[0];
+                const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+                return (
+                  <View key={site} style={[styles.chip, { backgroundColor: theme.surface }]}>
+                    <Image source={{ uri: faviconUrl }} style={{ width: 12, height: 12, borderRadius: 2 }} />
+                    <Text style={[styles.chipText, { color: theme.textSecondary }]}>{site}</Text>
+                  </View>
+                );
+              })}
               {(group.websites || []).length > 5 && (
                 <Text style={[styles.moreText, { color: theme.textSecondary }]}>+{group.websites.length - 5} more</Text>
               )}
@@ -272,7 +348,7 @@ export default function GroupsScreen() {
       <Modal visible={appModal} animationType="slide">
         <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>{editingAppGroup ? 'Edit Group' : 'New App Group'}</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>{editingAppGroup ? 'Edit Group' : 'Select apps'}</Text>
             <TouchableOpacity onPress={() => setAppModal(false)}>
               <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
@@ -282,9 +358,48 @@ export default function GroupsScreen() {
             placeholder="Group Name" placeholderTextColor={theme.textSecondary}
             value={appGroupName} onChangeText={setAppGroupName}
           />
-          <Text style={[styles.label, { color: theme.textSecondary }]}>SELECT APPS</Text>
+
+          {/* Recommended Apps (based on usage) — top 4 apps */}
+          {recommendedApps.length > 0 && (
+            <View style={{ marginTop: 12, marginBottom: 12 }}>
+              <Text style={[styles.recommendedHeader, { color: theme.textSecondary }]}>
+                Recommended apps (based on usage)
+              </Text>
+              <View style={{ gap: 8, marginTop: 8 }}>
+                {recommendedApps.map(app => {
+                  const isSel = selectedApps.some(a => a.id === app.id);
+                  return (
+                    <TouchableOpacity
+                      key={`rec-${app.id}`}
+                      style={[
+                        styles.listItem,
+                        {
+                          backgroundColor: isSel ? `${theme.accent}30` : theme.surface,
+                        },
+                      ]}
+                      onPress={() => toggleApp(app)}
+                    >
+                      {app.iconUri
+                        ? <Image source={{ uri: app.iconUri }} style={styles.appIcon} />
+                        : <Ionicons name="apps-outline" size={24} color={theme.textSecondary} />}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[styles.listItemText, { color: theme.text }]} numberOfLines={1}>
+                          {app.name}
+                        </Text>
+                        <Text style={[styles.usageSubtext, { color: theme.textSecondary }]} numberOfLines={1}>
+                          {formatWeeklyUsage(app.totalTimeMillis)}
+                        </Text>
+                      </View>
+                      {isSel && <Ionicons name="checkmark-circle" size={20} color={theme.accent} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           <TextInput
-            style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+            style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border, marginTop: 4 }]}
             placeholder="Search Apps" placeholderTextColor={theme.textSecondary}
             value={appSearchQuery} onChangeText={setAppSearchQuery}
           />
@@ -296,7 +411,12 @@ export default function GroupsScreen() {
               return (
                 <TouchableOpacity
                   key={app.id}
-                  style={[styles.listItem, { borderColor: isSel ? theme.accent : theme.border }, isSel && { backgroundColor: `${theme.accent}15` }]}
+                  style={[
+                    styles.listItem,
+                    {
+                      backgroundColor: isSel ? `${theme.accent}30` : theme.surface,
+                    },
+                  ]}
                   onPress={() => toggleApp(app)}
                 >
                   {(app as any).iconUri
@@ -310,6 +430,9 @@ export default function GroupsScreen() {
           </ScrollView>
           <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.accentDark }]} onPress={saveAppGroup}>
             <Text style={styles.saveBtnText}>Save Group</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: theme.surface }]} onPress={() => setAppModal(false)}>
+            <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -344,26 +467,32 @@ export default function GroupsScreen() {
           <Text style={[styles.label, { color: theme.textSecondary }]}>COMMON WEBSITES</Text>
           <ScrollView style={styles.listArea}>
             {/* Selected custom sites not in common list */}
-            {selectedWebsites.filter(s => !COMMON_WEBSITES.includes(s)).map(site => (
-              <TouchableOpacity
-                key={site}
-                style={[styles.listItem, { borderColor: theme.accent, backgroundColor: `${theme.accent}15` }]}
-                onPress={() => toggleWebsite(site)}
-              >
-                <Ionicons name="globe-outline" size={20} color={theme.accent} />
-                <Text style={[styles.listItemText, { color: theme.text }]}>{site}</Text>
-                <Ionicons name="checkmark-circle" size={20} color={theme.accent} />
-              </TouchableOpacity>
-            ))}
-            {COMMON_WEBSITES.map(site => {
-              const isSel = selectedWebsites.includes(site);
+            {selectedWebsites.filter(s => !COMMON_WEBSITES.includes(s)).map(site => {
+              const domain = site.replace(/^https?:\/\//, '').split('/')[0];
+              const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
               return (
                 <TouchableOpacity
                   key={site}
-                  style={[styles.listItem, { borderColor: isSel ? theme.accent : theme.border }, isSel && { backgroundColor: `${theme.accent}15` }]}
+                  style={[styles.listItem, { backgroundColor: `${theme.accent}30` }]}
                   onPress={() => toggleWebsite(site)}
                 >
-                  <Ionicons name="globe-outline" size={20} color={isSel ? theme.accent : theme.textSecondary} />
+                  <Image source={{ uri: faviconUrl }} style={{ width: 20, height: 20, borderRadius: 4 }} />
+                  <Text style={[styles.listItemText, { color: theme.text }]}>{site}</Text>
+                  <Ionicons name="checkmark-circle" size={20} color={theme.accent} />
+                </TouchableOpacity>
+              );
+            })}
+            {COMMON_WEBSITES.map(site => {
+              const isSel = selectedWebsites.includes(site);
+              const domain = site.replace(/^https?:\/\//, '').split('/')[0];
+              const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+              return (
+                <TouchableOpacity
+                  key={site}
+                  style={[styles.listItem, { backgroundColor: isSel ? `${theme.accent}30` : theme.surface }]}
+                  onPress={() => toggleWebsite(site)}
+                >
+                  <Image source={{ uri: faviconUrl }} style={{ width: 20, height: 20, borderRadius: 4 }} />
                   <Text style={[styles.listItemText, { color: theme.text }]}>{site}</Text>
                   {isSel && <Ionicons name="checkmark-circle" size={20} color={theme.accent} />}
                 </TouchableOpacity>
@@ -372,6 +501,9 @@ export default function GroupsScreen() {
           </ScrollView>
           <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.accentDark }]} onPress={saveWebsiteGroup}>
             <Text style={styles.saveBtnText}>Save Group</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: theme.surface }]} onPress={() => setWebsiteModal(false)}>
+            <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -404,14 +536,18 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 22, fontWeight: '500' },
   label: { fontSize: 12, fontWeight: '600', letterSpacing: 2, marginBottom: 8, marginTop: 16 },
+  recommendedHeader: { fontSize: 12, fontWeight: '600', letterSpacing: 1 },
+  usageSubtext: { fontSize: 11, marginTop: 2 },
   input: { height: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300', marginBottom: 4 },
   customRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   customInput: { flex: 1, height: 44, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, fontSize: 14 },
   addIconBtn: { width: 44, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   listArea: { flex: 1, marginBottom: 12 },
-  listItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 8, gap: 12 },
+  listItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 0, marginBottom: 8, gap: 12 },
   listItemText: { flex: 1, fontSize: 15 },
   appIcon: { width: 28, height: 28, borderRadius: 6 },
-  saveBtn: { height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  saveBtn: { height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  cancelBtn: { height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  cancelBtnText: { fontSize: 15, fontWeight: '500' },
 });

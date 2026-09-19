@@ -40,7 +40,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="34sp"
-            android:textColor="#8BA794"
+            android:textColor="#F87171"
             android:fontFamily="sans-serif-light"
             android:gravity="end" />
     </LinearLayout>

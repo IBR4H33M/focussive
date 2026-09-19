@@ -13,6 +13,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import { sessionApi, appGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
 import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, formatDuration, formatTime, formatCountdown, getRemainingSeconds } from '@focussive/shared';
 import type { Session, AppGroup } from '@focussive/shared';
+import InstalledApps from '@focussive/installed-apps';
 
 const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.MONDAY, label: 'Mon' },
@@ -88,6 +90,8 @@ export default function SessionDetailScreen() {
   const [editBrowserFocus, setEditBrowserFocus] = useState(false);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [editWebsites, setEditWebsites] = useState<string[]>([]);
+  const [appIconMap, setAppIconMap] = useState<Record<string, string>>({});
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -108,7 +112,24 @@ export default function SessionDetailScreen() {
   useEffect(() => {
     fetchSession();
     appGroupApi.getAll().then(r => setAppGroups(r.data as AppGroup[])).catch(() => {});
+    if (InstalledApps?.getApps) {
+      InstalledApps.getApps().then(apps => {
+        const map: Record<string, string> = {};
+        for (const app of apps) {
+          const icon = app.icon || (app as any).iconUri;
+          if (app.id && icon) {
+            map[app.id] = icon;
+          }
+        }
+        setAppIconMap(map);
+      }).catch(() => {});
+    }
   }, [fetchSession]);
+
+  function getFaviconUrl(website: string) {
+    const domain = website.replace(/^https?:\/\//, '').split('/')[0];
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+  }
 
   // Header configuration
   useEffect(() => {
@@ -497,52 +518,123 @@ export default function SessionDetailScreen() {
             </View>
           )}
 
-          <Text style={[styles.label, { color: theme.textSecondary }]}>FOCUS MODE</Text>
-
-          <TouchableOpacity style={[styles.toggleRow, { borderColor: editMobileFocus ? theme.accent : theme.border }]} onPress={() => setEditMobileFocus(!editMobileFocus)}>
-            <View style={styles.toggleLabelRow}>
-              <Ionicons name="phone-portrait-outline" size={18} color={editMobileFocus ? theme.accent : theme.textSecondary} />
-              <Text style={[styles.toggleLabel, { color: theme.text }]}>Mobile Focus</Text>
-            </View>
-            <View style={[styles.toggle, editMobileFocus && { backgroundColor: theme.accent }]}>
-              <View style={[styles.toggleDot, editMobileFocus && styles.toggleDotActive]} />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.toggleRow, { borderColor: editBrowserFocus ? theme.accent : theme.border }]} onPress={() => setEditBrowserFocus(!editBrowserFocus)}>
-            <View style={styles.toggleLabelRow}>
-              <Ionicons name="globe-outline" size={18} color={editBrowserFocus ? theme.accent : theme.textSecondary} />
-              <Text style={[styles.toggleLabel, { color: theme.text }]}>Browser Focus</Text>
-            </View>
-            <View style={[styles.toggle, editBrowserFocus && { backgroundColor: theme.accent }]}>
-              <View style={[styles.toggleDot, editBrowserFocus && styles.toggleDotActive]} />
-            </View>
-          </TouchableOpacity>
-
-          {editMobileFocus && appGroups.map(group => (
+          {/* Mobile Focus Container */}
+          <View style={[styles.focusContainer, { backgroundColor: theme.surface }]}>
             <TouchableOpacity
-              key={group.id}
-              style={[styles.groupItem, { borderColor: editGroupId === group.id ? theme.accent : theme.border }, editGroupId === group.id && { backgroundColor: `${theme.accent}20` }]}
-              onPress={() => setEditGroupId(editGroupId === group.id ? null : group.id)}
+              style={styles.toggleRow}
+              activeOpacity={0.7}
+              onPress={() => setEditMobileFocus(!editMobileFocus)}
             >
-              <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
-              <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.apps?.length || 0} apps</Text>
+              <View style={styles.toggleLabelRow}>
+                <Ionicons name="phone-portrait-outline" size={20} color={editMobileFocus ? theme.accent : theme.textSecondary} />
+                <Text style={[styles.toggleLabel, { color: theme.text }]}>Mobile Focus</Text>
+              </View>
+              <View style={[styles.toggle, editMobileFocus && { backgroundColor: theme.accent }]}>
+                <View style={[styles.toggleDot, editMobileFocus && styles.toggleDotActive]} />
+              </View>
             </TouchableOpacity>
-          ))}
 
-          {editBrowserFocus && (
-            <View style={styles.websiteGrid}>
-              {PREDEFINED_BLOCKED_WEBSITES.map(site => (
-                <TouchableOpacity
-                  key={site}
-                  style={[styles.websiteChip, { borderColor: editWebsites.includes(site) ? theme.accent : theme.border }, editWebsites.includes(site) && { backgroundColor: `${theme.accent}20` }]}
-                  onPress={() => toggleWebsite(site)}
-                >
-                  <Text style={[styles.websiteText, { color: editWebsites.includes(site) ? theme.accent : theme.textSecondary }]}>{site}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+            {editMobileFocus && (
+              <View style={styles.focusContent}>
+                <Text style={[styles.subLabel, { color: theme.textSecondary }]}>App Groups to Block</Text>
+                {appGroups.length === 0 ? (
+                  <Text style={{ fontSize: 13, color: theme.textSecondary, marginVertical: 6 }}>
+                    No app groups available
+                  </Text>
+                ) : (
+                  appGroups.map(group => {
+                    const isSelected = editGroupId === group.id;
+                    const isExpanded = expandedGroupId === group.id;
+                    return (
+                      <View key={group.id}>
+                        <View
+                          style={[
+                            styles.groupItem,
+                            { backgroundColor: isSelected ? `${theme.accent}20` : theme.background },
+                          ]}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                            <TouchableOpacity 
+                              onPress={() => setExpandedGroupId(isExpanded ? null : group.id)}
+                              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 }}
+                            >
+                              <Text style={[styles.groupItemCount, { color: theme.textSecondary }]}>{group.apps?.length || 0} apps</Text>
+                              <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setEditGroupId(isSelected ? null : group.id)}>
+                              <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={isSelected ? theme.accent : theme.textSecondary} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                        {isExpanded && group.apps && group.apps.length > 0 && (
+                          <View style={[styles.appListContainer, { backgroundColor: theme.background }]}>
+                            {group.apps.map((app, index) => {
+                              const icon = (app as any).iconUri || appIconMap[app.id];
+                              return (
+                                <View key={app.id || index} style={[styles.appListItem, index < group.apps.length - 1 && { borderBottomWidth: 1, borderBottomColor: `${theme.border}30` }]}>
+                                  {icon ? (
+                                    <Image source={{ uri: icon }} style={styles.appItemIcon} />
+                                  ) : (
+                                    <Ionicons name="apps-outline" size={18} color={theme.textSecondary} />
+                                  )}
+                                  <Text style={[styles.appListText, { color: theme.text }]}>{app.name}</Text>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Browser Focus Container */}
+          <View style={[styles.focusContainer, { backgroundColor: theme.surface }]}>
+            <TouchableOpacity
+              style={styles.toggleRow}
+              activeOpacity={0.7}
+              onPress={() => setEditBrowserFocus(!editBrowserFocus)}
+            >
+              <View style={styles.toggleLabelRow}>
+                <Ionicons name="globe-outline" size={20} color={editBrowserFocus ? theme.accent : theme.textSecondary} />
+                <Text style={[styles.toggleLabel, { color: theme.text }]}>Browser Focus</Text>
+              </View>
+              <View style={[styles.toggle, editBrowserFocus && { backgroundColor: theme.accent }]}>
+                <View style={[styles.toggleDot, editBrowserFocus && styles.toggleDotActive]} />
+              </View>
+            </TouchableOpacity>
+
+            {editBrowserFocus && (
+              <View style={styles.focusContent}>
+                <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Blocked Websites</Text>
+                <View style={styles.websiteGrid}>
+                  {PREDEFINED_BLOCKED_WEBSITES.map(site => {
+                    const isSel = editWebsites.includes(site);
+                    const faviconUrl = getFaviconUrl(site);
+                    return (
+                      <TouchableOpacity
+                        key={site}
+                        style={[
+                          styles.websiteChip,
+                          { backgroundColor: isSel ? `${theme.accent}30` : theme.background },
+                        ]}
+                        onPress={() => toggleWebsite(site)}
+                      >
+                        <Image source={{ uri: faviconUrl }} style={{ width: 16, height: 16, borderRadius: 3 }} />
+                        <Text style={[styles.websiteText, { color: isSel ? theme.accent : theme.text }]}>{site}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </View>
 
           <TouchableOpacity
             style={[styles.saveBtn, { backgroundColor: theme.accentDark }, saving && { opacity: 0.6 }]}
@@ -609,18 +701,25 @@ const styles = StyleSheet.create({
   daysRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
   dayBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
   dayBtnText: { fontSize: 12, fontWeight: '400' },
-  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderWidth: 1, borderRadius: 10, marginTop: 8 },
+  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, paddingHorizontal: 2, borderWidth: 0 },
   toggleLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  toggleLabel: { fontSize: 15 },
+  toggleLabel: { fontSize: 15, fontWeight: '500' },
   toggle: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#ccc', justifyContent: 'center', paddingHorizontal: 2 },
   toggleDot: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
   toggleDotActive: { alignSelf: 'flex-end' },
-  groupItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderWidth: 1, borderRadius: 10, marginTop: 8 },
+  groupItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 10, marginTop: 8, borderWidth: 0 },
   groupItemText: { fontSize: 15 },
   groupItemCount: { fontSize: 13 },
-  websiteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  websiteChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  websiteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  websiteChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 0 },
   websiteText: { fontSize: 13 },
+  subLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginBottom: 8, marginTop: 12 },
+  focusContainer: { marginTop: 14, borderRadius: 14, padding: 14, overflow: 'hidden' },
+  focusContent: { marginTop: 12, paddingTop: 4 },
+  appListContainer: { marginTop: 6, marginBottom: 8, borderRadius: 10, overflow: 'hidden', paddingHorizontal: 6, borderWidth: 0 },
+  appListItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 10 },
+  appListText: { fontSize: 14, flex: 1 },
+  appItemIcon: { width: 22, height: 22, borderRadius: 5 },
   saveBtn: { height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 32 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   actionButtonsContainer: { flexDirection: 'row', marginTop: 24, gap: 12 },

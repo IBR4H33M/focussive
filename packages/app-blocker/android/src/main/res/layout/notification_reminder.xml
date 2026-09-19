@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@drawable/notification_bg"
+    android:background="@drawable/notification_reminder_bg"
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
     android:paddingTop="12dp"
@@ -33,14 +33,14 @@
             android:text="Starts in"
             android:textSize="12sp"
             android:letterSpacing="0.03"
-            android:textColor="#BAC6B8" />
+            android:textColor="#FFFFFF" />
 
         <Chronometer
             android:id="@+id/notif_chronometer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="34sp"
-            android:textColor="#BAC6B8"
+            android:textColor="#8B1E1E"
             android:fontFamily="sans-serif-light"
             android:gravity="end" />
     </LinearLayout>

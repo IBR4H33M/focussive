@@ -94,7 +94,8 @@ class AppBlockerModule : Module() {
      * @param allowBreaks       Whether the current session allows breaks.
      * @param remainingBreakSec Remaining break seconds (passed to overlay).
      */
-    Function("startMonitoring") { blockedPackages: List<String>, allowBreaks: Boolean?, remainingBreakSec: Int? ->
+    Function("startMonitoring") { blockedPackages: List<String>, allowBreaks: Boolean?, remainingBreakSec: Int?,
+                                  sessionId: String?, sessionName: String?, endAtMillis: Double? ->
       val context = appContext.reactContext ?: return@Function null
 
       registerReceivers(context)
@@ -103,6 +104,9 @@ class AppBlockerModule : Module() {
         putStringArrayListExtra("BLOCKED_PACKAGES", ArrayList(blockedPackages))
         putExtra("ALLOW_BREAKS", allowBreaks ?: false)
         putExtra("REMAINING_BREAK_SECONDS", remainingBreakSec ?: 0)
+        if (sessionId != null) putExtra("SESSION_ID", sessionId)
+        if (sessionName != null) putExtra("SESSION_NAME", sessionName)
+        if (endAtMillis != null) putExtra("END_AT_MILLIS", endAtMillis.toLong())
       }
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         context.startForegroundService(intent)
@@ -115,8 +119,10 @@ class AppBlockerModule : Module() {
     Function("stopMonitoring") {
       val context = appContext.reactContext ?: return@Function null
       unregisterReceivers(context)
-      val intent = Intent(context, AppBlockerService::class.java)
-      context.stopService(intent)
+      val intent = Intent(context, AppBlockerService::class.java).apply {
+        action = "STOP"
+      }
+      context.startService(intent)
       return@Function null
     }
 

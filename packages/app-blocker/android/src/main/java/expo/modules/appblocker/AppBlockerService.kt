@@ -16,6 +16,11 @@ import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class AppBlockerService : Service() {
+    companion object {
+        @Volatile
+        var instance: AppBlockerService? = null
+    }
+
     private var blockedPackages: List<String> = emptyList()
     /** package → allow-until timestamp in ms */
     private val temporarilyAllowed = mutableMapOf<String, Long>()
@@ -31,6 +36,9 @@ class AppBlockerService : Service() {
     // Break / session info passed by JS via startMonitoring
     private var allowBreaks = false
     private var remainingBreakSeconds = 0
+    private var currentSessionId: String? = null
+    private var currentSessionName: String? = null
+    private var currentTargetMillis: Long = 0L
 
     private val monitorRunnable = object : Runnable {
         override fun run() {
@@ -44,8 +52,13 @@ class AppBlockerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        createNotificationChannel()
+        // Remove old legacy notification channel if present
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.deleteNotificationChannel("AppBlockerService")
+        }
         breakEndHandler = Handler(Looper.getMainLooper())
     }
 
@@ -113,6 +126,7 @@ class AppBlockerService : Service() {
                 isMonitoring = false
                 handler.removeCallbacks(monitorRunnable)
                 stopForeground(true)
+                SessionNotifications.cancel(this, SessionNotifications.ACTIVE_NOTIFICATION_ID)
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -128,8 +142,15 @@ class AppBlockerService : Service() {
         allowBreaks = intent?.getBooleanExtra("ALLOW_BREAKS", false) ?: allowBreaks
         remainingBreakSeconds = intent?.getIntExtra("REMAINING_BREAK_SECONDS", 0) ?: remainingBreakSeconds
 
-        val notification = createNotification()
-        startForeground(1, notification)
+        val sId = intent?.getStringExtra("SESSION_ID")
+        if (sId != null) currentSessionId = sId
+        val sName = intent?.getStringExtra("SESSION_NAME")
+        if (sName != null) currentSessionName = sName
+        val endMs = intent?.getLongExtra("END_AT_MILLIS", 0L) ?: 0L
+        if (endMs > 0L) currentTargetMillis = endMs
+
+        val notification = getForegroundNotification()
+        startForeground(SessionNotifications.ACTIVE_NOTIFICATION_ID, notification)
 
         if (!isMonitoring) {
             isMonitoring = true
@@ -140,6 +161,7 @@ class AppBlockerService : Service() {
     }
 
     override fun onDestroy() {
+        instance = null
         isMonitoring = false
         handler.removeCallbacks(monitorRunnable)
         breakEndRunnable?.let { breakEndHandler?.removeCallbacks(it) }
@@ -188,29 +210,28 @@ class AppBlockerService : Service() {
         startActivity(intent)
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "AppBlockerService",
-                "App Blocker Service",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
-        }
-    }
+    private fun getForegroundNotification(): Notification {
+        val cached = SessionNotifications.latestActiveNotification
+        if (cached != null) return cached
 
-    private fun createNotification(): Notification {
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, "AppBlockerService")
+        val sessionName = currentSessionName ?: "Focus Session"
+        val sessionId = currentSessionId ?: ""
+        val targetMillis = if (currentTargetMillis > System.currentTimeMillis()) {
+            currentTargetMillis
         } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this)
+            System.currentTimeMillis() + 25 * 60 * 1000L
         }
-        return builder
-            .setContentTitle("Focussive Active")
-            .setContentText("Monitoring for blocked apps")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .build()
+
+        return SessionNotifications.buildNotification(
+            context = this,
+            id = SessionNotifications.ACTIVE_NOTIFICATION_ID,
+            sessionId = sessionId,
+            title = "Session $sessionName is running",
+            body = "In progress",
+            targetAtMillis = targetMillis,
+            timeoutAtMillis = targetMillis,
+            isActive = true,
+            violationsText = "Monitoring active"
+        )
     }
 }

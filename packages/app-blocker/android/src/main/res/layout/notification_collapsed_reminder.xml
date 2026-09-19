@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:background="@drawable/notification_bg"
+    android:background="@drawable/notification_reminder_bg"
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
     android:paddingTop="6dp"
@@ -26,7 +26,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:textSize="26sp"
-        android:textColor="#F87171"
+        android:textColor="#8B1E1E"
         android:fontFamily="sans-serif-light"
         android:gravity="end" />
 </LinearLayout>

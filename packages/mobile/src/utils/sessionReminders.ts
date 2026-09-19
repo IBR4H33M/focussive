@@ -24,6 +24,7 @@ const NATIVE_NOTIF_IDS_KEY = 'session_native_notification_ids';
 const LATE_FIRED_KEY = 'session_reminder_late_fired';
 const REMINDER_CATEGORY = 'session-reminder';
 const ACTIVE_CATEGORY = 'session-active';
+const ACTIVE_NOTIFICATION_ID = 1001;
 
 type ActiveSessionWithViolations = Session & { violations_count?: number };
 
@@ -180,7 +181,7 @@ async function scheduleAndroidNativeNotifications(
       // Only the nearest occurrence's "running" alarm should be armed —
       // later occurrences would otherwise stomp on the same notification id.
       if (!activeAlarmArmed) {
-        const activeId = hashId(`${session.id}:active`);
+        const activeId = ACTIVE_NOTIFICATION_ID;
         desiredIds.add(activeId);
         nativeScheduleActive(
           activeId,
@@ -206,7 +207,7 @@ async function scheduleAndroidNativeNotifications(
     const formattedEnd = formatClockTime(new Date(endAt), use24Hour);
     const violations = session.violations_count ?? 0;
 
-    const activeId = hashId(`${session.id}:active`);
+    const activeId = ACTIVE_NOTIFICATION_ID;
     desiredIds.add(activeId);
     nativeScheduleActive(
       activeId,

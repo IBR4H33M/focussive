@@ -23,13 +23,18 @@ import android.widget.RemoteViews
  * stays legible over any wallpaper.
  */
 object SessionNotifications {
+    const val ACTIVE_NOTIFICATION_ID = 1001
     private const val CHANNEL_REMINDER = "session-reminder"
     private const val CHANNEL_ACTIVE = "session-active"
-    private val COLOR_REMINDER = Color.parseColor("#BAC6B8")
-    private val COLOR_ACTIVE = Color.parseColor("#8BA794")
+    private val COLOR_REMINDER = Color.parseColor("#8B1E1E") // Dark red for upcoming reminder countdown
+    private val COLOR_ACTIVE = Color.parseColor("#F87171")   // Light red for running session countdown
 
-    /** Dark notification surface — matches the custom layout backgrounds. */
-    private val COLOR_SURFACE = Color.parseColor("#3D4654")
+    /** Notification surface colors matching custom layouts */
+    private val COLOR_SURFACE_ACTIVE = Color.parseColor("#1E2235")
+    private val COLOR_SURFACE_REMINDER = Color.parseColor("#7C8CA6")
+
+    @Volatile
+    var latestActiveNotification: Notification? = null
 
     private fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -94,6 +99,7 @@ object SessionNotifications {
         val layout = if (isActive) R.layout.notification_active else R.layout.notification_reminder
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, title)
+        views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
         bindChronometer(views, targetAtMillis)
 
         if (isActive) {
@@ -103,7 +109,7 @@ object SessionNotifications {
     }
 
     /**
-     * Collapsed row — same deep-blue surface as the expanded view so the
+     * Collapsed row — matches custom surface so the
      * notification looks intentional whether or not the user expands it.
      * Android caps collapsed custom views at ~48dp, so this is a single row.
      */
@@ -113,11 +119,68 @@ object SessionNotifications {
         targetAtMillis: Long,
         isActive: Boolean,
     ): RemoteViews {
-        val views = RemoteViews(context.packageName, R.layout.notification_collapsed)
+        val layout = if (isActive) R.layout.notification_collapsed else R.layout.notification_collapsed_reminder
+        val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, title)
         views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
         bindChronometer(views, targetAtMillis)
         return views
+    }
+
+    /** Build a complete notification instance. */
+    fun buildNotification(
+        context: Context,
+        id: Int,
+        sessionId: String,
+        title: String,
+        body: String,
+        targetAtMillis: Long,
+        timeoutAtMillis: Long,
+        isActive: Boolean,
+        violationsText: String? = null,
+    ): Notification {
+        ensureChannels(context)
+        val channel = if (isActive) CHANNEL_ACTIVE else CHANNEL_REMINDER
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(context, channel)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(context)
+        }
+
+        val surfaceColor = if (isActive) COLOR_SURFACE_ACTIVE else COLOR_SURFACE_REMINDER
+
+        builder
+            .setContentTitle(title)
+            .setContentText(body)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setOnlyAlertOnce(true)
+            .setWhen(targetAtMillis)
+            .setShowWhen(true)
+            .setColor(surfaceColor)
+            .setColorized(true)
+            .setContentIntent(openSessionIntent(context, sessionId, id))
+
+        // Fully custom views (no DecoratedCustomViewStyle) so our custom surface
+        // fills the notification body edge-to-edge instead of sitting in the
+        // system's inset card. Needs API 24+; older devices get the plain template.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            builder.setPriority(Notification.PRIORITY_HIGH)
+            builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive))
+            builder.setCustomBigContentView(buildExpandedView(context, title, targetAtMillis, isActive, violationsText))
+        }
+
+        val timeoutMs = timeoutAtMillis - System.currentTimeMillis()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && timeoutMs > 0) {
+            builder.setTimeoutAfter(timeoutMs)
+        }
+
+        val notification = builder.build()
+        // Lock notification so it cannot be dismissed or cleared (like Spotify) for both running and upcoming reminder
+        notification.flags = notification.flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
+        return notification
     }
 
     /** Post (or silently update) a live notification immediately. */
@@ -132,44 +195,23 @@ object SessionNotifications {
         isActive: Boolean,
         violationsText: String? = null,
     ) {
-        ensureChannels(context)
-        val channel = if (isActive) CHANNEL_ACTIVE else CHANNEL_REMINDER
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(context, channel)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(context)
-        }
+        val targetId = if (isActive) ACTIVE_NOTIFICATION_ID else id
+        val notification = buildNotification(
+            context, targetId, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText
+        )
 
-        builder
-            .setContentTitle(title)
-            .setContentText(body)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .setOnlyAlertOnce(true)
-            .setWhen(targetAtMillis)
-            .setShowWhen(true)
-            .setColor(COLOR_SURFACE)
-            .setColorized(true)
-            .setContentIntent(openSessionIntent(context, sessionId, id))
-
-        // Fully custom views (no DecoratedCustomViewStyle) so our deep-blue surface
-        // fills the notification body edge-to-edge instead of sitting in the
-        // system's inset card. Needs API 24+; older devices get the plain template.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            builder.setPriority(Notification.PRIORITY_HIGH)
-            builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive))
-            builder.setCustomBigContentView(buildExpandedView(context, title, targetAtMillis, isActive, violationsText))
-        }
-
-        val timeoutMs = timeoutAtMillis - System.currentTimeMillis()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && timeoutMs > 0) {
-            builder.setTimeoutAfter(timeoutMs)
+        if (isActive) {
+            latestActiveNotification = notification
+            val service = AppBlockerService.instance
+            if (service != null) {
+                // If service is running, update the foreground service notification directly!
+                service.startForeground(ACTIVE_NOTIFICATION_ID, notification)
+                return
+            }
         }
 
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        manager.notify(id, builder.build())
+        manager.notify(targetId, notification)
     }
 
     /** Schedule a future post via AlarmManager; fires natively even if the app is killed. */
@@ -224,6 +266,9 @@ object SessionNotifications {
         val pendingIntent = alarmPendingIntent(context, id)
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()
+        if (id == ACTIVE_NOTIFICATION_ID) {
+            latestActiveNotification = null
+        }
         val manager = context.getSystemService(NotificationManager::class.java)
         manager?.cancel(id)
     }

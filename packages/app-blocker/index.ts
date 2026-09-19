@@ -11,8 +11,18 @@ export function startMonitoring(
   blockedPackages: string[],
   allowBreaks: boolean = false,
   remainingBreakSec: number = 0,
+  sessionId?: string,
+  sessionName?: string,
+  endAtMillis?: number,
 ) {
-  return AppBlockerModule.startMonitoring(blockedPackages, allowBreaks, remainingBreakSec);
+  return AppBlockerModule.startMonitoring(
+    blockedPackages,
+    allowBreaks,
+    remainingBreakSec,
+    sessionId ?? null,
+    sessionName ?? null,
+    endAtMillis ?? null,
+  );
 }
 
 export function stopMonitoring() {

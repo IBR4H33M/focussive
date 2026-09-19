@@ -8,6 +8,7 @@ import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
 import { isSessionOverlap, SessionStatus, sortByNextOccurrence } from '@focussive/shared';
+import { completeExpiredSessions } from '../services/sessionScheduler';
 
 // POST /sessions/:id/start  — manually start a scheduled session
 export async function startSession(req: AuthRequest, res: Response): Promise<void> {
@@ -52,6 +53,13 @@ export async function startSession(req: AuthRequest, res: Response): Promise<voi
 // GET /sessions
 export async function getSessions(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
+
+  // Auto-complete any expired active sessions first
+  try {
+    await completeExpiredSessions();
+  } catch (err) {
+    console.error('[SessionController] Error completing expired sessions:', err);
+  }
 
   const { data: sessions, error } = await supabase
     .from('sessions')
@@ -525,6 +533,13 @@ export async function endBreak(req: AuthRequest, res: Response): Promise<void> {
 export async function getActiveSessions(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
 
+  // Auto-complete any expired active sessions first
+  try {
+    await completeExpiredSessions();
+  } catch (err) {
+    console.error('[SessionController] Error completing expired sessions:', err);
+  }
+
   const { data: sessions, error } = await supabase
     .from('sessions')
     .select('*')
@@ -593,6 +608,13 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
 // GET /sessions/upcoming
 export async function getUpcomingSessions(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
+
+  // Auto-complete any expired active sessions first
+  try {
+    await completeExpiredSessions();
+  } catch (err) {
+    console.error('[SessionController] Error completing expired sessions:', err);
+  }
 
   const { data: sessions, error } = await supabase
     .from('sessions')

@@ -78,7 +78,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 16) }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 24) + 16 }]}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -110,7 +110,9 @@ export default function HomeScreen() {
         {/* Next upcoming session */}
         {nextUpcomingSession && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>UPCOMING</Text>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              UPCOMING
+            </Text>
             <SessionCard
               key={nextUpcomingSession.id}
               session={nextUpcomingSession as Session & { violations_count?: number; pause_count?: number }}
@@ -118,13 +120,44 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Scheduled Sessions */}
+        {/* Scheduled Later Sessions — inside a clean rounded container with filled surface color, max 2 items, and View All button */}
         {scheduledSessions.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SCHEDULED</Text>
-            {scheduledSessions.map((session) => (
-              <SessionCard key={session.id} session={session as Session & { violations_count?: number; pause_count?: number }} />
-            ))}
+          <View style={[styles.scheduledContainer, { backgroundColor: theme.surface }]}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              SCHEDULED LATER
+            </Text>
+
+            <View style={styles.scheduledList}>
+              {scheduledSessions.slice(0, 2).map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session as Session & { violations_count?: number; pause_count?: number }}
+                />
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.viewAllButton, { backgroundColor: theme.card }]}
+              onPress={() => router.push('/session/all' as never)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.viewAllButtonText, { color: theme.text }]}>View All</Text>
+              <Ionicons name="arrow-forward" size={14} color={theme.accent} style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* View All Sessions shortcut if there are multiple sessions but no remaining scheduled later sessions */}
+        {scheduledSessions.length === 0 && allSessions.length > 1 && (
+          <View style={{ marginBottom: 24 }}>
+            <TouchableOpacity
+              style={[styles.viewAllButton, { backgroundColor: theme.card }]}
+              onPress={() => router.push('/session/all' as never)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.viewAllButtonText, { color: theme.text }]}>View All Sessions</Text>
+              <Ionicons name="arrow-forward" size={14} color={theme.accent} style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -191,6 +224,28 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 24,
+  },
+  scheduledContainer: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 24,
+  },
+  scheduledList: {
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  viewAllButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   sectionTitle: {
     fontSize: 12,

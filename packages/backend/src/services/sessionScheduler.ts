@@ -59,7 +59,7 @@ function shouldSessionBeActive(session: any): boolean {
 /**
  * Activate sessions that should be running now
  */
-async function activateSessions() {
+export async function activateSessions() {
   try {
     // Get all scheduled sessions
     const { data: sessions, error } = await supabase
@@ -102,7 +102,7 @@ async function activateSessions() {
 /**
  * Complete active sessions that have exceeded their duration
  */
-async function completeExpiredSessions() {
+export async function completeExpiredSessions() {
   try {
     const { data: activeSessions, error } = await supabase
       .from('sessions')

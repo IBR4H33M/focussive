@@ -162,6 +162,16 @@ function RootLayoutContent() {
             headerShadowVisible: false,
           }}
         />
+        <Stack.Screen
+          name="session/all"
+          options={{
+            headerShown: true,
+            title: '',
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
+            headerShadowVisible: false,
+          }}
+        />
       </Stack>
     </>
   );

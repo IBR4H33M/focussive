@@ -90,6 +90,56 @@ class InstalledAppsModule : Module() {
       return@AsyncFunction null
     }
 
+    AsyncFunction("getWeeklyUsageStats") {
+      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      
+      if (!hasUsageStatsPermission(context)) {
+        return@AsyncFunction emptyList<Map<String, Any>>()
+      }
+
+      val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+        ?: return@AsyncFunction emptyList<Map<String, Any>>()
+
+      val currentTime = System.currentTimeMillis()
+      val oneWeekAgo = currentTime - 7L * 24 * 60 * 60 * 1000L
+
+      val stats = usageStatsManager.queryUsageStats(
+        UsageStatsManager.INTERVAL_WEEKLY,
+        oneWeekAgo,
+        currentTime
+      ) ?: return@AsyncFunction emptyList<Map<String, Any>>()
+
+      val pm = context.packageManager
+      val usageMap = mutableMapOf<String, Long>()
+      for (us in stats) {
+        if (us.totalTimeInForeground > 0) {
+          usageMap[us.packageName] = (usageMap[us.packageName] ?: 0L) + us.totalTimeInForeground
+        }
+      }
+
+      val sorted = usageMap.entries
+        .filter { it.key != context.packageName && it.value > 60000L }
+        .sortedByDescending { it.value }
+
+      val result = sorted.take(10).mapNotNull { entry ->
+        try {
+          val appInfo = pm.getApplicationInfo(entry.key, 0)
+          val appName = pm.getApplicationLabel(appInfo).toString()
+          val icon = pm.getApplicationIcon(appInfo)
+          mapOf(
+            "id" to entry.key,
+            "name" to appName,
+            "totalTimeMillis" to entry.value,
+            "icon" to drawableToBase64(icon)
+          )
+        } catch (e: Exception) {
+          null
+        }
+      }
+
+      return@AsyncFunction result
+    }
+
     AsyncFunction("hasUsageStatsPermission") {
       val context = appContext.reactContext ?: return@AsyncFunction false
       return@AsyncFunction hasUsageStatsPermission(context)

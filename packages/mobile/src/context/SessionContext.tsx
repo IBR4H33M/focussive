@@ -95,7 +95,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ]);
 
       const allSessions = allRes.data as Session[];
-      const activeSessions = activeRes.data as Session[];
+      const nowMs = Date.now();
+      const activeSessions = (activeRes.data as Session[]).filter((s) => {
+        if (s.started_at) {
+          const startedAtMs = new Date(s.started_at).getTime();
+          const endAtMs = startedAtMs + s.duration * 60_000;
+          if (nowMs >= endAtMs) {
+            return false; // Session time has elapsed
+          }
+        }
+        return true;
+      });
 
       dispatch({
         type: 'SET_SESSIONS',
@@ -191,10 +201,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           : 0;
         const remainingBreakSec = Math.max(0, maxBreakSec - (mobileActiveSession.break_used_seconds ?? 0));
 
+        const startedAtMs = mobileActiveSession.started_at
+          ? new Date(mobileActiveSession.started_at).getTime()
+          : Date.now();
+        const endAtMs = startedAtMs + mobileActiveSession.duration * 60_000;
+
         startMonitoring(
           blockedPackages,
           mobileActiveSession.allow_breaks ?? false,
           remainingBreakSec,
+          mobileActiveSession.id,
+          mobileActiveSession.name,
+          endAtMs,
         );
         runningSessionIdRef.current = desiredId;
 
