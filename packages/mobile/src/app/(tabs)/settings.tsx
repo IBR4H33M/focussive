@@ -32,6 +32,7 @@ import {
 import { useThemeContext, type ThemePreference } from '@/utils/theme';
 import { getReminderMinutes, setReminderMinutes, scheduleSessionReminders } from '@/utils/sessionReminders';
 import { useSessions } from '@/context/SessionContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── TimeFormatToggle ─────────────────────────────────────────────────────────
 function TimeFormatToggle({
@@ -162,6 +163,7 @@ function ThemeModeToggle({
 // ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function SettingsScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const themeCtx = useThemeContext();
   const { user, logout } = useAuth();
   const { allSessions, activeSessions } = useSessions();
@@ -444,7 +446,11 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView ref={scrollViewRef} style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView
+      ref={scrollViewRef}
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={{ paddingTop: Math.max(insets.top, 16) }}
+    >
 
       {/* Profile Section */}
       <View style={styles.section}>
@@ -736,8 +742,9 @@ export default function SettingsScreen() {
           <Text style={[styles.logoutText, { color: theme.danger }]}>Log Out</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={handleDeleteAccount}>
-          <Text style={[styles.deleteText, { color: theme.danger }]}>Delete Account</Text>
+        <TouchableOpacity style={[styles.deleteAccountBtn, { backgroundColor: theme.danger }]} onPress={handleDeleteAccount}>
+          <Ionicons name="trash-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <Text style={styles.deleteAccountText}>Delete Account</Text>
         </TouchableOpacity>
       </View>
       <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
@@ -913,7 +920,15 @@ const styles = StyleSheet.create({
   },
   menuText: { fontSize: 16, fontWeight: '300' },
   logoutText: { fontSize: 16, fontWeight: '500' },
-  deleteText: { fontSize: 14, fontWeight: '300', opacity: 0.7 },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  deleteAccountText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
   version: { textAlign: 'center', fontSize: 12, marginTop: 16, marginBottom: 32 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
   modalContent: { borderRadius: 16, padding: 24 },

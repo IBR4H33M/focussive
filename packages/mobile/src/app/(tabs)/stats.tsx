@@ -21,6 +21,7 @@ import { historyApi } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
 import type { SessionHistory } from '@focussive/shared';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -72,6 +73,7 @@ const SECTIONS = ['Overview', 'History'];
 // ─── Main Component ──────────────────────────────────────────
 export default function StatsScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const indicatorAnim = useRef(new Animated.Value(0)).current;
 
@@ -352,7 +354,7 @@ export default function StatsScreen() {
 
   // ─── Render ──────────────────────────────────────────────
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
 
       {/* Section Tab Bar */}
       <View style={[styles.tabBar, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>

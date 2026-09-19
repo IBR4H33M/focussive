@@ -23,6 +23,7 @@ import { PREDEFINED_APPS } from '@focussive/shared';
 import type { AppGroup, AppInfo, WebsiteGroup } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
 import InstalledApps from '@focussive/installed-apps';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMMON_WEBSITES = [
   'facebook.com', 'instagram.com', 'x.com', 'twitter.com', 'tiktok.com',
@@ -33,6 +34,7 @@ const COMMON_WEBSITES = [
 
 export default function GroupsScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   // App groups state
   const [appGroups, setAppGroups] = useState<AppGroup[]>([]);
@@ -163,7 +165,7 @@ export default function GroupsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 16) }]}>
 
         {/* ── App Groups ── */}
         <View style={styles.sectionHeader}>
@@ -186,11 +188,11 @@ export default function GroupsScreen() {
             <View style={styles.groupHeader}>
               <Text style={[styles.groupName, { color: theme.text }]}>{group.name}</Text>
               <View style={styles.groupActions}>
-                <TouchableOpacity onPress={() => openEditAppGroup(group)} style={styles.actionBtn}>
-                  <Ionicons name="create-outline" size={18} color={theme.textSecondary} />
+                <TouchableOpacity onPress={() => openEditAppGroup(group)} style={[styles.actionBtn, { backgroundColor: theme.surface }]}>
+                  <Ionicons name="create-outline" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => deleteAppGroup(group.id)} style={styles.actionBtn}>
-                  <Ionicons name="trash-outline" size={18} color={theme.danger} />
+                <TouchableOpacity onPress={() => deleteAppGroup(group.id)} style={[styles.actionBtn, { backgroundColor: theme.danger }]}>
+                  <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -241,11 +243,11 @@ export default function GroupsScreen() {
                 )}
               </View>
               <View style={styles.groupActions}>
-                <TouchableOpacity onPress={() => openEditWebsiteGroup(group)} style={styles.actionBtn}>
-                  <Ionicons name="create-outline" size={18} color={theme.textSecondary} />
+                <TouchableOpacity onPress={() => openEditWebsiteGroup(group)} style={[styles.actionBtn, { backgroundColor: theme.surface }]}>
+                  <Ionicons name="create-outline" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => deleteWebsiteGroup(group.id)} style={styles.actionBtn}>
-                  <Ionicons name="trash-outline" size={18} color={theme.danger} />
+                <TouchableOpacity onPress={() => deleteWebsiteGroup(group.id)} style={[styles.actionBtn, { backgroundColor: theme.danger }]}>
+                  <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -388,7 +390,7 @@ const styles = StyleSheet.create({
   groupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   groupName: { fontSize: 16, fontWeight: '500' },
   groupActions: { flexDirection: 'row', gap: 8 },
-  actionBtn: { padding: 4 },
+  actionBtn: { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   chipText: { fontSize: 11 },

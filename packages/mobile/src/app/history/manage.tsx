@@ -106,9 +106,9 @@ export default function ManageHistoryScreen() {
         <TouchableOpacity
           onPress={() => confirmDeleteOne(item)}
           disabled={isDeleting}
-          style={[styles.deleteBtn, { opacity: isDeleting ? 0.4 : 1 }]}
+          style={[styles.deleteBtn, { backgroundColor: theme.danger, opacity: isDeleting ? 0.4 : 1 }]}
         >
-          <Ionicons name="trash-outline" size={18} color={theme.danger} />
+          <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     );
@@ -126,11 +126,11 @@ export default function ManageHistoryScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {history.length > 0 && (
         <TouchableOpacity
-          style={[styles.deleteAllBtn, { backgroundColor: `${theme.danger}15`, borderColor: theme.danger }]}
+          style={[styles.deleteAllBtn, { backgroundColor: theme.danger, borderColor: theme.danger }]}
           onPress={confirmDeleteAll}
         >
-          <Ionicons name="trash-outline" size={16} color={theme.danger} />
-          <Text style={[styles.deleteAllText, { color: theme.danger }]}>
+          <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+          <Text style={[styles.deleteAllText, { color: '#FFFFFF' }]}>
             Delete All History ({history.length})
           </Text>
         </TouchableOpacity>
@@ -143,10 +143,10 @@ export default function ManageHistoryScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="checkmark-circle-outline" size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No history</Text>
+            <Ionicons name="time-outline" size={48} color={theme.border} style={{ marginBottom: 12 }} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No History</Text>
             <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-              All history has been cleared
+              Completed and cancelled sessions will appear here.
             </Text>
           </View>
         }
@@ -167,10 +167,9 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     padding: 14,
     borderRadius: 10,
-    borderWidth: 1,
     justifyContent: 'center',
   },
-  deleteAllText: { fontSize: 14, fontWeight: '500' },
+  deleteAllText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -182,7 +181,7 @@ const styles = StyleSheet.create({
   rowInfo: { flex: 1, marginRight: 12 },
   rowName: { fontSize: 15, fontWeight: '500', marginBottom: 2 },
   rowMeta: { fontSize: 12, fontWeight: '300' },
-  deleteBtn: { padding: 4 },
+  deleteBtn: { padding: 8, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   emptyState: { alignItems: 'center', paddingTop: 80 },
   emptyTitle: { fontSize: 20, fontWeight: '300', marginBottom: 8 },
   emptySubtitle: { fontSize: 14, fontWeight: '300', textAlign: 'center' },

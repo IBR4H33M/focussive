@@ -19,12 +19,15 @@ import { useSessions } from '@/context/SessionContext';
 import SessionCard from '@/components/SessionCard';
 import { sessionApi } from '@/utils/api';
 import type { Session } from '@focussive/shared';
+import { sortByNextOccurrence, getNextSessionOccurrence } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const theme = useTheme();
   const isDark = useIsDark();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { activeSessions, upcomingSessions, allSessions, isLoading, refreshSessions } = useSessions();
 
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
@@ -32,16 +35,23 @@ export default function HomeScreen() {
   const [cancelReason, setCancelReason] = useState('');
 
   const activeIds = new Set(activeSessions.map((s) => s.id));
-  const nextUpcomingSession = upcomingSessions.find((session) => !activeIds.has(session.id)) ?? null;
-  const nextUpcomingId = nextUpcomingSession?.id ?? null;
-
-  // Paused sessions should also appear in the active area (with resume button)
   const pausedSessions = allSessions.filter((s) => s.status === 'paused');
   const pausedIds = new Set(pausedSessions.map((s) => s.id));
 
+  // Candidates for upcoming/scheduled: non-active, non-paused sessions
+  const candidates = (upcomingSessions.length > 0 ? upcomingSessions : allSessions.filter((s) => s.status === 'scheduled'))
+    .filter((s) => !activeIds.has(s.id) && !pausedIds.has(s.id));
+
+  // Sort by true next occurrence relative to now (e.g. 1:45 PM today comes before tomorrow 5:00 AM)
+  const sortedCandidates = sortByNextOccurrence(candidates);
+
+  // Pick the closest upcoming session that hasn't already passed
+  const nextUpcomingSession = sortedCandidates.find((s) => getNextSessionOccurrence(s) !== null) ?? sortedCandidates[0] ?? null;
+  const nextUpcomingId = nextUpcomingSession?.id ?? null;
+
   // Remaining sessions after active and the single next upcoming session
-  const scheduledSessions = allSessions.filter(
-    (s) => !activeIds.has(s.id) && !pausedIds.has(s.id) && s.id !== nextUpcomingId,
+  const scheduledSessions = sortedCandidates.filter(
+    (s) => s.id !== nextUpcomingId,
   );
 
   function handleCancel(sessionId: string) {
@@ -68,7 +78,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 16) }]}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}

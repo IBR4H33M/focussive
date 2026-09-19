@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
-import { isSessionOverlap, SessionStatus } from '@focussive/shared';
+import { isSessionOverlap, SessionStatus, sortByNextOccurrence } from '@focussive/shared';
 
 // POST /sessions/:id/start  — manually start a scheduled session
 export async function startSession(req: AuthRequest, res: Response): Promise<void> {
@@ -605,5 +605,6 @@ export async function getUpcomingSessions(req: AuthRequest, res: Response): Prom
     throw new AppError('Failed to fetch upcoming sessions', 500, 'FETCH_ERROR');
   }
 
-  res.json({ data: sessions || [] });
+  const sorted = sortByNextOccurrence(sessions || []);
+  res.json({ data: sorted });
 }

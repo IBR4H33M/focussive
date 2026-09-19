@@ -175,3 +175,91 @@ export const isBlockedWebsite = (url: string, blockedList: string[]): boolean =>
     return hostname === normalized || hostname.endsWith(`.${normalized}`);
   });
 };
+
+/**
+ * Calculates the next upcoming Date when this session will start, or null if it has no future runs.
+ */
+export const getNextSessionOccurrence = (
+  session: { schedule: string; schedule_days?: string[]; start_time: string },
+  now: Date = new Date()
+): Date | null => {
+  if (!session.start_time) return null;
+  const [hStr, mStr] = session.start_time.split(":");
+  const h = parseInt(hStr ?? "0", 10);
+  const m = parseInt(mStr ?? "0", 10);
+  if (isNaN(h) || isNaN(m)) return null;
+
+  const schedule = session.schedule;
+  const scheduleDays = Array.isArray(session.schedule_days) ? session.schedule_days : [];
+
+  const makeDate = (baseDate: Date): Date => {
+    const d = new Date(baseDate);
+    d.setHours(h, m, 0, 0);
+    return d;
+  };
+
+  if (schedule === "today") {
+    const todayOccurrence = makeDate(now);
+    if (todayOccurrence.getTime() > now.getTime()) {
+      return todayOccurrence;
+    }
+    return null;
+  }
+
+  if (schedule === "recurring") {
+    const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const normalizedDays = scheduleDays.map((d) => d.toLowerCase());
+
+    for (let offset = 0; offset <= 7; offset++) {
+      const candidateDate = new Date(now);
+      candidateDate.setDate(now.getDate() + offset);
+      const dayName = weekdays[candidateDate.getDay()];
+
+      const isScheduledDay = normalizedDays.length === 0 || (dayName ? normalizedDays.includes(dayName) : false);
+
+      if (isScheduledDay) {
+        const occurrence = makeDate(candidateDate);
+        if (occurrence.getTime() > now.getTime()) {
+          return occurrence;
+        }
+      }
+    }
+    return null;
+  }
+
+  if (schedule === "scheduled") {
+    let earliest: Date | null = null;
+    for (const dateStr of scheduleDays) {
+      const [yearStr, monthStr, dayStr] = dateStr.split("-");
+      const y = parseInt(yearStr ?? "0", 10);
+      const mo = parseInt(monthStr ?? "0", 10) - 1;
+      const day = parseInt(dayStr ?? "0", 10);
+      if (isNaN(y) || isNaN(mo) || isNaN(day)) continue;
+
+      const d = new Date(y, mo, day, h, m, 0, 0);
+      if (d.getTime() > now.getTime()) {
+        if (!earliest || d.getTime() < earliest.getTime()) {
+          earliest = d;
+        }
+      }
+    }
+    return earliest;
+  }
+
+  return null;
+};
+
+/**
+ * Sorts sessions by their next upcoming occurrence in ascending order (closest upcoming first).
+ */
+export const sortByNextOccurrence = <T extends { schedule: string; schedule_days?: string[]; start_time: string }>(
+  sessions: T[],
+  now: Date = new Date()
+): T[] => {
+  return [...sessions].sort((a, b) => {
+    const nextA = getNextSessionOccurrence(a, now)?.getTime() ?? Infinity;
+    const nextB = getNextSessionOccurrence(b, now)?.getTime() ?? Infinity;
+    return nextA - nextB;
+  });
+};
+

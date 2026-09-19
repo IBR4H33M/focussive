@@ -113,6 +113,8 @@ export default function SessionDetailScreen() {
   // Header configuration
   useEffect(() => {
     navigation.setOptions({
+      title: '',
+      headerTitle: '',
       headerRight: () => null,
     });
   }, [navigation]);
@@ -324,11 +326,11 @@ export default function SessionDetailScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.deleteBtn, { borderColor: theme.danger }]}
+              style={[styles.deleteBtn, { backgroundColor: theme.danger, borderColor: theme.danger }]}
               onPress={handleDelete}
             >
-              <Ionicons name="trash-outline" size={16} color={theme.danger} />
-              <Text style={[styles.deleteBtnText, { color: theme.danger }]}>Delete</Text>
+              <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+              <Text style={[styles.deleteBtnText, { color: '#FFFFFF' }]}>Delete</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -369,11 +371,11 @@ export default function SessionDetailScreen() {
         {/* Cancel Session button — active sessions only */}
         {isActive && (
           <TouchableOpacity
-            style={[styles.cancelSessionBtn, { borderColor: theme.danger }]}
+            style={[styles.cancelSessionBtn, { backgroundColor: theme.danger, borderColor: theme.danger }]}
             onPress={handleCancelSession}
           >
-            <Ionicons name="stop-circle-outline" size={16} color={theme.danger} />
-            <Text style={[styles.cancelSessionBtnText, { color: theme.danger }]}>Cancel Session</Text>
+            <Ionicons name="stop-circle-outline" size={16} color="#FFFFFF" />
+            <Text style={[styles.cancelSessionBtnText, { color: '#FFFFFF' }]}>Cancel Session</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -414,8 +416,7 @@ export default function SessionDetailScreen() {
       {/* Edit Modal */}
       <Modal visible={editModalVisible} animationType="slide">
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Session</Text>
+          <View style={[styles.modalHeader, { justifyContent: 'flex-end' }]}>
             <TouchableOpacity onPress={() => setEditModalVisible(false)}>
               <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
@@ -625,13 +626,13 @@ const styles = StyleSheet.create({
   actionButtonsContainer: { flexDirection: 'row', marginTop: 24, gap: 12 },
   editBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1, borderRadius: 12 },
   editBtnText: { fontSize: 14, fontWeight: '500' },
-  deleteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1, borderRadius: 12 },
-  deleteBtnText: { fontSize: 14, fontWeight: '500' },
+  deleteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12 },
+  deleteBtnText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
   breakBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 14, borderWidth: 1.5, marginTop: 12 },
   breakBtnText: { fontSize: 15, fontWeight: '600' },
   breakBtnSub: { color: '#8A7A5C', fontSize: 12 },
   breakOngoingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, marginTop: 12, marginBottom: 4 },
   breakOngoingLabel: { fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
-  cancelSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 1.5, marginTop: 16 },
-  cancelSessionBtnText: { fontSize: 14, fontWeight: '500' },
+  cancelSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, marginTop: 16 },
+  cancelSessionBtnText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
 });

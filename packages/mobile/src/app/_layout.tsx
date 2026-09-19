@@ -135,9 +135,10 @@ function RootLayoutContent() {
           name="session/create"
           options={{
             headerShown: true,
-            title: 'New Session',
+            title: '',
             headerStyle: { backgroundColor: theme.background },
             headerTintColor: theme.text,
+            headerShadowVisible: false,
             presentation: 'modal',
           }}
         />
@@ -145,18 +146,20 @@ function RootLayoutContent() {
           name="session/[id]"
           options={{
             headerShown: true,
-            title: 'Session Details',
+            title: '',
             headerStyle: { backgroundColor: theme.background },
             headerTintColor: theme.text,
+            headerShadowVisible: false,
           }}
         />
         <Stack.Screen
           name="history/manage"
           options={{
             headerShown: true,
-            title: 'Manage History',
+            title: '',
             headerStyle: { backgroundColor: theme.background },
             headerTintColor: theme.text,
+            headerShadowVisible: false,
           }}
         />
       </Stack>
