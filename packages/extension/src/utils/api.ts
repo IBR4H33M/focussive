@@ -2,7 +2,7 @@
 // Focussive Extension — API Client (with auto token refresh)
 // ============================================================
 
-const API_URL = 'https://focussive.onrender.com';
+const API_URL = 'https://focussive-backend-cd9ac796ce02.herokuapp.com';
 
 // ─── Token helpers ────────────────────────────────────────────
 async function getToken(): Promise<string | null> {

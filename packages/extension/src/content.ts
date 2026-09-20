@@ -144,7 +144,7 @@ function renderPicker(mode: 'break' | 'allow') {
 
   const title = isBreak ? 'Take a break' : 'WARNING!';
   const subtitle = isBreak
-    ? "Breaks don't count as distracted time"
+    ? "Breaks don't count as<br />distracted time."
     : 'You are getting distracted within a focus session!';
   const titleColor = isBreak ? '#90EE90' : '#FF6B6B';
   const subtitleColor = isBreak ? 'rgba(255,255,255,0.7)' : 'rgba(255,180,180,0.85)';
@@ -170,7 +170,7 @@ function renderPicker(mode: 'break' | 'allow') {
 
       <div style="display:flex; flex-direction:column; gap:10px;">
         <button id="foc-confirm" style="${BTN_BASE} ${confirmStyle}">${confirmLabel}</button>
-        <button id="foc-back" style="background:none; border:none; color:rgba(255,255,255,0.4); font-size:13px; cursor:pointer; padding:10px;">Back</button>
+        <button id="foc-back" style="background:none; border:none; color:rgba(255,255,255,0.4); font-size:13px; cursor:pointer; padding:10px;">&lt; Back</button>
       </div>
     </div>
   `;

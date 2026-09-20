@@ -147,7 +147,7 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
           <button style={s.confirmBreakBtn} onClick={handleStartBreak}>
             Start {breakMinutes} min break
           </button>
-          <button style={s.backBtn} onClick={() => setCardScreen('main')}>Back</button>
+          <button style={s.backBtn} onClick={() => setCardScreen('main')}>&lt; Back</button>
         </div>
       )}
     </div>

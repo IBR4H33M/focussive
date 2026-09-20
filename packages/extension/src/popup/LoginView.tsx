@@ -219,11 +219,11 @@ export default function LoginView({ onSuccess }: LoginViewProps) {
       <div style={styles.divider}>
         {mode === 'email' ? (
           <span style={styles.link} onClick={() => { setMode('qr'); setError(''); }}>
-            Login with QR Code →
+            Login with QR Code &gt;
           </span>
         ) : (
           <span style={styles.link} onClick={() => { setMode('email'); setError(''); }}>
-            ← Login with Email
+            &lt; Login with Email
           </span>
         )}
       </div>
