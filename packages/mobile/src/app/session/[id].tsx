@@ -15,7 +15,8 @@ import {
   Modal,
   Image,
 } from 'react-native';
-import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { sessionApi, appGroupApi } from '@/utils/api';
@@ -92,6 +93,22 @@ export default function SessionDetailScreen() {
   const [editWebsites, setEditWebsites] = useState<string[]>([]);
   const [appIconMap, setAppIconMap] = useState<Record<string, string>>({});
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+  const [use24Hour, setUse24Hour] = useState(true);
+
+  async function loadTimeFormat() {
+    try {
+      const format = await AsyncStorage.getItem('time_format');
+      setUse24Hour(format !== '12');
+    } catch {
+      setUse24Hour(true);
+    }
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTimeFormat();
+    }, [])
+  );
 
   const fetchSession = useCallback(async () => {
     try {
@@ -549,10 +566,13 @@ export default function SessionDetailScreen() {
             placeholderTextColor={theme.textSecondary}
           />
 
-          <Text style={[styles.label, { color: theme.textSecondary }]}>Time durations</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>
+            Time durations{use24Hour ? ' (24 hour format)' : ''}
+          </Text>
           <TimeSlotPicker
             slots={editTimeSlots}
             onChangeSlots={setEditTimeSlots}
+            use24Hour={use24Hour}
             theme={theme}
             maxSlots={5}
           />

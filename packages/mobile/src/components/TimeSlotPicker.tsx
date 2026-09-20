@@ -1,6 +1,7 @@
 // ============================================================
 // Focussive Mobile — TimeSlotPicker Component
 // Free-scrollable Samsung Alarm Clock Style Wheel Picker
+// Supports both 24-hour and 12-hour (with AM/PM toggle) modes
 // ============================================================
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
@@ -35,12 +36,14 @@ interface TimeSlotPickerProps {
 function WheelColumn({
   value,
   count,
+  min = 0,
   onChange,
   theme,
   width = 54,
 }: {
   value: number;
-  count: number; // 24 for hours, 60 for minutes
+  count: number;
+  min?: number;
   onChange: (val: number) => void;
   theme: any;
   width?: number;
@@ -49,30 +52,31 @@ function WheelColumn({
   const isDragging = useRef(false);
 
   // Middle cycle starts at index (1 * count)
-  const initialOffset = (1 * count + value) * ITEM_HEIGHT;
-  const currentCenter = useRef(1 * count + value);
-  const [centerIndex, setCenterIndex] = useState(1 * count + value);
+  const initialIndex = 1 * count + (value - min);
+  const initialOffset = initialIndex * ITEM_HEIGHT;
+  const currentCenter = useRef(initialIndex);
+  const [centerIndex, setCenterIndex] = useState(initialIndex);
 
-  // Generate 3 repetitions of numbers 0..count-1
+  // Generate 3 repetitions of numbers [min .. min + count - 1]
   const items = useMemo(() => {
     const list: number[] = [];
     for (let r = 0; r < REPETITIONS; r++) {
       for (let i = 0; i < count; i++) {
-        list.push(i);
+        list.push(i + min);
       }
     }
     return list;
-  }, [count]);
+  }, [count, min]);
 
   // Sync when prop value changes from outside
   useEffect(() => {
     if (!isDragging.current) {
-      const targetIndex = 1 * count + value;
+      const targetIndex = 1 * count + (value - min);
       currentCenter.current = targetIndex;
       setCenterIndex(targetIndex);
       scrollRef.current?.scrollTo({ y: targetIndex * ITEM_HEIGHT, animated: false });
     }
-  }, [value, count]);
+  }, [value, count, min]);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const y = e.nativeEvent.contentOffset.y;
@@ -86,8 +90,9 @@ function WheelColumn({
   const handleScrollEnd = (offsetY: number) => {
     isDragging.current = false;
     const idx = Math.round(offsetY / ITEM_HEIGHT);
-    const val = ((idx % count) + count) % count;
-    const normalizedIndex = 1 * count + val;
+    const offsetInCycle = ((idx % count) + count) % count;
+    const val = offsetInCycle + min;
+    const normalizedIndex = 1 * count + offsetInCycle;
     currentCenter.current = normalizedIndex;
     setCenterIndex(normalizedIndex);
     onChange(val);
@@ -98,7 +103,8 @@ function WheelColumn({
   };
 
   const handleItemPress = (index: number) => {
-    const val = ((index % count) + count) % count;
+    const offsetInCycle = ((index % count) + count) % count;
+    const val = offsetInCycle + min;
     const targetY = index * ITEM_HEIGHT;
     scrollRef.current?.scrollTo({ y: targetY, animated: true });
     currentCenter.current = index;
@@ -124,7 +130,6 @@ function WheelColumn({
         scrollEventThrottle={16}
         onMomentumScrollEnd={(e) => handleScrollEnd(e.nativeEvent.contentOffset.y)}
         onScrollEndDrag={(e) => {
-          // If slow drag stopped without momentum, snap immediately
           if (!e.nativeEvent.velocity?.y || Math.abs(e.nativeEvent.velocity.y) < 0.1) {
             handleScrollEnd(e.nativeEvent.contentOffset.y);
           }
@@ -164,53 +169,127 @@ function WheelColumn({
 }
 
 /**
- * Free-floating time display [HH : MM] without any container box or border
+ * Free-floating time display [HH : MM] with optional AM/PM toggle below
  */
 function TimeBox({
   timeStr,
   onChangeTime,
+  use24Hour = true,
   theme,
 }: {
   timeStr: string;
   onChangeTime: (time: string) => void;
+  use24Hour?: boolean;
   theme: any;
 }) {
   const parts = (timeStr || '09:00').split(':').map(Number);
-  const hours = isNaN(parts[0]) ? 9 : parts[0];
+  const rawHours = isNaN(parts[0]) ? 9 : parts[0];
   const minutes = isNaN(parts[1]) ? 0 : parts[1];
 
+  const isPm = rawHours >= 12;
+  const displayHours = use24Hour
+    ? rawHours
+    : rawHours % 12 === 0
+    ? 12
+    : rawHours % 12;
+
   function setHours(h: number) {
-    const formatted = `${h.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    let finalHours = h;
+    if (!use24Hour) {
+      if (isPm) {
+        finalHours = h === 12 ? 12 : h + 12;
+      } else {
+        finalHours = h === 12 ? 0 : h;
+      }
+    }
+    const formatted = `${finalHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     onChangeTime(formatted);
   }
 
   function setMinutes(m: number) {
-    const formatted = `${hours.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    const formatted = `${rawHours.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    onChangeTime(formatted);
+  }
+
+  function toggleAmPm(targetIsPm: boolean) {
+    if (targetIsPm === isPm) return;
+    let newHours = rawHours;
+    if (targetIsPm && rawHours < 12) {
+      newHours = rawHours + 12;
+    } else if (!targetIsPm && rawHours >= 12) {
+      newHours = rawHours - 12;
+    }
+    const formatted = `${newHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     onChangeTime(formatted);
   }
 
   return (
-    <View style={styles.timeBox}>
-      {/* Hours Column (0..23) */}
-      <WheelColumn
-        value={hours}
-        count={24}
-        onChange={setHours}
-        theme={theme}
-      />
+    <View style={styles.timeBoxColumn}>
+      {/* Wheels row: [HH] : [MM] */}
+      <View style={styles.wheelsRow}>
+        <WheelColumn
+          value={displayHours}
+          count={use24Hour ? 24 : 12}
+          min={use24Hour ? 0 : 1}
+          onChange={setHours}
+          theme={theme}
+        />
 
-      {/* Colon */}
-      <View style={styles.colonContainer}>
-        <Text style={[styles.colon, { color: theme.textSecondary }]}>:</Text>
+        <View style={styles.colonContainer}>
+          <Text style={[styles.colon, { color: theme.textSecondary }]}>:</Text>
+        </View>
+
+        <WheelColumn
+          value={minutes}
+          count={60}
+          min={0}
+          onChange={setMinutes}
+          theme={theme}
+        />
       </View>
 
-      {/* Minutes Column (0..59 with 1-min accuracy) */}
-      <WheelColumn
-        value={minutes}
-        count={60}
-        onChange={setMinutes}
-        theme={theme}
-      />
+      {/* AM / PM Toggle (Only shown when not in 24-hour mode) */}
+      {!use24Hour && (
+        <View style={[styles.ampmToggleContainer, { backgroundColor: theme.surface }]}>
+          <TouchableOpacity
+            style={[
+              styles.ampmToggleBtn,
+              !isPm && { backgroundColor: theme.accent },
+            ]}
+            onPress={() => toggleAmPm(false)}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.ampmToggleText,
+                { color: !isPm ? '#FFFFFF' : theme.textSecondary },
+                !isPm && { fontWeight: '700' },
+              ]}
+            >
+              AM
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.ampmToggleBtn,
+              isPm && { backgroundColor: theme.accent },
+            ]}
+            onPress={() => toggleAmPm(true)}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.ampmToggleText,
+                { color: isPm ? '#FFFFFF' : theme.textSecondary },
+                isPm && { fontWeight: '700' },
+              ]}
+            >
+              PM
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -218,6 +297,7 @@ function TimeBox({
 export default function TimeSlotPicker({
   slots,
   onChangeSlots,
+  use24Hour = true,
   theme,
   maxSlots = 5,
 }: TimeSlotPickerProps) {
@@ -256,6 +336,7 @@ export default function TimeSlotPicker({
           <TimeBox
             timeStr={slot.start_time}
             onChangeTime={(val) => handleUpdateSlot(index, 'start_time', val)}
+            use24Hour={use24Hour}
             theme={theme}
           />
 
@@ -268,6 +349,7 @@ export default function TimeSlotPicker({
           <TimeBox
             timeStr={slot.end_time}
             onChangeTime={(val) => handleUpdateSlot(index, 'end_time', val)}
+            use24Hour={use24Hour}
             theme={theme}
           />
 
@@ -313,12 +395,15 @@ const styles = StyleSheet.create({
   },
   slotRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  timeBoxColumn: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Container removed completely: no border, no background, no box
-  timeBox: {
-    flex: 1,
+  wheelsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -350,12 +435,33 @@ const styles = StyleSheet.create({
   },
   dashContainer: {
     paddingHorizontal: 8,
+    marginTop: 54, // Vertically center with the wheel center row
     justifyContent: 'center',
     alignItems: 'center',
   },
   deleteBtn: {
     marginLeft: 6,
+    marginTop: 54, // Vertically center with the wheel center row
     padding: 4,
+  },
+  ampmToggleContainer: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    padding: 2,
+    alignSelf: 'center',
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  ampmToggleBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ampmToggleText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   addSlotBtn: {
     padding: 6,

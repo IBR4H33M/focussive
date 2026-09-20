@@ -2,13 +2,13 @@
 // Focussive Mobile — Create Session Screen
 // ============================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, Alert, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from '@/utils/theme';
 import { sessionApi, appGroupApi, websiteGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
@@ -174,6 +174,12 @@ export default function CreateSessionScreen() {
     }
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      loadTimeFormat();
+    }, [])
+  );
+
   function getFaviconUrl(website: string) {
     const domain = website.replace(/^https?:\/\//, '').split('/')[0];
     return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
@@ -317,7 +323,9 @@ export default function CreateSessionScreen() {
       />
 
       {/* Time durations */}
-      <Text style={[styles.label, { color: theme.textSecondary }]}>Time durations</Text>
+      <Text style={[styles.label, { color: theme.textSecondary }]}>
+        Time durations{use24Hour ? ' (24 hour format)' : ''}
+      </Text>
       <TimeSlotPicker
         slots={timeSlots}
         onChangeSlots={setTimeSlots}
