@@ -17,6 +17,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/clerk-expo": "^2.20.0",
+    "@expo/vector-icons": "latest",
     "@focussive/app-blocker": "workspace:*",
     "@focussive/installed-apps": "workspace:*",
     "@focussive/shared": "workspace:*",
@@ -26,7 +28,6 @@
     "@react-navigation/bottom-tabs": "latest",
     "@react-navigation/native": "latest",
     "@react-navigation/native-stack": "latest",
-    "@expo/vector-icons": "latest",
     "expo": "latest",
     "expo-camera": "latest",
     "expo-constants": "latest",

@@ -6,6 +6,7 @@ import type { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import { Resend } from 'resend';
 import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
@@ -15,6 +16,35 @@ const SALT_ROUNDS = 12;
 const JWT_EXPIRY = '7d';
 const REFRESH_EXPIRY = '30d';
 const QR_EXPIRY_MINUTES = 5;
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+async function sendVerificationEmail(email: string, code: string): Promise<void> {
+  if (resend) {
+    try {
+      await resend.emails.send({
+        from: process.env.RESEND_FROM_EMAIL || 'Focussive <onboarding@resend.dev>',
+        to: email,
+        subject: `${code} is your Focussive verification code`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; background: #0c0d0e; color: #ffffff; border-radius: 16px; border: 1px solid #1f2127;">
+            <h2 style="font-weight: 300; letter-spacing: 1px; margin-bottom: 8px; color: #ffffff;">Focussive</h2>
+            <p style="color: #9ca3af; font-size: 15px; margin-bottom: 24px; line-height: 1.5;">Welcome to Focussive! Please use the following 6-digit verification code to complete your registration:</p>
+            <div style="background: #18191b; border: 1px solid #2d2f36; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+              <span style="font-family: monospace; font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #90EE90;">${code}</span>
+            </div>
+            <p style="color: #6b7280; font-size: 13px; margin: 0; line-height: 1.4;">This code will expire in 15 minutes. If you did not request this email, please ignore it.</p>
+          </div>
+        `,
+      });
+      console.log(`[Resend] Verification code sent to ${email}`);
+    } catch (err) {
+      console.error('[Resend Error] Failed to send verification email:', err);
+    }
+  } else {
+    console.log(`\n========================================\n[Focussive DEV] RESEND_API_KEY not set.\nVerification code for ${email}: ${code}\n========================================\n`);
+  }
+}
 
 function generateTokens(userId: string) {
   const secret = process.env.JWT_SECRET;
@@ -60,17 +90,46 @@ export async function signup(req: Request, res: Response): Promise<void> {
   // Check if user exists
   const { data: existingUser } = await supabase
     .from('users')
-    .select('id')
+    .select('id, email_verified')
     .eq('email', email.toLowerCase())
     .single();
 
   if (existingUser) {
+    // If the account was registered but never verified, allow re-triggering verification
+    if (existingUser.email_verified === false) {
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+
+      await supabase
+        .from('users')
+        .update({
+          name,
+          password_hash,
+          age: age || null,
+          verification_code: verificationCode,
+          verification_expires_at: verificationExpiresAt,
+        })
+        .eq('id', existingUser.id);
+
+      await sendVerificationEmail(email.toLowerCase(), verificationCode);
+
+      res.status(200).json({
+        message: 'Verification code sent to your email',
+        requires_verification: true,
+        email: email.toLowerCase(),
+      });
+      return;
+    }
+
     throw new AppError('Email already registered', 400, 'EMAIL_EXISTS');
   }
 
   // Hash password and create user
   const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
   const userId = uuidv4();
+  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
   const { data: user, error } = await supabase
     .from('users')
@@ -80,8 +139,11 @@ export async function signup(req: Request, res: Response): Promise<void> {
       name,
       password_hash,
       age: age || null,
+      email_verified: false,
+      verification_code: verificationCode,
+      verification_expires_at: verificationExpiresAt,
     })
-    .select('id, email, name, age, created_at, updated_at')
+    .select('id, email, name, age, email_verified, created_at, updated_at')
     .single();
 
   if (error || !user) {
@@ -89,11 +151,114 @@ export async function signup(req: Request, res: Response): Promise<void> {
     throw new AppError('Failed to create user', 500, 'CREATE_ERROR');
   }
 
-  const tokens = generateTokens(userId);
+  await sendVerificationEmail(user.email, verificationCode);
 
   res.status(201).json({
-    user,
+    message: 'Verification code sent to your email',
+    requires_verification: true,
+    email: user.email,
+  });
+}
+
+// POST /auth/verify-email
+export async function verifyEmail(req: Request, res: Response): Promise<void> {
+  const { email, code } = req.body;
+
+  if (!email || !code) {
+    throw new AppError('Email and verification code are required', 400, 'VALIDATION_ERROR');
+  }
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email.toLowerCase())
+    .single();
+
+  if (error || !user) {
+    throw new AppError('User not found', 404, 'NOT_FOUND');
+  }
+
+  if (user.email_verified) {
+    const tokens = generateTokens(user.id);
+    const { password_hash, verification_code, verification_expires_at, ...safeUser } = user;
+    res.json({
+      message: 'Email already verified',
+      user: safeUser,
+      ...tokens,
+    });
+    return;
+  }
+
+  if (!user.verification_code || user.verification_code !== code.toString().trim()) {
+    throw new AppError('Invalid verification code', 400, 'INVALID_CODE');
+  }
+
+  if (user.verification_expires_at && new Date(user.verification_expires_at) < new Date()) {
+    throw new AppError('Verification code has expired. Please request a new one.', 400, 'CODE_EXPIRED');
+  }
+
+  // Mark verified and clear verification fields
+  const { data: updatedUser, error: updateError } = await supabase
+    .from('users')
+    .update({
+      email_verified: true,
+      verification_code: null,
+      verification_expires_at: null,
+    })
+    .eq('id', user.id)
+    .select('id, email, name, age, avatar_url, email_verified, created_at, updated_at')
+    .single();
+
+  if (updateError || !updatedUser) {
+    throw new AppError('Failed to verify email', 500, 'UPDATE_ERROR');
+  }
+
+  const tokens = generateTokens(user.id);
+
+  res.json({
+    message: 'Email verified successfully',
+    user: updatedUser,
     ...tokens,
+  });
+}
+
+// POST /auth/resend-code
+export async function resendVerificationCode(req: Request, res: Response): Promise<void> {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new AppError('Email is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email.toLowerCase())
+    .single();
+
+  if (error || !user) {
+    throw new AppError('User not found', 404, 'NOT_FOUND');
+  }
+
+  if (user.email_verified) {
+    throw new AppError('Email is already verified', 400, 'ALREADY_VERIFIED');
+  }
+
+  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+  await supabase
+    .from('users')
+    .update({
+      verification_code: verificationCode,
+      verification_expires_at: verificationExpiresAt,
+    })
+    .eq('id', user.id);
+
+  await sendVerificationEmail(user.email, verificationCode);
+
+  res.json({
+    message: 'A new verification code has been sent to your email',
   });
 }
 
@@ -120,10 +285,15 @@ export async function login(req: Request, res: Response): Promise<void> {
     throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
+  // Check email verification status (only if explicitly false, so existing users aren't locked out)
+  if (user.email_verified === false) {
+    throw new AppError('Please verify your email address to log in', 403, 'EMAIL_NOT_VERIFIED');
+  }
+
   const tokens = generateTokens(user.id);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password_hash, ...safeUser } = user;
+  const { password_hash, verification_code, verification_expires_at, ...safeUser } = user;
 
   res.json({
     user: safeUser,

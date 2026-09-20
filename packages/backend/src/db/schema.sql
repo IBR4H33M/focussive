@@ -229,6 +229,16 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS time_slots JSONB DEFAULT '[]'::jso
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS skipped_until TIMESTAMPTZ;
 
 -- ============================================================
+-- MIGRATION: Email Verification (Resend)
+-- ============================================================
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code VARCHAR(6);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ;
+
+-- Ensure existing accounts are marked as verified so they are not blocked
+UPDATE users SET email_verified = TRUE WHERE email_verified IS NULL;
+
+-- ============================================================
 -- SESSION SKIPS AUDIT TABLE (for monthly skip limit quota)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS session_skips (
@@ -239,4 +249,18 @@ CREATE TABLE IF NOT EXISTS session_skips (
 );
 
 CREATE INDEX IF NOT EXISTS idx_session_skips_user_month ON session_skips(user_id, skipped_at);
+
+ALTER TABLE session_skips ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY session_skips_policy ON session_skips
+  FOR ALL USING (user_id = auth.uid());
+
+-- ============================================================
+-- MIGRATION: Clerk Authentication
+-- ============================================================
+ALTER TABLE users ADD COLUMN IF NOT EXISTS clerk_id VARCHAR(255) UNIQUE;
+CREATE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id);
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+
+
 

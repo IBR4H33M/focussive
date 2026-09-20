@@ -22,6 +22,14 @@ import {
 } from '@focussive/app-blocker';
 import { setupNotificationHandler } from '@/utils/sessionReminders';
 import PermissionModal, { MissingPermissions } from '@/components/PermissionModal';
+import { ClerkProvider } from '@clerk/clerk-expo';
+import { tokenCache } from '@/utils/cache';
+import Constants from 'expo-constants';
+
+const clerkPublishableKey =
+  process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+  (Constants.expoConfig?.extra as Record<string, string> | undefined)?.clerkPublishableKey ||
+  '';
 
 // Configure foreground notification display once at module load
 setupNotificationHandler();
@@ -201,11 +209,13 @@ function RootLayoutContent() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <SessionProvider>
-          <RootLayoutContent />
-        </SessionProvider>
-      </AuthProvider>
+      <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
+        <AuthProvider>
+          <SessionProvider>
+            <RootLayoutContent />
+          </SessionProvider>
+        </AuthProvider>
+      </ClerkProvider>
     </ThemeProvider>
   );
 }

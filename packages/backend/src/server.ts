@@ -11,6 +11,7 @@ import router from "./routes";
 import { apiRateLimiter } from "./middleware/rateLimit";
 import { errorHandler } from "./middleware/errorHandler";
 import { startScheduler } from "./services/sessionScheduler";
+import { clerkMiddleware } from "@clerk/express";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use(
   })
 );
 app.use(express.json({ limit: "1mb" }));
+app.use(clerkMiddleware());
 app.use(morgan("dev"));
 app.use(apiRateLimiter);
 

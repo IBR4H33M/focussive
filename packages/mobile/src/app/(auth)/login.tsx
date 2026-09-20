@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/utils/theme';
+import { ApiError } from '@/utils/api';
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -37,7 +38,30 @@ export default function LoginScreen() {
     try {
       await login(email.trim(), password);
     } catch (error) {
-      Alert.alert('Login Failed', error instanceof Error ? error.message : 'Please try again');
+      if (error instanceof ApiError && error.code === 'EMAIL_NOT_VERIFIED') {
+        Alert.alert(
+          'Email Not Verified',
+          'Please verify your email address before logging in.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Verify Now',
+              onPress: () => {
+                router.push({
+                  pathname: '/(auth)/verify-email',
+                  params: { email: email.trim() },
+                } as never);
+              },
+            },
+          ]
+        );
+        return;
+      }
+      const errMessage =
+        (error as { errors?: Array<{ message?: string; longMessage?: string }> })?.errors?.[0]?.longMessage ||
+        (error as { errors?: Array<{ message?: string }> })?.errors?.[0]?.message ||
+        (error instanceof Error ? error.message : 'Please try again');
+      Alert.alert('Login Failed', errMessage);
     } finally {
       setLoading(false);
     }

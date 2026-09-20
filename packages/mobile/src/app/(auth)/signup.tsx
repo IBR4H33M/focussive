@@ -43,17 +43,23 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
-      await signup({
+      const res = await signup({
         name: name.trim(),
         email: email.trim(),
         password,
         passwordConfirm,
         age: age ? parseInt(age, 10) : undefined,
       });
-      // On success, auth context redirects automatically
-      router.push('/(auth)/extension-qr' as never);
-    } catch (error) {
-      Alert.alert('Signup Failed', error instanceof Error ? error.message : 'Please try again');
+      router.push({
+        pathname: '/(auth)/verify-email',
+        params: { email: res.email || email.trim() },
+      } as never);
+    } catch (error: unknown) {
+      const errMessage =
+        (error as { errors?: Array<{ message?: string; longMessage?: string }> })?.errors?.[0]?.longMessage ||
+        (error as { errors?: Array<{ message?: string }> })?.errors?.[0]?.message ||
+        (error instanceof Error ? error.message : 'Please try again');
+      Alert.alert('Signup Failed', errMessage);
     } finally {
       setLoading(false);
     }

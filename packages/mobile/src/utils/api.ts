@@ -12,9 +12,23 @@ const API_URL =
 const TOKEN_KEY = 'focussive_token';
 const REFRESH_TOKEN_KEY = 'focussive_refresh_token';
 
+let clerkTokenGetter: (() => Promise<string | null>) | null = null;
+
+export function setClerkTokenGetter(getter: (() => Promise<string | null>) | null): void {
+  clerkTokenGetter = getter;
+}
+
 // --- Token Storage ---
 
 export async function getToken(): Promise<string | null> {
+  if (clerkTokenGetter) {
+    try {
+      const clerkToken = await clerkTokenGetter();
+      if (clerkToken) return clerkToken;
+    } catch {
+      // Fallback to secure store
+    }
+  }
   try {
     return await SecureStore.getItemAsync(TOKEN_KEY);
   } catch {
@@ -121,7 +135,16 @@ export class ApiError extends Error {
 
 export const authApi = {
   signup: (body: { email: string; name: string; password: string; passwordConfirm: string; age?: number }) =>
-    apiRequest('/auth/signup', { method: 'POST', body }),
+    apiRequest<{ message: string; requires_verification: boolean; email: string }>('/auth/signup', { method: 'POST', body }),
+
+  verifyEmail: (body: { email: string; code: string }) =>
+    apiRequest<{ message: string; user: Record<string, unknown>; token: string; refresh_token: string }>('/auth/verify-email', {
+      method: 'POST',
+      body,
+    }),
+
+  resendCode: (body: { email: string }) =>
+    apiRequest<{ message: string }>('/auth/resend-code', { method: 'POST', body }),
 
   login: (body: { email: string; password: string }) =>
     apiRequest('/auth/login', { method: 'POST', body }),

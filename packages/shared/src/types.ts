@@ -47,11 +47,13 @@ export enum DeviceType {
 
 export interface User {
   id: string;
+  clerk_id?: string;
   email: string;
   name: string;
-  password_hash: string;
+  password_hash?: string;
   age?: number;
   avatar_url?: string;
+  email_verified?: boolean;
   overlay_quote_enabled?: boolean;
   overlay_gif_enabled?: boolean;
   overlay_gif_url?: string;

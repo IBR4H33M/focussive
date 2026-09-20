@@ -3,7 +3,16 @@
 // ============================================================
 
 import { Router } from 'express';
-import { signup, login, qrGenerate, qrLogin, verify, refreshToken } from '../controllers/authController';
+import {
+  signup,
+  login,
+  verifyEmail,
+  resendVerificationCode,
+  qrGenerate,
+  qrLogin,
+  verify,
+  refreshToken,
+} from '../controllers/authController';
 import { authMiddleware } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 
@@ -11,6 +20,8 @@ const router = Router();
 
 router.post('/signup', asyncHandler(signup));
 router.post('/login', asyncHandler(login));
+router.post('/verify-email', asyncHandler(verifyEmail));
+router.post('/resend-code', asyncHandler(resendVerificationCode));
 router.post('/qr-login', asyncHandler(qrLogin));
 router.post('/qr-generate', authMiddleware, asyncHandler(qrGenerate));
 router.get('/verify', authMiddleware, asyncHandler(verify));
