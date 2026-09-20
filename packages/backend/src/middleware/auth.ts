@@ -4,7 +4,7 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { getAuth, clerkClient } from '@clerk/express';
+import { getAuth, clerkClient, verifyToken } from '@clerk/express';
 import { v4 as uuidv4 } from 'uuid';
 import supabase from '../config/supabase';
 
@@ -23,11 +23,37 @@ export async function authMiddleware(
   res: Response,
   next: NextFunction
 ): Promise<void> {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
   // 1. Check Clerk Auth first
   try {
-    const auth = getAuth(req);
-    if (auth && auth.userId) {
-      const clerkUserId = auth.userId;
+    let clerkUserId: string | null = null;
+    try {
+      const auth = getAuth(req);
+      if (auth && auth.userId) {
+        clerkUserId = auth.userId;
+      }
+    } catch {
+      // getAuth could not extract from express context
+    }
+
+    // Direct token verification fallback if getAuth didn't populate
+    if (!clerkUserId && token) {
+      const secretKey = process.env.CLERK_SECRET_KEY;
+      if (secretKey) {
+        try {
+          const verified = await verifyToken(token, { secretKey });
+          if (verified && (verified as any).sub) {
+            clerkUserId = (verified as any).sub;
+          }
+        } catch (vErr) {
+          // Token is not a valid Clerk token
+        }
+      }
+    }
+
+    if (clerkUserId) {
 
       // Check if user already exists in Supabase by clerk_id
       const { data: userByClerkId } = await supabase
@@ -115,14 +141,10 @@ export async function authMiddleware(
   }
 
   // 2. Legacy JWT fallback
-  const authHeader = req.headers.authorization;
-
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'No token provided', code: 'UNAUTHORIZED' });
     return;
   }
-
-  const token = authHeader.split(' ')[1];
 
   if (!token) {
     res.status(401).json({ error: 'Invalid token format', code: 'UNAUTHORIZED' });

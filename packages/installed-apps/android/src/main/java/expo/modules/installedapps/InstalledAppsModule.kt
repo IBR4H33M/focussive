@@ -10,9 +10,11 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.content.pm.PackageManager
 import android.os.Process
 import android.provider.Settings
 import android.util.Base64
+import android.view.inputmethod.InputMethodManager
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.ByteArrayOutputStream
@@ -25,6 +27,9 @@ class InstalledAppsModule : Module() {
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, String>>()
       val pm = context.packageManager
 
+      val homePackages = getHomePackages(pm)
+      val imePackages = getImePackages(context)
+
       val intent = Intent(Intent.ACTION_MAIN, null).apply {
         addCategory(Intent.CATEGORY_LAUNCHER)
       }
@@ -36,6 +41,11 @@ class InstalledAppsModule : Module() {
           val activityInfo = resolveInfo.activityInfo
           val packageName = activityInfo.packageName
           val appName = resolveInfo.loadLabel(pm).toString()
+
+          if (isIgnoredApp(packageName, appName, homePackages, imePackages, context.packageName)) {
+            return@mapNotNull null
+          }
+
           val icon = resolveInfo.loadIcon(pm)
 
           mapOf(
@@ -110,6 +120,9 @@ class InstalledAppsModule : Module() {
       ) ?: return@AsyncFunction emptyList<Map<String, Any>>()
 
       val pm = context.packageManager
+      val homePackages = getHomePackages(pm)
+      val imePackages = getImePackages(context)
+
       val usageMap = mutableMapOf<String, Long>()
       for (us in stats) {
         if (us.totalTimeInForeground > 0) {
@@ -121,19 +134,29 @@ class InstalledAppsModule : Module() {
         .filter { it.key != context.packageName && it.value > 60000L }
         .sortedByDescending { it.value }
 
-      val result = sorted.take(10).mapNotNull { entry ->
+      val result = mutableListOf<Map<String, Any>>()
+      for (entry in sorted) {
+        if (result.size >= 10) break
         try {
-          val appInfo = pm.getApplicationInfo(entry.key, 0)
+          val packageName = entry.key
+          val appInfo = pm.getApplicationInfo(packageName, 0)
           val appName = pm.getApplicationLabel(appInfo).toString()
+
+          if (isIgnoredApp(packageName, appName, homePackages, imePackages, context.packageName)) {
+            continue
+          }
+
           val icon = pm.getApplicationIcon(appInfo)
-          mapOf(
-            "id" to entry.key,
-            "name" to appName,
-            "totalTimeMillis" to entry.value,
-            "icon" to drawableToBase64(icon)
+          result.add(
+            mapOf(
+              "id" to packageName,
+              "name" to appName,
+              "totalTimeMillis" to entry.value,
+              "icon" to drawableToBase64(icon)
+            )
           )
         } catch (e: Exception) {
-          null
+          // ignore uninstalled/hidden apps
         }
       }
 
@@ -196,5 +219,77 @@ class InstalledAppsModule : Module() {
     scaled.compress(Bitmap.CompressFormat.PNG, 80, stream)
     val byteArray = stream.toByteArray()
     return "data:image/png;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
+  }
+
+  private fun getHomePackages(pm: PackageManager): Set<String> {
+    return try {
+      val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+        addCategory(Intent.CATEGORY_HOME)
+      }
+      pm.queryIntentActivities(homeIntent, 0)
+        .mapNotNull { it.activityInfo?.packageName }
+        .toSet()
+    } catch (e: Exception) {
+      emptySet()
+    }
+  }
+
+  private fun getImePackages(context: Context): Set<String> {
+    return try {
+      val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+      imm?.inputMethodList?.mapNotNull { it.packageName }?.toSet() ?: emptySet()
+    } catch (e: Exception) {
+      emptySet()
+    }
+  }
+
+  private fun isIgnoredApp(
+    packageName: String,
+    appName: String,
+    homePackages: Set<String>,
+    imePackages: Set<String>,
+    selfPackage: String
+  ): Boolean {
+    if (packageName == selfPackage) return true
+    if (homePackages.contains(packageName) || imePackages.contains(packageName)) return true
+
+    val lowerPkg = packageName.lowercase()
+    val lowerName = appName.lowercase()
+
+    val ignoredPkgPatterns = listOf(
+      "launcher",
+      "systemui",
+      "android.settings",
+      "inputmethod",
+      "honeyboard",
+      "sidebarservice",
+      "cocktailbarservice",
+      "quickstep",
+      "wallpaper",
+      "screensaver",
+      "com.sec.android.app.launcher",
+      "com.android.systemui",
+      "com.google.android.apps.nexuslauncher",
+      "com.google.android.googlequicksearchbox"
+    )
+    if (ignoredPkgPatterns.any { lowerPkg.contains(it) }) return true
+
+    val ignoredNamePatterns = listOf(
+      "one ui",
+      "system ui",
+      "launcher",
+      "home screen",
+      "quickstep",
+      "gboard",
+      "keyboard",
+      "settings"
+    )
+    if (ignoredNamePatterns.any { lowerName.contains(it) }) return true
+
+    if (lowerName == "home" || lowerName.endsWith(" home") || lowerName.startsWith("home ")) {
+      return true
+    }
+
+    return false
   }
 }

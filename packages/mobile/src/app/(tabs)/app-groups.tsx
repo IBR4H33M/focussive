@@ -25,6 +25,7 @@ import type { AppGroup, AppInfo, WebsiteGroup } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
 import InstalledApps from '@focussive/installed-apps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { isSystemOrUiApp } from '@/utils/appFilter';
 
 const COMMON_WEBSITES = [
   'facebook.com', 'instagram.com', 'x.com', 'twitter.com', 'tiktok.com',
@@ -73,9 +74,10 @@ export default function GroupsScreen() {
     const popularIds = [
       'youtube', 'instagram', 'chrome', 'facebook', 'tiktok', 'reddit', 'twitter', 'discord', 'netflix'
     ];
+    const nonUiApps = appsList.filter(a => !isSystemOrUiApp(a));
     const candidates = [
-      ...appsList.filter(a => popularIds.some(p => a.id.toLowerCase().includes(p) || a.name.toLowerCase().includes(p))),
-      ...appsList,
+      ...nonUiApps.filter(a => popularIds.some(p => a.id.toLowerCase().includes(p) || a.name.toLowerCase().includes(p))),
+      ...nonUiApps,
     ];
     const unique = Array.from(new Map(candidates.map(c => [c.id, c])).values());
     const top4 = unique.slice(0, 4).map((app, index) => ({
@@ -121,9 +123,10 @@ export default function GroupsScreen() {
           return;
         }
         const apps = await InstalledApps.getApps();
-        const loaded = apps?.length > 0
+        const rawLoaded = apps?.length > 0
           ? apps.map(a => ({ id: a.id, name: a.name, icon: 'apps-outline', iconUri: a.icon }))
           : PREDEFINED_APPS;
+        const loaded = rawLoaded.filter(a => !isSystemOrUiApp(a));
         setDeviceApps(loaded);
 
         // Fetch weekly usage stats if available
@@ -134,8 +137,11 @@ export default function GroupsScreen() {
           }
         } catch { /* ignore */ }
 
-        if (stats && stats.length >= 4) {
-          const top4 = stats.slice(0, 4).map(st => {
+        // Filter out UI apps, One UI Home, launchers, keyboards from usage stats
+        const filteredStats = (stats || []).filter(st => !isSystemOrUiApp(st));
+
+        if (filteredStats && filteredStats.length >= 4) {
+          const top4 = filteredStats.slice(0, 4).map(st => {
             const matchedApp = loaded.find(a => a.id === st.id);
             return {
               id: st.id,
@@ -146,6 +152,26 @@ export default function GroupsScreen() {
             };
           });
           setRecommendedApps(top4);
+        } else if (filteredStats && filteredStats.length > 0) {
+          const statsApps = filteredStats.map(st => {
+            const matchedApp = loaded.find(a => a.id === st.id);
+            return {
+              id: st.id,
+              name: st.name || matchedApp?.name || st.id,
+              icon: 'apps-outline',
+              iconUri: st.icon || (matchedApp as any)?.iconUri || (matchedApp as any)?.icon,
+              totalTimeMillis: st.totalTimeMillis,
+            };
+          });
+          const existingIds = new Set(statsApps.map(a => a.id));
+          const supplement = loaded
+            .filter(a => !existingIds.has(a.id))
+            .slice(0, Math.max(0, 4 - statsApps.length))
+            .map((a, i) => ({
+              ...a,
+              totalTimeMillis: (3 - i) * 3600000,
+            }));
+          setRecommendedApps([...statsApps, ...supplement]);
         } else {
           setupFallbackRecommended(loaded);
         }
@@ -278,9 +304,6 @@ export default function GroupsScreen() {
             onPress={() => openPaywall('groups_banner')}
             activeOpacity={0.8}
           >
-            <View style={[styles.freeNoticeIcon, { backgroundColor: theme.accent }]}>
-              <Ionicons name="sparkles" size={14} color="#FFFFFF" />
-            </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.freeNoticeTitle, { color: theme.text }]}>Free Tier Limits</Text>
               <Text style={[styles.freeNoticeSubtitle, { color: theme.textSecondary }]}>
@@ -411,91 +434,97 @@ export default function GroupsScreen() {
             </TouchableOpacity>
           </View>
           <TextInput
-            style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+            style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border, marginBottom: 12 }]}
             placeholder="Group Name" placeholderTextColor={theme.textSecondary}
             value={appGroupName} onChangeText={setAppGroupName}
           />
 
-          {/* Recommended Apps (based on usage) — top 4 apps */}
-          {recommendedApps.length > 0 && (
-            <View style={{ marginTop: 12, marginBottom: 12 }}>
-              <Text style={[styles.recommendedHeader, { color: theme.textSecondary }]}>
-                Recommended apps (based on usage)
-              </Text>
-              <View style={{ gap: 8, marginTop: 8 }}>
-                {recommendedApps.map(app => {
-                  const isSel = selectedApps.some(a => a.id === app.id);
-                  return (
-                    <TouchableOpacity
-                      key={`rec-${app.id}`}
-                      style={[
-                        styles.listItem,
-                        {
-                          backgroundColor: isSel ? `${theme.accent}30` : theme.surface,
-                        },
-                      ]}
-                      onPress={() => toggleApp(app)}
-                      activeOpacity={0.7}
-                    >
-                      {app.iconUri
-                        ? <Image source={{ uri: app.iconUri }} style={styles.appIcon} />
-                        : <Ionicons name="apps-outline" size={24} color={theme.textSecondary} />}
-                      <View style={{ flex: 1, minWidth: 0, justifyContent: 'center', marginLeft: 4 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 2 }} numberOfLines={1}>
-                          {app.name}
-                        </Text>
-                        <Text style={[styles.usageSubtext, { color: theme.textSecondary }]} numberOfLines={1}>
-                          {formatWeeklyUsage(app.totalTimeMillis)}
-                        </Text>
-                      </View>
-                      {isSel && <Ionicons name="checkmark-circle" size={20} color={theme.accent} />}
-                    </TouchableOpacity>
-                  );
-                })}
+          <ScrollView
+            style={styles.listArea}
+            contentContainerStyle={{ paddingBottom: 16 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Recommended Apps (based on usage) — top 4 apps */}
+            {recommendedApps.length > 0 && (
+              <View style={{ marginTop: 2, marginBottom: 14 }}>
+                <Text style={[styles.recommendedHeader, { color: theme.textSecondary }]}>
+                  Recommended apps (based on usage)
+                </Text>
+                <View style={{ gap: 8, marginTop: 8 }}>
+                  {recommendedApps.map(app => {
+                    const isSel = selectedApps.some(a => a.id === app.id);
+                    return (
+                      <TouchableOpacity
+                        key={`rec-${app.id}`}
+                        style={[
+                          styles.listItem,
+                          {
+                            backgroundColor: isSel ? `${theme.accent}30` : theme.surface,
+                          },
+                        ]}
+                        onPress={() => toggleApp(app)}
+                        activeOpacity={0.7}
+                      >
+                        {app.iconUri
+                          ? <Image source={{ uri: app.iconUri }} style={styles.appIcon} />
+                          : <Ionicons name="apps-outline" size={24} color={theme.textSecondary} />}
+                        <View style={{ flex: 1, minWidth: 0, justifyContent: 'center', marginLeft: 4 }}>
+                          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 2 }} numberOfLines={1}>
+                            {app.name}
+                          </Text>
+                          <Text style={[styles.usageSubtext, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {formatWeeklyUsage(app.totalTimeMillis)}
+                          </Text>
+                        </View>
+                        {isSel && <Ionicons name="checkmark-circle" size={20} color={theme.accent} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
-          )}
+            )}
 
-          <TextInput
-            style={[
-              styles.input,
-              {
-                color: theme.text,
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-                borderWidth: 2,
-                marginTop: 4,
-                marginBottom: 8,
-              },
-            ]}
-            placeholder="Search apps"
-            placeholderTextColor={isDark ? theme.textSecondary : '#94A3B8'}
-            value={appSearchQuery}
-            onChangeText={setAppSearchQuery}
-          />
-          <ScrollView style={styles.listArea}>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  color: theme.text,
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                  borderWidth: 2,
+                  marginTop: 2,
+                  marginBottom: 10,
+                },
+              ]}
+              placeholder="Search apps"
+              placeholderTextColor={isDark ? theme.textSecondary : '#94A3B8'}
+              value={appSearchQuery}
+              onChangeText={setAppSearchQuery}
+            />
+
             {deviceApps
               .filter(app => app.name.toLowerCase().includes(appSearchQuery.toLowerCase()))
               .map(app => {
-              const isSel = selectedApps.some(a => a.id === app.id);
-              return (
-                <TouchableOpacity
-                  key={app.id}
-                  style={[
-                    styles.cleanListItem,
-                    isSel && { backgroundColor: `${theme.accent}20` },
-                  ]}
-                  onPress={() => toggleApp(app)}
-                  activeOpacity={0.7}
-                >
-                  {(app as any).iconUri
-                    ? <Image source={{ uri: (app as any).iconUri }} style={styles.appIcon} />
-                    : <Ionicons name="apps-outline" size={24} color={theme.textSecondary} />}
-                  <Text style={{ flex: 1, fontSize: 15, color: theme.text, marginLeft: 4 }}>{app.name}</Text>
-                  {isSel && <Ionicons name="checkmark-circle" size={20} color={theme.accent} />}
-                </TouchableOpacity>
-              );
-            })}
+                const isSel = selectedApps.some(a => a.id === app.id);
+                return (
+                  <TouchableOpacity
+                    key={app.id}
+                    style={[
+                      styles.cleanListItem,
+                      isSel && { backgroundColor: `${theme.accent}20` },
+                    ]}
+                    onPress={() => toggleApp(app)}
+                    activeOpacity={0.7}
+                  >
+                    {(app as any).iconUri
+                      ? <Image source={{ uri: (app as any).iconUri }} style={styles.appIcon} />
+                      : <Ionicons name="apps-outline" size={24} color={theme.textSecondary} />}
+                    <Text style={{ flex: 1, fontSize: 15, color: theme.text, marginLeft: 4 }}>{app.name}</Text>
+                    {isSel && <Ionicons name="checkmark-circle" size={20} color={theme.accent} />}
+                  </TouchableOpacity>
+                );
+              })}
           </ScrollView>
           <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.accentDark }]} onPress={saveAppGroup}>
             <Text style={styles.saveBtnText}>Save Group</Text>

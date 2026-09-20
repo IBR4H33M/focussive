@@ -31,7 +31,7 @@ export default function PaywallModal() {
     isLoading,
   } = useSubscription();
 
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('focussive_annual_2999');
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('focussive_annual_36');
 
   if (!isPaywallVisible) return null;
 
@@ -126,9 +126,6 @@ export default function PaywallModal() {
                   },
                 ]}
               >
-                <View style={styles.trialBannerIcon}>
-                  <Ionicons name="gift-outline" size={24} color={theme.accent} />
-                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.trialBannerTitle, { color: theme.text }]}>
                     3-Week Free Trial Available!
@@ -202,7 +199,7 @@ export default function PaywallModal() {
                         : 'rgba(255, 255, 255, 0.4)',
                   },
                 ]}
-                onPress={() => setSelectedPlanId('focussive_annual_2999')}
+                onPress={() => setSelectedPlanId('focussive_annual_36')}
                 activeOpacity={0.8}
               >
                 <View style={styles.planCardHeader}>
@@ -219,17 +216,17 @@ export default function PaywallModal() {
                     <Text style={[styles.planTitle, { color: theme.text }]}>Annual Plan</Text>
                   </View>
                   <View style={[styles.bestValueBadge, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.bestValueText}>Save 50%</Text>
+                    <Text style={styles.bestValueText}>Save 40%</Text>
                   </View>
                 </View>
 
                 <View style={styles.planPriceRow}>
                   <Text style={[styles.planPrice, { color: theme.text }]}>
-                    {annualRcPackage ? annualRcPackage.product.priceString : '$29.99'}
+                    {annualRcPackage ? annualRcPackage.product.priceString : '$36'}
                     <Text style={[styles.planPeriod, { color: theme.textSecondary }]}> / year</Text>
                   </Text>
                   <Text style={[styles.monthlyEquivalent, { color: theme.accent }]}>
-                    $2.50 / month
+                    $3.00 / month
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -251,7 +248,7 @@ export default function PaywallModal() {
                         : 'rgba(255, 255, 255, 0.4)',
                   },
                 ]}
-                onPress={() => setSelectedPlanId('focussive_monthly_499')}
+                onPress={() => setSelectedPlanId('focussive_monthly_5')}
                 activeOpacity={0.8}
               >
                 <View style={styles.planCardHeader}>
@@ -271,7 +268,7 @@ export default function PaywallModal() {
 
                 <View style={styles.planPriceRow}>
                   <Text style={[styles.planPrice, { color: theme.text }]}>
-                    {monthlyRcPackage ? monthlyRcPackage.product.priceString : '$4.99'}
+                    {monthlyRcPackage ? monthlyRcPackage.product.priceString : '$5'}
                     <Text style={[styles.planPeriod, { color: theme.textSecondary }]}> / month</Text>
                   </Text>
                   <Text style={[styles.monthlyEquivalent, { color: theme.textSecondary }]}>

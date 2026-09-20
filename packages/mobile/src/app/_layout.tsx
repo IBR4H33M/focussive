@@ -26,15 +26,18 @@ import { ClerkProvider } from '@clerk/clerk-expo';
 import { tokenCache } from '@/utils/cache';
 import { SubscriptionProvider } from '@/context/SubscriptionContext';
 import PaywallModal from '@/components/PaywallModal';
+import ThemedAlert, { installThemedAlert } from '@/components/ThemedAlert';
 import Constants from 'expo-constants';
 
 const clerkPublishableKey =
   process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||
   (Constants.expoConfig?.extra as Record<string, string> | undefined)?.clerkPublishableKey ||
-  '';
+  'pk_test_Zml0LXN0dXJnZW9uLTQwNC5jbGVyay5hY2NvdW50cy5kZXYk';
 
 // Configure foreground notification display once at module load
 setupNotificationHandler();
+// Intercept all alerts across the app to use custom app theme
+installThemedAlert();
 
 function RootLayoutContent() {
   const theme = useTheme();
@@ -154,6 +157,7 @@ function RootLayoutContent() {
         onGrantPermissions={handleGrantPermissions}
       />
       <PaywallModal />
+      <ThemedAlert />
       <Stack
         screenOptions={{
           headerShown: false,

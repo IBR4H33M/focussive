@@ -34,17 +34,17 @@ export interface FallbackPlan {
 
 export const FALLBACK_PLANS: FallbackPlan[] = [
   {
-    identifier: 'focussive_annual_2999',
+    identifier: 'focussive_annual_36',
     title: 'Annual Plan',
-    priceString: '$29.99/year',
+    priceString: '$36/year',
     period: 'annual',
-    monthlyEquivalent: '$2.50/month',
-    badge: 'Best Value • Save 50%',
+    monthlyEquivalent: '$3.00/month',
+    badge: 'Best Value • Save 40%',
   },
   {
-    identifier: 'focussive_monthly_499',
+    identifier: 'focussive_monthly_5',
     title: 'Monthly Plan',
-    priceString: '$4.99/month',
+    priceString: '$5/month',
     period: 'monthly',
   },
 ];
@@ -71,15 +71,20 @@ export interface SubscriptionContextType {
 
 const SubscriptionContext = createContext<SubscriptionContextType | null>(null);
 
+const REVENUECAT_PUBLIC_KEY =
+  process.env.EXPO_PUBLIC_REVENUECAT_PUBLIC_KEY ||
+  (Constants.expoConfig?.extra as Record<string, string> | undefined)?.revenuecatPublicKey ||
+  'test_MuSObdIzFoUVskINilLfIZiqRZT';
+
 const REVENUECAT_APPLE_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY ||
   (Constants.expoConfig?.extra as Record<string, string> | undefined)?.revenuecatAppleKey ||
-  '';
+  REVENUECAT_PUBLIC_KEY;
 
 const REVENUECAT_GOOGLE_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY ||
   (Constants.expoConfig?.extra as Record<string, string> | undefined)?.revenuecatGoogleKey ||
-  '';
+  REVENUECAT_PUBLIC_KEY;
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth();
@@ -103,12 +108,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       try {
         if (Platform.OS === 'web') return;
 
-        const apiKey = Platform.OS === 'ios' ? REVENUECAT_APPLE_KEY : REVENUECAT_GOOGLE_KEY;
+        const apiKey =
+          Platform.OS === 'ios'
+            ? REVENUECAT_APPLE_KEY || REVENUECAT_PUBLIC_KEY
+            : REVENUECAT_GOOGLE_KEY || REVENUECAT_PUBLIC_KEY;
+
         if (!apiKey) {
           console.warn(
-            `[RevenueCat] Missing API Key for ${Platform.OS}. Set EXPO_PUBLIC_REVENUECAT_${
-              Platform.OS === 'ios' ? 'APPLE' : 'GOOGLE'
-            }_KEY in your .env`
+            `[RevenueCat] Missing API Key. Set EXPO_PUBLIC_REVENUECAT_PUBLIC_KEY in your .env`
           );
           return;
         }
@@ -176,7 +183,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setTier(res.tier);
       setStatus(res.status);
       setTrialUsed(res.trial_used);
-      setTrialEndsAt(res.trial_ends_at);
+      setTrialEndsAt(res.trial_ends_at ?? null);
       setTrialDaysRemaining(res.trial_days_remaining);
       setIsTrialActive(res.tier === 'premium' && res.status === 'trial');
     } catch (err) {
@@ -209,7 +216,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setTier(res.tier);
       setStatus(res.status);
       setTrialUsed(res.trial_used);
-      setTrialEndsAt(res.trial_ends_at);
+      setTrialEndsAt(res.trial_ends_at ?? null);
       setTrialDaysRemaining(res.trial_days_remaining);
       setIsTrialActive(true);
 

@@ -44,6 +44,7 @@ export enum DeviceType {
 }
 
 export type SubscriptionTier = 'free' | 'premium' | 'trial';
+export type SubscriptionStatus = 'active' | 'trial' | 'expired' | 'cancelled';
 
 export interface User {
   id: string;
@@ -55,7 +56,7 @@ export interface User {
   avatar_url?: string;
   email_verified?: boolean;
   subscription_tier?: SubscriptionTier;
-  subscription_status?: string;
+  subscription_status?: SubscriptionStatus;
   trial_used?: boolean;
   trial_ends_at?: string | null;
   revenuecat_customer_id?: string;
@@ -72,7 +73,7 @@ export interface User {
 export interface SubscriptionStatusResponse {
   is_premium: boolean;
   tier: SubscriptionTier;
-  status: string;
+  status: SubscriptionStatus;
   is_trial_active: boolean;
   trial_used: boolean;
   trial_ends_at?: string | null;

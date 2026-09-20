@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { historyApi, userApi } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -79,6 +79,7 @@ const SECTIONS = ['Overview', 'History'];
 // ─── Main Component ──────────────────────────────────────────
 export default function StatsScreen() {
   const theme = useTheme();
+  const isDark = useIsDark();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const indicatorAnim = useRef(new Animated.Value(0)).current;
