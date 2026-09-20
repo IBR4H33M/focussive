@@ -1,5 +1,5 @@
 // ============================================================
-// Focussive Mobile — Home Screen (Sessions)
+// Focussive Mobile — Dashboard Screen
 // ============================================================
 
 import React, { useState } from 'react';
@@ -23,7 +23,7 @@ import { sortByNextOccurrence, getNextSessionOccurrence } from '@focussive/share
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
   const theme = useTheme();
   const isDark = useIsDark();
   const router = useRouter();
@@ -172,14 +172,6 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
-
-      {/* FAB - Create Session */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: isDark ? '#F8DE8C' : theme.accentDark }]}
-        onPress={() => router.push('/session/create' as never)}
-      >
-        <Text style={[styles.fabText, { color: isDark ? '#2E3B22' : '#FFFFFF' }]}>+</Text>
-      </TouchableOpacity>
 
       {/* Cancel Confirmation Modal */}
       <Modal visible={cancelModalVisible} transparent animationType="fade">

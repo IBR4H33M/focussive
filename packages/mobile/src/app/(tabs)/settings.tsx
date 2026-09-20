@@ -760,10 +760,10 @@ export default function SettingsScreen() {
 
           <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 
-          {/* Motivational Quotes */}
+          {/* Block Screen Quotes */}
           <View style={styles.cardItem}>
             <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={[styles.menuText, { color: theme.text }]}>Motivational Quotes</Text>
+              <Text style={[styles.menuText, { color: theme.text }]}>Block screen quotes</Text>
               <Text style={[styles.reminderSubtext, { color: theme.textSecondary, marginTop: 2 }]}>
                 Show inspirational quotes on blocker overlay
               </Text>
@@ -778,11 +778,11 @@ export default function SettingsScreen() {
 
           <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 
-          {/* Custom GIF Overlay */}
+          {/* Block Screen GIF */}
           <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={[styles.menuText, { color: theme.text }]}>Custom GIF Overlay</Text>
+                <Text style={[styles.menuText, { color: theme.text }]}>Block screen gif</Text>
                 <Text style={[styles.reminderSubtext, { color: theme.textSecondary, marginTop: 2 }]}>
                   Show animated GIF on blocker overlay
                 </Text>
