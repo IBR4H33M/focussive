@@ -43,7 +43,7 @@ export enum DeviceType {
   EXTENSION = 'extension',
 }
 
-// --- Database Models ---
+export type SubscriptionTier = 'free' | 'premium' | 'trial';
 
 export interface User {
   id: string;
@@ -54,6 +54,11 @@ export interface User {
   age?: number;
   avatar_url?: string;
   email_verified?: boolean;
+  subscription_tier?: SubscriptionTier;
+  subscription_status?: string;
+  trial_used?: boolean;
+  trial_ends_at?: string | null;
+  revenuecat_customer_id?: string;
   overlay_quote_enabled?: boolean;
   overlay_gif_enabled?: boolean;
   overlay_gif_url?: string;
@@ -62,6 +67,16 @@ export interface User {
   skips_remaining?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface SubscriptionStatusResponse {
+  is_premium: boolean;
+  tier: SubscriptionTier;
+  status: string;
+  is_trial_active: boolean;
+  trial_used: boolean;
+  trial_ends_at?: string | null;
+  trial_days_remaining: number;
 }
 
 export interface SkipStatusResponse {

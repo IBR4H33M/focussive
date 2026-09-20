@@ -262,5 +262,15 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS clerk_id VARCHAR(255) UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id);
 ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 
+-- ============================================================
+-- MIGRATION: Premium Tier & RevenueCat Subscriptions
+-- ============================================================
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_tier VARCHAR(20) DEFAULT 'free'; -- 'free' | 'premium' | 'trial'
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_used BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS revenuecat_customer_id VARCHAR(255);
+
+
 
 

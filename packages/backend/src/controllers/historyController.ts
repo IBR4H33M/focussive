@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
+import { isUserPremium } from '../services/subscriptionService';
 
 // GET /history
 export async function getHistory(req: AuthRequest, res: Response): Promise<void> {
@@ -14,10 +15,19 @@ export async function getHistory(req: AuthRequest, res: Response): Promise<void>
   const limit = parseInt(req.query.limit as string) || 20;
   const offset = (page - 1) * limit;
 
-  const { data: history, error, count } = await supabase
+  const isPremium = await isUserPremium(userId);
+
+  let query = supabase
     .from('session_history')
     .select('*', { count: 'exact' })
-    .eq('user_id', userId)
+    .eq('user_id', userId);
+
+  if (!isPremium) {
+    const threeWeeksAgo = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
+    query = query.gte('created_at', threeWeeksAgo);
+  }
+
+  const { data: history, error, count } = await query
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -30,6 +40,9 @@ export async function getHistory(req: AuthRequest, res: Response): Promise<void>
     total: count || 0,
     page,
     limit,
+    is_premium: isPremium,
+    history_limited: !isPremium,
+    history_limit_days: isPremium ? null : 21,
   });
 }
 

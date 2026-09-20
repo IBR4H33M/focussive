@@ -18,6 +18,7 @@ import {
   SectionList,
 } from 'react-native';
 import { useTheme, useIsDark } from '@/utils/theme';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { appGroupApi, websiteGroupApi } from '@/utils/api';
 import { PREDEFINED_APPS } from '@focussive/shared';
 import type { AppGroup, AppInfo, WebsiteGroup } from '@focussive/shared';
@@ -36,6 +37,7 @@ export default function GroupsScreen() {
   const theme = useTheme();
   const isDark = useIsDark();
   const insets = useSafeAreaInsets();
+  const { isPremium, openPaywall } = useSubscription();
 
   // App groups state
   const [appGroups, setAppGroups] = useState<AppGroup[]>([]);
@@ -158,13 +160,22 @@ export default function GroupsScreen() {
   // ─── App Group Handlers ───────────────────────────────────────────────────
 
   function openCreateAppGroup() {
+    if (!isPremium && appGroups.length >= 2) {
+      openPaywall('app_group_limit');
+      return;
+    }
     setEditingAppGroup(null); setAppGroupName(''); setAppSearchQuery(''); setSelectedApps([]); setAppModal(true);
   }
   function openEditAppGroup(g: AppGroup) {
     setEditingAppGroup(g); setAppGroupName(g.name); setAppSearchQuery(''); setSelectedApps(g.apps || []); setAppModal(true);
   }
   function toggleApp(app: AppInfo) {
-    setSelectedApps(prev => prev.some(a => a.id === app.id) ? prev.filter(a => a.id !== app.id) : [...prev, app]);
+    const isSelected = selectedApps.some(a => a.id === app.id);
+    if (!isSelected && !isPremium && selectedApps.length >= 3) {
+      openPaywall('app_limit_exceeded');
+      return;
+    }
+    setSelectedApps(prev => isSelected ? prev.filter(a => a.id !== app.id) : [...prev, app]);
   }
   async function saveAppGroup() {
     if (!appGroupName.trim()) { Alert.alert('Error', 'Group name required'); return; }
@@ -199,18 +210,33 @@ export default function GroupsScreen() {
   // ─── Website Group Handlers ───────────────────────────────────────────────
 
   function openCreateWebsiteGroup() {
+    if (!isPremium && websiteGroups.length >= 2) {
+      openPaywall('website_group_limit');
+      return;
+    }
     setEditingWebsiteGroup(null); setWebsiteGroupName(''); setSelectedWebsites([]); setCustomWebsite(''); setWebsiteModal(true);
   }
   function openEditWebsiteGroup(g: WebsiteGroup) {
     setEditingWebsiteGroup(g); setWebsiteGroupName(g.name); setSelectedWebsites(g.websites || []); setCustomWebsite(''); setWebsiteModal(true);
   }
   function toggleWebsite(site: string) {
-    setSelectedWebsites(prev => prev.includes(site) ? prev.filter(s => s !== site) : [...prev, site]);
+    const isSelected = selectedWebsites.includes(site);
+    if (!isSelected && !isPremium && selectedWebsites.length >= 3) {
+      openPaywall('website_limit_exceeded');
+      return;
+    }
+    setSelectedWebsites(prev => isSelected ? prev.filter(s => s !== site) : [...prev, site]);
   }
   function addCustomWebsite() {
     const site = customWebsite.trim().toLowerCase().replace(/^https?:\/\//, '');
     if (!site) return;
-    if (!selectedWebsites.includes(site)) setSelectedWebsites(prev => [...prev, site]);
+    if (!selectedWebsites.includes(site)) {
+      if (!isPremium && selectedWebsites.length >= 3) {
+        openPaywall('website_limit_exceeded');
+        return;
+      }
+      setSelectedWebsites(prev => [...prev, site]);
+    }
     setCustomWebsite('');
   }
   async function saveWebsiteGroup() {
@@ -239,6 +265,31 @@ export default function GroupsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top + 28, 48) }]}>
+
+        {!isPremium && (
+          <TouchableOpacity
+            style={[
+              styles.freeTierNotice,
+              {
+                backgroundColor: isDark ? 'rgba(139, 167, 148, 0.12)' : 'rgba(88, 112, 66, 0.08)',
+                borderColor: theme.border,
+              },
+            ]}
+            onPress={() => openPaywall('groups_banner')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.freeNoticeIcon, { backgroundColor: theme.accent }]}>
+              <Ionicons name="sparkles" size={14} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.freeNoticeTitle, { color: theme.text }]}>Free Tier Limits</Text>
+              <Text style={[styles.freeNoticeSubtitle, { color: theme.textSecondary }]}>
+                Max 2 groups & 3 apps/sites each. Tap to unlock Unlimited with Pro.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+          </TouchableOpacity>
+        )}
 
         {/* ── App Groups ── */}
         <View style={styles.sectionHeader}>
@@ -349,7 +400,12 @@ export default function GroupsScreen() {
       <Modal visible={appModal} animationType="slide">
         <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>{editingAppGroup ? 'Edit Group' : 'Select apps'}</Text>
+            <View>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>{editingAppGroup ? 'Edit Group' : 'Select apps'}</Text>
+              <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                {selectedApps.length} apps selected {!isPremium ? '(Free limit: 3)' : '(Unlimited)'}
+              </Text>
+            </View>
             <TouchableOpacity onPress={() => setAppModal(false)}>
               <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
@@ -454,7 +510,12 @@ export default function GroupsScreen() {
       <Modal visible={websiteModal} animationType="slide">
         <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>{editingWebsiteGroup ? 'Edit Group' : 'New Website Group'}</Text>
+            <View>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>{editingWebsiteGroup ? 'Edit Group' : 'New Website Group'}</Text>
+              <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                {selectedWebsites.length} sites selected {!isPremium ? '(Free limit: 3)' : '(Unlimited)'}
+              </Text>
+            </View>
             <TouchableOpacity onPress={() => setWebsiteModal(false)}>
               <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
@@ -564,4 +625,28 @@ const styles = StyleSheet.create({
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   cancelBtn: { height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   cancelBtnText: { fontSize: 15, fontWeight: '500' },
+  freeTierNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 16,
+    gap: 12,
+  },
+  freeNoticeIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  freeNoticeTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  freeNoticeSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+  },
 });

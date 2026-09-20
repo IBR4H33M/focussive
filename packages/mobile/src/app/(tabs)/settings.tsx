@@ -23,6 +23,7 @@ import * as Notifications from 'expo-notifications';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/utils/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { userApi, sessionApi } from '@/utils/api';
 import { uploadImageToCloudinary } from '@/utils/cloudinary';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -173,6 +174,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const themeCtx = useThemeContext();
   const { user, logout } = useAuth();
+  const { isPremium, isTrialActive, trialDaysRemaining, openPaywall } = useSubscription();
   const { allSessions, activeSessions } = useSessions();
   const router = useRouter();
   const params = useLocalSearchParams<{ expandPermissions?: string }>();
@@ -629,6 +631,55 @@ export default function SettingsScreen() {
             <Text style={[styles.menuText, { color: theme.text }]}>Change Password</Text>
             <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
           </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Subscription Section */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>
+          SUBSCRIPTION & PLAN
+        </Text>
+
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+          <View style={[styles.cardItem, { justifyContent: 'space-between', alignItems: 'center' }]}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <Text style={[styles.menuText, { color: theme.text, fontSize: 16, fontWeight: '700' }]}>
+                  {isPremium ? (isTrialActive ? 'Pro (Free Trial)' : 'Focussive Pro') : 'Free Tier'}
+                </Text>
+                {isPremium && (
+                  <View style={[styles.proBadge, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.proBadgeText}>PRO</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
+                {isPremium
+                  ? isTrialActive
+                    ? `${trialDaysRemaining} days remaining in trial`
+                    : 'Unlimited groups, apps, sites & lifetime history'
+                  : 'Max 2 groups, 3 apps/sites each, 3 weeks history'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.upgradeBtn,
+                { backgroundColor: isPremium ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : theme.accent },
+              ]}
+              onPress={() => openPaywall('settings')}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.upgradeBtnText,
+                  { color: isPremium ? theme.text : '#FFFFFF' },
+                ]}
+              >
+                {isPremium ? 'Manage' : 'Upgrade'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -1345,5 +1396,28 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     borderWidth: 1,
   },
+  proBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  proBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  upgradeBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  upgradeBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });
+
 

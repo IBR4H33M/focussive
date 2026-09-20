@@ -8,6 +8,11 @@ import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
 import { isValidPassword } from '@focussive/shared';
+import {
+  getSubscriptionStatus,
+  startFreeTrial,
+  syncSubscription,
+} from '../services/subscriptionService';
 
 const SALT_ROUNDS = 12;
 
@@ -17,7 +22,7 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, email, name, age, avatar_url, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, created_at, updated_at')
+    .select('id, email, name, age, avatar_url, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, subscription_tier, subscription_status, trial_used, trial_ends_at, created_at, updated_at')
     .eq('id', userId)
     .single();
 
@@ -37,8 +42,11 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
   const skipsUsed = skipsCount ?? 0;
   const skipsRemaining = Math.max(0, monthlyLimit - skipsUsed);
 
+  const subStatus = await getSubscriptionStatus(userId);
+
   res.json({
     ...user,
+    ...subStatus,
     monthly_skip_limit: monthlyLimit,
     skips_used_this_month: skipsUsed,
     skips_remaining: skipsRemaining,
@@ -160,4 +168,26 @@ export async function deleteAccount(req: AuthRequest, res: Response): Promise<vo
   }
 
   res.status(204).send();
+}
+
+// GET /user/subscription
+export async function getSubscription(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const status = await getSubscriptionStatus(userId);
+  res.json(status);
+}
+
+// POST /user/trial/start
+export async function startTrial(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const status = await startFreeTrial(userId);
+  res.json(status);
+}
+
+// POST /user/subscription/sync
+export async function syncSubscriptionController(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const { is_premium, customer_id } = req.body;
+  const status = await syncSubscription(userId, Boolean(is_premium), customer_id);
+  res.json(status);
 }

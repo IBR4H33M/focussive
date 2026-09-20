@@ -8,6 +8,7 @@ import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
 import { PREDEFINED_APPS } from '@focussive/shared';
+import { isUserPremium } from '../services/subscriptionService';
 
 // GET /app-groups
 export async function getAppGroups(req: AuthRequest, res: Response): Promise<void> {
@@ -33,6 +34,30 @@ export async function createAppGroup(req: AuthRequest, res: Response): Promise<v
 
   if (!name) {
     throw new AppError('Group name is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const isPremium = await isUserPremium(userId);
+  if (!isPremium) {
+    const { count, error: countErr } = await supabase
+      .from('app_groups')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (!countErr && (count || 0) >= 2) {
+      throw new AppError(
+        'Free tier is limited to 2 app groups. Upgrade to Premium for unlimited groups.',
+        403,
+        'PREMIUM_REQUIRED'
+      );
+    }
+
+    if (Array.isArray(apps) && apps.length > 3) {
+      throw new AppError(
+        'Free tier is limited to 3 apps per group. Upgrade to Premium for unlimited apps.',
+        403,
+        'PREMIUM_REQUIRED'
+      );
+    }
   }
 
   const { data: group, error } = await supabase
@@ -61,7 +86,17 @@ export async function updateAppGroup(req: AuthRequest, res: Response): Promise<v
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
-  if (apps !== undefined) updates.apps = apps;
+  if (apps !== undefined) {
+    const isPremium = await isUserPremium(userId);
+    if (!isPremium && Array.isArray(apps) && apps.length > 3) {
+      throw new AppError(
+        'Free tier is limited to 3 apps per group. Upgrade to Premium for unlimited apps.',
+        403,
+        'PREMIUM_REQUIRED'
+      );
+    }
+    updates.apps = apps;
+  }
 
   if (Object.keys(updates).length === 0) {
     throw new AppError('No fields to update', 400, 'VALIDATION_ERROR');

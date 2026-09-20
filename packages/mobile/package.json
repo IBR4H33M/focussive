@@ -43,6 +43,7 @@
     "react-dom": "latest",
     "react-native": "latest",
     "react-native-gesture-handler": "latest",
+    "react-native-purchases": "latest",
     "react-native-qrcode-svg": "latest",
     "react-native-safe-area-context": "latest",
     "react-native-screens": "latest",

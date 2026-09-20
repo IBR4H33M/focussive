@@ -8,6 +8,9 @@ import {
   updateProfile,
   updatePassword,
   deleteAccount,
+  getSubscription,
+  startTrial,
+  syncSubscriptionController,
 } from '../controllers/userController';
 import { authMiddleware } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -20,5 +23,10 @@ router.get('/profile', asyncHandler(getProfile));
 router.put('/profile', asyncHandler(updateProfile));
 router.put('/password', asyncHandler(updatePassword));
 router.delete('/account', asyncHandler(deleteAccount));
+
+// Subscription & 3-week Free Trial
+router.get('/subscription', asyncHandler(getSubscription));
+router.post('/trial/start', asyncHandler(startTrial));
+router.post('/subscription/sync', asyncHandler(syncSubscriptionController));
 
 export default router;

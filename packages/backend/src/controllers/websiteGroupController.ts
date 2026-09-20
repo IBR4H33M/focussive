@@ -8,6 +8,8 @@ import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
 
+import { isUserPremium } from '../services/subscriptionService';
+
 const DEFAULT_SOCIAL_MEDIA_GROUP = {
   name: 'Social Media',
   websites: ['facebook.com', 'instagram.com', 'x.com', 'twitter.com', 'tiktok.com', 'reddit.com', 'pinterest.com'],
@@ -49,6 +51,30 @@ export async function createWebsiteGroup(req: AuthRequest, res: Response): Promi
 
   if (!name) throw new AppError('Name is required', 400, 'VALIDATION_ERROR');
 
+  const isPremium = await isUserPremium(userId);
+  if (!isPremium) {
+    const { count, error: countErr } = await supabase
+      .from('website_groups')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (!countErr && (count || 0) >= 2) {
+      throw new AppError(
+        'Free tier is limited to 2 website groups. Upgrade to Premium for unlimited groups.',
+        403,
+        'PREMIUM_REQUIRED'
+      );
+    }
+
+    if (Array.isArray(websites) && websites.length > 3) {
+      throw new AppError(
+        'Free tier is limited to 3 websites per group. Upgrade to Premium for unlimited websites.',
+        403,
+        'PREMIUM_REQUIRED'
+      );
+    }
+  }
+
   const { data: group, error } = await supabase
     .from('website_groups')
     .insert({ id: uuidv4(), user_id: userId, name, websites: websites || [], is_default: false })
@@ -80,7 +106,17 @@ export async function updateWebsiteGroup(req: AuthRequest, res: Response): Promi
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
-  if (websites !== undefined) updates.websites = websites;
+  if (websites !== undefined) {
+    const isPremium = await isUserPremium(userId);
+    if (!isPremium && Array.isArray(websites) && websites.length > 3) {
+      throw new AppError(
+        'Free tier is limited to 3 websites per group. Upgrade to Premium for unlimited websites.',
+        403,
+        'PREMIUM_REQUIRED'
+      );
+    }
+    updates.websites = websites;
+  }
 
   const { data: group, error } = await supabase
     .from('website_groups')

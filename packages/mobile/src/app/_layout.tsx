@@ -24,6 +24,8 @@ import { setupNotificationHandler } from '@/utils/sessionReminders';
 import PermissionModal, { MissingPermissions } from '@/components/PermissionModal';
 import { ClerkProvider } from '@clerk/clerk-expo';
 import { tokenCache } from '@/utils/cache';
+import { SubscriptionProvider } from '@/context/SubscriptionContext';
+import PaywallModal from '@/components/PaywallModal';
 import Constants from 'expo-constants';
 
 const clerkPublishableKey =
@@ -151,6 +153,7 @@ function RootLayoutContent() {
         onDismiss={() => setShowPermissionModal(false)}
         onGrantPermissions={handleGrantPermissions}
       />
+      <PaywallModal />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -211,12 +214,15 @@ export default function RootLayout() {
     <ThemeProvider>
       <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
         <AuthProvider>
-          <SessionProvider>
-            <RootLayoutContent />
-          </SessionProvider>
+          <SubscriptionProvider>
+            <SessionProvider>
+              <RootLayoutContent />
+            </SessionProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </ClerkProvider>
     </ThemeProvider>
   );
 }
+
 

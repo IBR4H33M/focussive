@@ -22,6 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/utils/theme';
 import { historyApi, userApi } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
@@ -81,6 +82,7 @@ export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const indicatorAnim = useRef(new Animated.Value(0)).current;
+  const { isPremium, openPaywall } = useSubscription();
 
   const [activeSection, setActiveSection] = useState(0);
   const [history, setHistory] = useState<SessionHistory[]>([]);
@@ -210,6 +212,11 @@ export default function StatsScreen() {
   }
 
   function selectPeriod(key: PeriodKey) {
+    if (!isPremium && (key === 'month' || key === 'year')) {
+      setPeriodDropdownVisible(false);
+      openPaywall('history_limit');
+      return;
+    }
     setActivePeriod(key);
     setPeriodDropdownVisible(false);
     if (key === 'custom') setCustomInputVisible(true);
@@ -428,6 +435,29 @@ export default function StatsScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.sectionContent}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          !isPremium ? (
+            <TouchableOpacity
+              style={[
+                styles.historyLimitBanner,
+                {
+                  backgroundColor: isDark ? 'rgba(139, 167, 148, 0.12)' : 'rgba(88, 112, 66, 0.08)',
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={() => openPaywall('history_limit')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="time-outline" size={18} color={theme.accent} />
+              <Text style={[styles.historyLimitText, { color: theme.text, flex: 1 }]}>
+                Free tier shows last 3 weeks of history. Upgrade for unlimited lifetime records.
+              </Text>
+              <View style={[styles.historyUpgradePill, { backgroundColor: theme.accent }]}>
+                <Text style={styles.historyUpgradePillText}>Upgrade</Text>
+              </View>
+            </TouchableOpacity>
+          ) : null
+        }
         renderItem={({ item }) => {
           const isCancelled = item.status === 'cancelled';
           const violations = item.violations_count ?? 0;
@@ -528,18 +558,32 @@ export default function StatsScreen() {
         <TouchableOpacity style={styles.dropdownBackdrop} activeOpacity={1} onPress={() => setPeriodDropdownVisible(false)}>
           <View style={[styles.dropdown, { backgroundColor: theme.card }]}>
             <Text style={[styles.dropdownTitle, { color: theme.textSecondary }]}>SELECT PERIOD</Text>
-            {PERIODS.map(p => (
-              <TouchableOpacity
-                key={p.key}
-                style={[styles.dropdownItem, activePeriod === p.key && { backgroundColor: theme.accent + '18' }]}
-                onPress={() => selectPeriod(p.key)}
-              >
-                <Text style={[styles.dropdownItemText, { color: activePeriod === p.key ? theme.accent : theme.text }]}>
-                  {p.label}
-                </Text>
-                {activePeriod === p.key && <Ionicons name="checkmark" size={16} color={theme.accent} />}
-              </TouchableOpacity>
-            ))}
+            {PERIODS.map(p => {
+              const isLocked = !isPremium && (p.key === 'month' || p.key === 'year');
+              return (
+                <TouchableOpacity
+                  key={p.key}
+                  style={[
+                    styles.dropdownItem,
+                    activePeriod === p.key && { backgroundColor: theme.accent + '18' },
+                    isLocked && { opacity: 0.8 },
+                  ]}
+                  onPress={() => selectPeriod(p.key)}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.dropdownItemText, { color: activePeriod === p.key ? theme.accent : theme.text }]}>
+                      {p.label}
+                    </Text>
+                    {isLocked && (
+                      <View style={[styles.periodProBadge, { backgroundColor: theme.accent }]}>
+                        <Text style={styles.periodProText}>PRO</Text>
+                      </View>
+                    )}
+                  </View>
+                  {activePeriod === p.key && <Ionicons name="checkmark" size={16} color={theme.accent} />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -557,18 +601,41 @@ export default function StatsScreen() {
             <Text style={[styles.dropdownSubtitle, { color: theme.textSecondary }]}>Show last N days (excluding today)</Text>
 
             {/* Preset options */}
-            {[7, 14, 30, 60, 90].map(d => (
-              <TouchableOpacity
-                key={d}
-                style={[styles.dropdownItem, customDays === d && { backgroundColor: theme.accent + '18' }]}
-                onPress={() => { setCustomDays(d); setCustomInput(String(d)); setCustomInputVisible(false); }}
-              >
-                <Text style={[styles.dropdownItemText, { color: customDays === d ? theme.accent : theme.text }]}>
-                  Last {d} days
-                </Text>
-                {customDays === d && <Ionicons name="checkmark" size={16} color={theme.accent} />}
-              </TouchableOpacity>
-            ))}
+            {[7, 14, 30, 60, 90].map(d => {
+              const isLocked = !isPremium && d > 21;
+              return (
+                <TouchableOpacity
+                  key={d}
+                  style={[
+                    styles.dropdownItem,
+                    customDays === d && { backgroundColor: theme.accent + '18' },
+                    isLocked && { opacity: 0.8 },
+                  ]}
+                  onPress={() => {
+                    if (isLocked) {
+                      setCustomInputVisible(false);
+                      openPaywall('history_limit');
+                      return;
+                    }
+                    setCustomDays(d);
+                    setCustomInput(String(d));
+                    setCustomInputVisible(false);
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.dropdownItemText, { color: customDays === d ? theme.accent : theme.text }]}>
+                      Last {d} days
+                    </Text>
+                    {isLocked && (
+                      <View style={[styles.periodProBadge, { backgroundColor: theme.accent }]}>
+                        <Text style={styles.periodProText}>PRO</Text>
+                      </View>
+                    )}
+                  </View>
+                  {customDays === d && <Ionicons name="checkmark" size={16} color={theme.accent} />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -892,6 +959,40 @@ const styles = StyleSheet.create({
   noViolations: { alignItems: 'center', paddingVertical: 16, gap: 6 },
   noViolationsText: { fontSize: 13, fontWeight: '300' },
   cancelReason: { fontSize: 14, fontWeight: '300', lineHeight: 20, padding: 14 },
+  historyLimitBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 14,
+    gap: 10,
+  },
+  historyLimitText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  historyUpgradePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  historyUpgradePillText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  periodProBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  periodProText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
 });
 
 const dcStyles = StyleSheet.create({

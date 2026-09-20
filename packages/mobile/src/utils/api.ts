@@ -4,6 +4,7 @@
 
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import type { SubscriptionStatusResponse } from '@focussive/shared';
 
 const API_URL =
   (Constants.expoConfig?.extra as Record<string, string> | undefined)?.apiUrl ||
@@ -309,4 +310,18 @@ export const websiteGroupApi = {
   delete: (id: string) =>
     apiRequest(`/website-groups/${id}`, { method: 'DELETE' }),
 };
+
+// --- Subscription API ---
+
+export const subscriptionApi = {
+  getStatus: () =>
+    apiRequest<SubscriptionStatusResponse>('/user/subscription'),
+
+  startTrial: () =>
+    apiRequest<SubscriptionStatusResponse>('/user/trial/start', { method: 'POST' }),
+
+  sync: (body: { revenuecat_customer_id?: string; tier?: 'free' | 'premium'; status?: string }) =>
+    apiRequest<SubscriptionStatusResponse>('/user/subscription/sync', { method: 'POST', body }),
+};
+
 
