@@ -14,7 +14,7 @@
     "android": {
       "package": "com.focussive.app",
       "adaptiveIcon": {
-        "backgroundColor": "#90EE90",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/adaptive-icon.png"
       },
       "permissions": [
