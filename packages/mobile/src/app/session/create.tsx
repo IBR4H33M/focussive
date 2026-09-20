@@ -637,7 +637,9 @@ export default function CreateSessionScreen() {
             <Ionicons name="cafe-outline" size={20} color={allowBreaks ? theme.accent : theme.textSecondary} />
             <View>
               <Text style={[styles.toggleLabel, { color: theme.text }]}>Allow Breaks</Text>
-              <Text style={[{ fontSize: 12, color: theme.textSecondary }]}>Breaks don't count as distracted time</Text>
+              <Text style={[{ fontSize: 12, color: theme.textSecondary, marginTop: 2, lineHeight: 16 }]}>
+                Breaks don't count as{'\n'}distracted time.
+              </Text>
             </View>
           </View>
           <View style={[styles.toggle, allowBreaks && { backgroundColor: theme.accent }]}>

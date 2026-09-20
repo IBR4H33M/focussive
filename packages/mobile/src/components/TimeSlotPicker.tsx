@@ -14,6 +14,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import type { SessionTimeSlot } from '@focussive/shared';
 
 const ITEM_HEIGHT = 44;
@@ -283,14 +284,22 @@ export default function TimeSlotPicker({
         </View>
       ))}
 
-      {/* Plus icon ONLY (no container box, clean rounded button) */}
+      {/* Plus icon ONLY: single, larger and fatter plus without borders or circle fill */}
       {slots.length < maxSlots && (
         <TouchableOpacity
           onPress={handleAddSlot}
-          style={[styles.addSlotBtn, { backgroundColor: `${theme.accent}18` }]}
+          style={styles.addSlotBtn}
           activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Ionicons name="add" size={24} color={theme.accent} />
+          <Svg width={36} height={36} viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M12 4V20M4 12H20"
+              stroke={theme.accent}
+              strokeWidth="3.2"
+              strokeLinecap="round"
+            />
+          </Svg>
         </TouchableOpacity>
       )}
     </View>
@@ -349,12 +358,12 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   addSlotBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    padding: 6,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
-    marginTop: 8,
+    marginTop: 10,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
 });
