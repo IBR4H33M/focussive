@@ -67,8 +67,8 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
   if (overlay_gif_url !== undefined) updates.overlay_gif_url = overlay_gif_url;
   if (monthly_skip_limit !== undefined) {
     const parsed = parseInt(String(monthly_skip_limit), 10);
-    if (isNaN(parsed) || parsed < 0 || parsed > 1000) {
-      throw new AppError('Monthly skip limit must be between 0 and 1000', 400, 'VALIDATION_ERROR');
+    if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+      throw new AppError('Monthly skip limit must be between 0 and 100', 400, 'VALIDATION_ERROR');
     }
     updates.monthly_skip_limit = parsed;
   }

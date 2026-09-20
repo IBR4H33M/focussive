@@ -428,6 +428,20 @@ export default function SettingsScreen() {
     }
   }
 
+  const handleSkipLimitChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, '');
+    if (cleaned === '') {
+      setSkipLimitInputValue('');
+      return;
+    }
+    const num = parseInt(cleaned, 10);
+    if (num > 100) {
+      setSkipLimitInputValue('100');
+    } else {
+      setSkipLimitInputValue(String(num));
+    }
+  };
+
   async function saveSkipLimit() {
     const parsed = parseInt(skipLimitInputValue, 10);
     if (isNaN(parsed) || parsed < 0 || parsed > 100) {
@@ -1235,51 +1249,18 @@ export default function SettingsScreen() {
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Monthly Skip Limit</Text>
             <Text style={[styles.reminderModalDesc, { color: theme.textSecondary }]}>
-              Set how many focus sessions you can skip each calendar month. Default is 5.
+              Set how many focus sessions you can skip each calendar month (between 0 and 100). Default is 5.
             </Text>
-
-            {/* Quick presets */}
-            <View style={styles.reminderPresets}>
-              {[3, 5, 10, 15].map((preset) => (
-                <TouchableOpacity
-                  key={preset}
-                  style={[
-                    styles.reminderPresetBtn,
-                    {
-                      backgroundColor:
-                        skipLimitInputValue === String(preset)
-                          ? theme.accentDark
-                          : theme.surface,
-                    },
-                  ]}
-                  onPress={() => setSkipLimitInputValue(String(preset))}
-                >
-                  <Text
-                    style={[
-                      styles.reminderPresetText,
-                      {
-                        color:
-                          skipLimitInputValue === String(preset)
-                            ? '#FFFFFF'
-                            : theme.textSecondary,
-                      },
-                    ]}
-                  >
-                    {preset}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
 
             {/* Custom input */}
             <View style={styles.reminderCustomRow}>
               <TextInput
                 style={[styles.reminderInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-                placeholder="Custom limit"
+                placeholder="0 - 100"
                 placeholderTextColor={theme.textSecondary}
                 value={skipLimitInputValue}
-                onChangeText={setSkipLimitInputValue}
-                keyboardType="numeric"
+                onChangeText={handleSkipLimitChange}
+                keyboardType="number-pad"
                 maxLength={3}
               />
               <Text style={{ color: theme.textSecondary, fontSize: 14 }}>skips / mo</Text>
