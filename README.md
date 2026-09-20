@@ -99,12 +99,31 @@ packages/mobile/
 - **Persistent Locked Notifications**:
   - **Upcoming Session Reminder**: Soft slate surface (`#7C8CA6`), locked (`FLAG_NO_CLEAR` / `FLAG_ONGOING_EVENT`), dark red countdown timer (`#8B1E1E`).
   - **Running Session**: Deep navy surface (`#1E2235`), locked (`FLAG_NO_CLEAR` / `FLAG_ONGOING_EVENT`), light red countdown timer (`#F87171`).
-- **Installed Apps Discovery (`@focussive/installed-apps`)**: Queries user-installed apps and icons via `QUERY_ALL_PACKAGES` to configure blocklists.
+- **Installed Apps Discovery (`@focussive/installed-apps`)**: Queries user-installed apps and icons via `QUERY_ALL_PACKAGES` to configure blocklists (automatically filtering system and One UI home launchers).
+- **Clerk Authentication**: Secure auth with `@clerk/clerk-expo`, custom OTP email verification with sleek chevron-back navigation, and synchronized user profiles.
+- **Premium Subscription & Paywall (RevenueCat)**:
+  - **Free Tier**: Up to 2 App Groups (max 3 apps/group), 2 Website Groups (max 3 sites/group), and 21-day session history.
+  - **Premium Tier**: Unlimited app groups, unlimited website groups, and lifetime session history.
+  - **3-Week Free Trial**: 1-time 21-day trial per account with strict database-level lifetime enforcement.
+  - **Pricing**: $5.00 / month or $36.00 / year (Save 40%).
+  - **Paywall Modal**: Accessible from upgrade prompts and limit gates across the app.
+- **Samsung Alarm Style Duration Timer**:
+  - Inertial free-scrolling wheel picker with momentum physics and snap points.
+  - 1-minute precision (00–59 minutes).
+  - 24-hour mode indicator vs 12-hour mode with interactive `[ AM ] [ PM ]` segmented toggle.
+  - Containerless layout with clean, large tabular numbers (`fontSize: 32`).
+  - Bold, fat `+` icon for adding additional session time slots.
+- **Connected Recurring Weekday Selector & Borderless Schedule Pills**:
+  - Seamless edge-to-edge day selector where consecutive selected days merge into a unified pill container.
+  - Borderless schedule type options ("Today", "Scheduled", "Recurring") with theme fill selection.
+- **Settings & Monthly Skip Limits**:
+  - Configurable monthly skip allowance bounded strictly between 0 and 100 skips.
+  - Themed in-app alert dialogs (`ThemedAlert`) replacing system-native Android alert popups.
 - **Browser Extension QR Code Login**: Pair desktop browser extension by scanning the in-app QR code.
 - **Harmonious Theme System**: Space Cadet navy, Sage, and Cosmic Latte palette with dark and light mode support.
 
 > [!IMPORTANT]
-> Because Focussive uses native modules (`@focussive/app-blocker` and `@focussive/installed-apps`), standard **Expo Go cannot be used**. Always use `pnpm build:mobile` (or EAS dev builds) when testing.
+> Because Focussive uses native modules (`@focussive/app-blocker` and `@focussive/installed-apps`), standard **Expo Go cannot be used**. Always use local dev builds or EAS Cloud development clients.
 
 ---
 
@@ -117,11 +136,28 @@ packages/mobile/
 | **`pnpm build:extension`** | `pnpm -F @focussive/extension build` | Builds Chrome extension to `packages/extension/dist` |
 | **`pnpm build:mobile`** | `pnpm -F @focussive/mobile android` | Builds & runs local Android debug APK |
 | **`pnpm build:mobile:release`**| `pnpm -F @focussive/mobile android:release`| Builds local optimized standalone release APK |
-| **`pnpm build:mobile:dev`** | `pnpm -F @focussive/mobile build:dev` | Triggers EAS Cloud development client build |
-| **`pnpm build:mobile:preview`**| `pnpm -F @focussive/mobile build:preview` | Triggers EAS Cloud internal preview APK build |
-| **`pnpm build:mobile:prod`** | `pnpm -F @focussive/mobile build:prod` | Triggers EAS Cloud Play Store AAB build |
-| **`pnpm build:mobile:prod-apk`**| `pnpm -F @focussive/mobile build:prod-apk`| Triggers EAS Cloud standalone production APK build |
+| **`pnpm build:mobile:dev`** | `pnpm -F @focussive/mobile build:dev` | Triggers EAS Cloud development client build (`eas build --platform android --profile development`) |
+| **`pnpm build:mobile:preview`**| `pnpm -F @focussive/mobile build:preview` | Triggers EAS Cloud internal preview APK build (`eas build --platform android --profile preview`) |
+| **`pnpm build:mobile:prod`** | `pnpm -F @focussive/mobile build:prod` | Triggers EAS Cloud Play Store AAB build (`eas build --platform android --profile production`) |
+| **`pnpm build:mobile:prod-apk`**| `pnpm -F @focussive/mobile build:prod-apk`| Triggers EAS Cloud standalone production APK build (`eas build --platform android --profile production-apk`) |
 | **`pnpm typecheck`** | `tsc --noEmit (workspace)` | Typechecks all packages in the workspace |
+
+---
+
+## ☁️ Exporting EAS Cloud Dev Builds
+
+To export a cloud development build directly using EAS CLI:
+
+```bash
+# Navigate to mobile package
+cd packages/mobile
+
+# Build development client APK in the cloud
+eas build --platform android --profile development
+
+# Or from monorepo root:
+pnpm build:mobile:dev
+```
 
 ---
 
