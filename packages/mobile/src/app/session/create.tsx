@@ -13,10 +13,11 @@ import { useTheme } from '@/utils/theme';
 import { sessionApi, appGroupApi, websiteGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
 import { ScheduleType, Weekday } from '@focussive/shared';
-import type { AppGroup, WebsiteGroup } from '@focussive/shared';
+import type { AppGroup, WebsiteGroup, SessionTimeSlot } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { hasRequiredPermissions, requestUsageStatsPermission, requestOverlayPermission } from '@focussive/app-blocker';
 import InstalledApps from '@focussive/installed-apps';
+import TimeSlotPicker from '@/components/TimeSlotPicker';
 
 // ── Mini calendar component ──────────────────────────────────────────────────
 
@@ -133,11 +134,9 @@ export default function CreateSessionScreen() {
   const { refreshSessions } = useSessions();
 
   const [name, setName] = useState('');
-  const [durationHours, setDurationHours] = useState('0');
-  const [durationMinutes, setDurationMinutes] = useState('');
-  const [startHours, setStartHours] = useState('');
-  const [startMinutes, setStartMinutes] = useState('');
-  const [startAmPm, setStartAmPm] = useState<'AM' | 'PM'>('AM');
+  const [timeSlots, setTimeSlots] = useState<SessionTimeSlot[]>([
+    { start_time: '08:00', end_time: '09:00' },
+  ]);
   const [use24Hour, setUse24Hour] = useState(true);
   const [schedule, setSchedule] = useState<ScheduleType>(ScheduleType.TODAY);
   const [recurringDays, setRecurringDays] = useState<Weekday[]>([]);   // for RECURRING
@@ -214,34 +213,18 @@ export default function CreateSessionScreen() {
   async function handleCreate() {
     if (!name.trim()) { Alert.alert('Error', 'Session name is required'); return; }
 
-    const dh = parseInt(durationHours, 10) || 0;
-    const dm = parseInt(durationMinutes, 10) || 0;
-    const duration = dh * 60 + dm;
-    if (duration < 1) { Alert.alert('Error', 'Duration must be at least 1 minute'); return; }
-
-    let sh = parseInt(startHours, 10) || 0;
-    const sm = parseInt(startMinutes, 10) || 0;
-    
-    // Convert 12-hour to 24-hour if needed
-    if (!use24Hour) {
-      if (sh < 1 || sh > 12) {
-        Alert.alert('Error', 'Hour must be between 1 and 12 for 12-hour format');
-        return;
-      }
-      if (startAmPm === 'PM' && sh !== 12) sh += 12;
-      if (startAmPm === 'AM' && sh === 12) sh = 0;
-    } else {
-      if (sh < 0 || sh > 23) {
-        Alert.alert('Error', 'Hour must be between 0 and 23 for 24-hour format');
-        return;
-      }
-    }
-    
-    if (sm < 0 || sm > 59) {
-      Alert.alert('Error', 'Minutes must be between 0 and 59');
+    if (!timeSlots || timeSlots.length === 0) {
+      Alert.alert('Error', 'Please add at least one time duration');
       return;
     }
-    const startTime = `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
+
+    const primarySlot = timeSlots[0];
+    const [sh, sm] = primarySlot.start_time.split(':').map(Number);
+    const [eh, em] = primarySlot.end_time.split(':').map(Number);
+    let slotMinutes = (eh * 60 + em) - (sh * 60 + sm);
+    if (slotMinutes <= 0) slotMinutes += 24 * 60;
+    const duration = Math.max(1, slotMinutes);
+    const startTime = primarySlot.start_time;
 
     if (schedule === ScheduleType.RECURRING && recurringDays.length === 0) {
       Alert.alert('Error', 'Select at least one day for recurring sessions');
@@ -299,6 +282,7 @@ export default function CreateSessionScreen() {
           ? scheduledDates
           : [],
         start_time: startTime,
+        time_slots: timeSlots,
         mobile_focus: mobileFocus,
         browser_focus: browserFocus,
         app_group_ids: mobileFocus ? selectedAppGroupIds : [],
@@ -332,54 +316,15 @@ export default function CreateSessionScreen() {
         value={name} onChangeText={setName}
       />
 
-      {/* Duration */}
-      <Text style={[styles.label, { color: theme.textSecondary }]}>DURATION</Text>
-      <View style={styles.timeRow}>
-        <TextInput
-          style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-          placeholder="0" placeholderTextColor={theme.textSecondary}
-          value={durationHours} onChangeText={setDurationHours} keyboardType="numeric" maxLength={2}
-        />
-        <Text style={[styles.timeSep, { color: theme.textSecondary }]}>h</Text>
-        <TextInput
-          style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-          placeholder="0" placeholderTextColor={theme.textSecondary}
-          value={durationMinutes} onChangeText={setDurationMinutes} keyboardType="numeric" maxLength={2}
-        />
-        <Text style={[styles.timeSep, { color: theme.textSecondary }]}>m</Text>
-      </View>
-
-      {/* Start Time */}
-      <Text style={[styles.label, { color: theme.textSecondary }]}>START TIME {!use24Hour && '(12-hour)'}</Text>
-      <View style={styles.timeRow}>
-        <TextInput
-          style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-          placeholder={use24Hour ? 'HH' : '12'} placeholderTextColor={theme.textSecondary}
-          value={startHours} onChangeText={setStartHours} keyboardType="numeric" maxLength={2}
-        />
-        <Text style={[styles.timeSep, { color: theme.text }]}>:</Text>
-        <TextInput
-          style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-          placeholder="MM" placeholderTextColor={theme.textSecondary}
-          value={startMinutes} onChangeText={setStartMinutes} keyboardType="numeric" maxLength={2}
-        />
-        {!use24Hour && (
-          <View style={styles.ampmRow}>
-            <TouchableOpacity
-              style={[styles.ampmBtn, { borderColor: theme.border, backgroundColor: startAmPm === 'AM' ? theme.accent : theme.surface }]}
-              onPress={() => setStartAmPm('AM')}
-            >
-              <Text style={[styles.ampmText, { color: startAmPm === 'AM' ? '#fff' : theme.textSecondary }]}>AM</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.ampmBtn, { borderColor: theme.border, backgroundColor: startAmPm === 'PM' ? theme.accent : theme.surface }]}
-              onPress={() => setStartAmPm('PM')}
-            >
-              <Text style={[styles.ampmText, { color: startAmPm === 'PM' ? '#fff' : theme.textSecondary }]}>PM</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+      {/* Time durations */}
+      <Text style={[styles.label, { color: theme.textSecondary }]}>Time durations</Text>
+      <TimeSlotPicker
+        slots={timeSlots}
+        onChangeSlots={setTimeSlots}
+        use24Hour={use24Hour}
+        theme={theme}
+        maxSlots={5}
+      />
 
       {/* Schedule Type */}
       <Text style={[styles.label, { color: theme.textSecondary }]}>SCHEDULE</Text>

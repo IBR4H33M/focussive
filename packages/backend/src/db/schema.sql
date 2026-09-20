@@ -215,3 +215,28 @@ CREATE POLICY session_allowlist_policy ON session_allowlist
   FOR ALL USING (
     session_id IN (SELECT id FROM sessions WHERE user_id = auth.uid())
   );
+
+-- ============================================================
+-- MIGRATIONS: Avatar, Preferences, Multi-slot & Skip Session
+-- ============================================================
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS overlay_quote_enabled BOOLEAN DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS overlay_gif_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS overlay_gif_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_skip_limit INTEGER DEFAULT 5;
+
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS time_slots JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS skipped_until TIMESTAMPTZ;
+
+-- ============================================================
+-- SESSION SKIPS AUDIT TABLE (for monthly skip limit quota)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS session_skips (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  skipped_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_skips_user_month ON session_skips(user_id, skipped_at);
+

@@ -103,12 +103,13 @@ export async function getSession(req: AuthRequest, res: Response): Promise<void>
 // POST /sessions
 export async function createSession(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
-  const {
+  let {
     name,
     duration,
     schedule,
     schedule_days,
     start_time,
+    time_slots,
     mobile_focus,
     browser_focus,
     app_group_ids,
@@ -116,6 +117,21 @@ export async function createSession(req: AuthRequest, res: Response): Promise<vo
     allow_breaks,
     max_break_minutes,
   } = req.body;
+
+  // Handle multi-time-slots
+  if (Array.isArray(time_slots) && time_slots.length > 0) {
+    if (time_slots.length > 5) {
+      throw new AppError('Maximum of 5 time slots allowed per session', 400, 'VALIDATION_ERROR');
+    }
+    start_time = time_slots[0].start_time;
+    const [sh, sm] = time_slots[0].start_time.split(':').map(Number);
+    const [eh, em] = time_slots[0].end_time.split(':').map(Number);
+    let slotMins = (eh * 60 + em) - (sh * 60 + sm);
+    if (slotMins <= 0) slotMins += 24 * 60;
+    if (!duration) {
+      duration = Math.max(1, slotMins);
+    }
+  }
 
   // Validation
   if (!name || !duration || !start_time) {
@@ -168,6 +184,7 @@ export async function createSession(req: AuthRequest, res: Response): Promise<vo
       schedule: schedule || 'today',
       schedule_days: schedule_days || [],
       start_time,
+      time_slots: time_slots || [],
       mobile_focus: mobile_focus || false,
       browser_focus: browser_focus || false,
       app_group_ids: app_group_ids || [],
@@ -209,7 +226,7 @@ export async function updateSession(req: AuthRequest, res: Response): Promise<vo
   }
 
   const allowedFields = [
-    'name', 'duration', 'schedule', 'schedule_days', 'start_time',
+    'name', 'duration', 'schedule', 'schedule_days', 'start_time', 'time_slots',
     'mobile_focus', 'browser_focus', 'app_group_ids', 'blocked_websites',
     'allow_breaks', 'max_break_minutes',
   ];
@@ -218,6 +235,21 @@ export async function updateSession(req: AuthRequest, res: Response): Promise<vo
   for (const field of allowedFields) {
     if (req.body[field] !== undefined) {
       updates[field] = req.body[field];
+    }
+  }
+
+  // If time_slots was updated, sync start_time and duration
+  if (Array.isArray(updates.time_slots) && updates.time_slots.length > 0) {
+    if (updates.time_slots.length > 5) {
+      throw new AppError('Maximum of 5 time slots allowed per session', 400, 'VALIDATION_ERROR');
+    }
+    updates.start_time = (updates.time_slots[0] as any).start_time;
+    const [sh, sm] = (updates.time_slots[0] as any).start_time.split(':').map(Number);
+    const [eh, em] = (updates.time_slots[0] as any).end_time.split(':').map(Number);
+    let slotMins = (eh * 60 + em) - (sh * 60 + sm);
+    if (slotMins <= 0) slotMins += 24 * 60;
+    if (!updates.duration) {
+      updates.duration = Math.max(1, slotMins);
     }
   }
 
@@ -392,6 +424,142 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     message: 'Session cancelled',
     actual_duration: actualDuration,
     violations_count: violationsCount || 0,
+  });
+}
+
+// GET /sessions/skip-status
+export async function getSkipStatus(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('monthly_skip_limit')
+    .eq('id', userId)
+    .single();
+
+  const monthlyLimit = user?.monthly_skip_limit ?? 5;
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+  const { count: skipsCount } = await supabase
+    .from('session_skips')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('skipped_at', startOfMonth);
+
+  const skipsUsed = skipsCount ?? 0;
+  const skipsRemaining = Math.max(0, monthlyLimit - skipsUsed);
+
+  res.json({
+    monthly_skip_limit: monthlyLimit,
+    skips_used_this_month: skipsUsed,
+    skips_remaining: skipsRemaining,
+  });
+}
+
+// POST /sessions/:id/skip
+export async function skipSession(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const { id } = req.params;
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    throw new AppError('Session not found', 404, 'NOT_FOUND');
+  }
+
+  if (session.status !== SessionStatus.SCHEDULED && session.status !== SessionStatus.ACTIVE) {
+    throw new AppError('Only upcoming or active sessions can be skipped', 400, 'INVALID_STATUS');
+  }
+
+  // 1. Check user monthly skip limit
+  const { data: user } = await supabase
+    .from('users')
+    .select('monthly_skip_limit')
+    .eq('id', userId)
+    .single();
+
+  const monthlyLimit = user?.monthly_skip_limit ?? 5;
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+  const { count: skipsCount } = await supabase
+    .from('session_skips')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('skipped_at', startOfMonth);
+
+  const skipsUsed = skipsCount ?? 0;
+  if (skipsUsed >= monthlyLimit) {
+    throw new AppError(
+      `Monthly skip limit reached (${skipsUsed}/${monthlyLimit}). You cannot skip any more sessions this month.`,
+      400,
+      'SKIP_LIMIT_REACHED'
+    );
+  }
+
+  const now = new Date();
+  // Set skipped_until to end of today (23:59:59.999) so it doesn't trigger again today
+  const skipUntil = new Date(now);
+  skipUntil.setHours(23, 59, 59, 999);
+
+  const nextStatus = (session.schedule === 'recurring' || session.schedule === 'scheduled')
+    ? SessionStatus.SCHEDULED
+    : SessionStatus.COMPLETED;
+
+  // End any open breaks without recording violations
+  await supabase
+    .from('session_breaks')
+    .update({ ended_at: now.toISOString(), duration_seconds: 0 })
+    .eq('session_id', id)
+    .is('ended_at', null);
+
+  // If active, delete temporary violations recorded during this skipped session
+  // so no violation is counted as per user request ("it wont count as any sort of violation and no history nothing will get logged")
+  if (session.status === SessionStatus.ACTIVE && session.started_at) {
+    await supabase
+      .from('violations')
+      .delete()
+      .eq('session_id', id)
+      .gte('timestamp', session.started_at);
+  }
+
+  // Record skip in session_skips table for monthly tracking
+  await supabase.from('session_skips').insert({
+    id: uuidv4(),
+    user_id: userId,
+    session_id: id,
+    skipped_at: now.toISOString(),
+  });
+
+  // Update session: set skipped_until, reset started_at to null, set status back to scheduled
+  // Crucially: NO row is inserted into session_history!
+  const { error: updateError } = await supabase
+    .from('sessions')
+    .update({
+      status: nextStatus,
+      skipped_until: skipUntil.toISOString(),
+      started_at: null,
+      pause_count: 0,
+    })
+    .eq('id', id);
+
+  if (updateError) {
+    throw new AppError('Failed to skip session', 500, 'UPDATE_ERROR');
+  }
+
+  const newSkipsUsed = skipsUsed + 1;
+  const newSkipsRemaining = Math.max(0, monthlyLimit - newSkipsUsed);
+
+  res.json({
+    message: 'Session skipped',
+    skipped_until: skipUntil.toISOString(),
+    monthly_skip_limit: monthlyLimit,
+    skips_used_this_month: newSkipsUsed,
+    skips_remaining: newSkipsRemaining,
   });
 }
 

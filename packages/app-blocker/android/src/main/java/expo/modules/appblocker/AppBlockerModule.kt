@@ -172,6 +172,34 @@ class AppBlockerModule : Module() {
       return@Function null
     }
 
+    Function("requestNotificationPermission") {
+      val context = appContext.reactContext ?: return@Function null
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
+          context.startActivity(intent)
+        } else {
+          val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = android.net.Uri.parse("package:" + context.packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
+          context.startActivity(intent)
+        }
+      } catch (_: Exception) {
+        try {
+          val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = android.net.Uri.parse("package:" + context.packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
+          context.startActivity(intent)
+        } catch (_: Exception) {}
+      }
+      return@Function null
+    }
+
     AsyncFunction("hasUsageStatsPermission") { ->
       val context = appContext.reactContext ?: return@AsyncFunction false
       return@AsyncFunction hasUsageStatsPermission(context)

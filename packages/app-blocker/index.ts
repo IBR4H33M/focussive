@@ -1,5 +1,6 @@
 import AppBlockerModule from './src/AppBlockerModule';
 import { EventSubscription } from 'expo-modules-core';
+import { Linking } from 'react-native';
 
 /**
  * Start the native app-blocker monitoring service.
@@ -39,6 +40,16 @@ export function requestUsageStatsPermission() {
 
 export function requestOverlayPermission() {
   return AppBlockerModule.requestOverlayPermission();
+}
+
+export function requestNotificationPermission() {
+  try {
+    if (AppBlockerModule?.requestNotificationPermission) {
+      AppBlockerModule.requestNotificationPermission();
+      return;
+    }
+  } catch {}
+  Linking.openSettings();
 }
 
 export async function hasUsageStatsPermission(): Promise<boolean> {

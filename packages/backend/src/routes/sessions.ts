@@ -10,6 +10,8 @@ import {
   updateSession,
   deleteSession,
   cancelSession,
+  skipSession,
+  getSkipStatus,
   startSession,
   getActiveSessions,
   getUpcomingSessions,
@@ -27,6 +29,7 @@ router.use(authMiddleware);
 // Specific routes before parameterized routes
 router.get('/active', asyncHandler(getActiveSessions));
 router.get('/upcoming', asyncHandler(getUpcomingSessions));
+router.get('/skip-status', asyncHandler(getSkipStatus));
 
 router.get('/', asyncHandler(getSessions));
 router.get('/:id', asyncHandler(getSession));
@@ -34,6 +37,7 @@ router.post('/', asyncHandler(createSession));
 router.put('/:id', asyncHandler(updateSession));
 router.delete('/:id', asyncHandler(deleteSession));
 router.post('/:id/cancel', asyncHandler(cancelSession));
+router.post('/:id/skip', asyncHandler(skipSession));
 router.post('/:id/start', asyncHandler(startSession));
 router.post('/:id/break/start', asyncHandler(startBreak));
 router.post('/:id/break/end', asyncHandler(endBreak));

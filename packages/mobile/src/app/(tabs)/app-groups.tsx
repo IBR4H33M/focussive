@@ -17,7 +17,7 @@ import {
   Image,
   SectionList,
 } from 'react-native';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { appGroupApi, websiteGroupApi } from '@/utils/api';
 import { PREDEFINED_APPS } from '@focussive/shared';
 import type { AppGroup, AppInfo, WebsiteGroup } from '@focussive/shared';
@@ -34,6 +34,7 @@ const COMMON_WEBSITES = [
 
 export default function GroupsScreen() {
   const theme = useTheme();
+  const isDark = useIsDark();
   const insets = useSafeAreaInsets();
 
   // App groups state
@@ -378,12 +379,13 @@ export default function GroupsScreen() {
                         },
                       ]}
                       onPress={() => toggleApp(app)}
+                      activeOpacity={0.7}
                     >
                       {app.iconUri
                         ? <Image source={{ uri: app.iconUri }} style={styles.appIcon} />
                         : <Ionicons name="apps-outline" size={24} color={theme.textSecondary} />}
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={[styles.listItemText, { color: theme.text }]} numberOfLines={1}>
+                      <View style={{ flex: 1, minWidth: 0, justifyContent: 'center', marginLeft: 4 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 2 }} numberOfLines={1}>
                           {app.name}
                         </Text>
                         <Text style={[styles.usageSubtext, { color: theme.textSecondary }]} numberOfLines={1}>
@@ -399,9 +401,21 @@ export default function GroupsScreen() {
           )}
 
           <TextInput
-            style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border, marginTop: 4 }]}
-            placeholder="Search Apps" placeholderTextColor={theme.textSecondary}
-            value={appSearchQuery} onChangeText={setAppSearchQuery}
+            style={[
+              styles.input,
+              {
+                color: theme.text,
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                borderWidth: 2,
+                marginTop: 4,
+                marginBottom: 8,
+              },
+            ]}
+            placeholder="Search apps"
+            placeholderTextColor={isDark ? theme.textSecondary : '#94A3B8'}
+            value={appSearchQuery}
+            onChangeText={setAppSearchQuery}
           />
           <ScrollView style={styles.listArea}>
             {deviceApps
@@ -412,17 +426,16 @@ export default function GroupsScreen() {
                 <TouchableOpacity
                   key={app.id}
                   style={[
-                    styles.listItem,
-                    {
-                      backgroundColor: isSel ? `${theme.accent}30` : theme.surface,
-                    },
+                    styles.cleanListItem,
+                    isSel && { backgroundColor: `${theme.accent}20` },
                   ]}
                   onPress={() => toggleApp(app)}
+                  activeOpacity={0.7}
                 >
                   {(app as any).iconUri
                     ? <Image source={{ uri: (app as any).iconUri }} style={styles.appIcon} />
                     : <Ionicons name="apps-outline" size={24} color={theme.textSecondary} />}
-                  <Text style={[styles.listItemText, { color: theme.text }]}>{app.name}</Text>
+                  <Text style={{ flex: 1, fontSize: 15, color: theme.text, marginLeft: 4 }}>{app.name}</Text>
                   {isSel && <Ionicons name="checkmark-circle" size={20} color={theme.accent} />}
                 </TouchableOpacity>
               );
@@ -544,6 +557,7 @@ const styles = StyleSheet.create({
   addIconBtn: { width: 44, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   listArea: { flex: 1, marginBottom: 12 },
   listItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 0, marginBottom: 8, gap: 12 },
+  cleanListItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, marginBottom: 4, gap: 10 },
   listItemText: { flex: 1, fontSize: 15 },
   appIcon: { width: 28, height: 28, borderRadius: 6 },
   saveBtn: { height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },

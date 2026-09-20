@@ -25,14 +25,35 @@ function shouldSessionBeActive(session: any): boolean {
   const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
   const currentWeekday = WEEKDAY_MAP[now.getDay()];
 
-  // Parse session start time
-  const [startHour, startMinute] = session.start_time.split(':').map(Number);
-  const startTime = startHour * 60 + startMinute; // minutes since midnight
-  const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
-  const endTimeMinutes = startTime + session.duration;
+  // Check if session was skipped for this occurrence
+  if (session.skipped_until && new Date(session.skipped_until) > now) {
+    return false;
+  }
 
-  // Check if current time is within the session window
-  const isInTimeWindow = currentTimeMinutes >= startTime && currentTimeMinutes < endTimeMinutes;
+  const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+  let isInTimeWindow = false;
+
+  if (Array.isArray(session.time_slots) && session.time_slots.length > 0) {
+    for (const slot of session.time_slots) {
+      if (!slot.start_time || !slot.end_time) continue;
+      const [sh, sm] = slot.start_time.split(':').map(Number);
+      const [eh, em] = slot.end_time.split(':').map(Number);
+      const slotStart = sh * 60 + sm;
+      let slotEnd = eh * 60 + em;
+      if (slotEnd <= slotStart) slotEnd += 24 * 60; // handles overnight slot
+
+      if (currentTimeMinutes >= slotStart && currentTimeMinutes < slotEnd) {
+        isInTimeWindow = true;
+        break;
+      }
+    }
+  } else if (session.start_time) {
+    // Parse session start time
+    const [startHour, startMinute] = session.start_time.split(':').map(Number);
+    const startTime = startHour * 60 + startMinute; // minutes since midnight
+    const endTimeMinutes = startTime + (session.duration || 25);
+    isInTimeWindow = currentTimeMinutes >= startTime && currentTimeMinutes < endTimeMinutes;
+  }
 
   if (!isInTimeWindow) return false;
 

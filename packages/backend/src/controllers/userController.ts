@@ -17,7 +17,7 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, email, name, age, created_at, updated_at')
+    .select('id, email, name, age, avatar_url, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, created_at, updated_at')
     .eq('id', userId)
     .single();
 
@@ -25,17 +25,45 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
     throw new AppError('User not found', 404, 'NOT_FOUND');
   }
 
-  res.json(user);
+  // Count skips used this calendar month
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const { count: skipsCount } = await supabase
+    .from('session_skips')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('skipped_at', startOfMonth);
+
+  const monthlyLimit = user.monthly_skip_limit ?? 5;
+  const skipsUsed = skipsCount ?? 0;
+  const skipsRemaining = Math.max(0, monthlyLimit - skipsUsed);
+
+  res.json({
+    ...user,
+    monthly_skip_limit: monthlyLimit,
+    skips_used_this_month: skipsUsed,
+    skips_remaining: skipsRemaining,
+  });
 }
 
 // PUT /user/profile
 export async function updateProfile(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
-  const { name, age } = req.body;
+  const { name, age, avatar_url, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit } = req.body;
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (age !== undefined) updates.age = age;
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+  if (overlay_quote_enabled !== undefined) updates.overlay_quote_enabled = overlay_quote_enabled;
+  if (overlay_gif_enabled !== undefined) updates.overlay_gif_enabled = overlay_gif_enabled;
+  if (overlay_gif_url !== undefined) updates.overlay_gif_url = overlay_gif_url;
+  if (monthly_skip_limit !== undefined) {
+    const parsed = parseInt(String(monthly_skip_limit), 10);
+    if (isNaN(parsed) || parsed < 0 || parsed > 1000) {
+      throw new AppError('Monthly skip limit must be between 0 and 1000', 400, 'VALIDATION_ERROR');
+    }
+    updates.monthly_skip_limit = parsed;
+  }
 
   if (Object.keys(updates).length === 0) {
     throw new AppError('No fields to update', 400, 'VALIDATION_ERROR');
@@ -45,14 +73,30 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
     .from('users')
     .update(updates)
     .eq('id', userId)
-    .select('id, email, name, age, created_at, updated_at')
+    .select('id, email, name, age, avatar_url, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, created_at, updated_at')
     .single();
 
   if (error || !user) {
     throw new AppError('Failed to update profile', 500, 'UPDATE_ERROR');
   }
 
-  res.json(user);
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const { count: skipsCount } = await supabase
+    .from('session_skips')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('skipped_at', startOfMonth);
+
+  const monthlyLimit = user.monthly_skip_limit ?? 5;
+  const skipsUsed = skipsCount ?? 0;
+  const skipsRemaining = Math.max(0, monthlyLimit - skipsUsed);
+
+  res.json({
+    ...user,
+    monthly_skip_limit: monthlyLimit,
+    skips_used_this_month: skipsUsed,
+    skips_remaining: skipsRemaining,
+  });
 }
 
 // PUT /user/password

@@ -33,6 +33,24 @@ class BlockOverlayActivity : Activity() {
 
     private lateinit var root: LinearLayout
 
+    private val quotes = arrayOf(
+        "\"The secret of getting ahead is getting started.\" — Mark Twain",
+        "\"Focus is a muscle. The more you practice, the stronger it gets.\"",
+        "\"Small disciplines repeated with consistency lead to great achievements.\" — John C. Maxwell",
+        "\"It is not enough to be busy... the question is: what are we busy about?\" — Henry David Thoreau",
+        "\"Stay committed to your decisions, but stay flexible in your approach.\" — Tony Robbins",
+        "\"You will never reach your destination if you stop and throw stones at every dog that barks.\" — Winston Churchill",
+        "\"Starve your distractions, feed your focus.\"",
+        "\"Action is the foundational key to all success.\" — Pablo Picasso",
+        "\"Do what you have to do until you can do what you want to do.\" — Oprah Winfrey",
+        "\"The successful warrior is the average man, with laser-like focus.\" — Bruce Lee",
+        "\"Focus on being productive instead of busy.\" — Tim Ferriss",
+        "\"Deep work is the ability to focus without distraction on a cognitively demanding task.\" — Cal Newport",
+        "\"Your future is created by what you do today, not tomorrow.\" — Robert Kiyosaki",
+        "\"Discipline is choosing between what you want now and what you want most.\" — Abraham Lincoln",
+        "\"Energy flows where attention goes.\" — Michael Beckwith"
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -85,7 +103,14 @@ class BlockOverlayActivity : Activity() {
         container.addView(styledText("Distraction Detected", 24f, Color.WHITE, bold = true, bottomPadDp = 8))
         container.addView(styledText(
             "You opened a blocked app\nduring your focus session.",
-            14f, 0xCCFFFFFF.toInt(), bold = false, bottomPadDp = 36
+            14f, 0xCCFFFFFF.toInt(), bold = false, bottomPadDp = 20
+        ))
+
+        // Motivational Quote
+        val quote = quotes.random()
+        container.addView(styledText(
+            quote,
+            13f, Color.parseColor("#FFD166"), bold = false, bottomPadDp = 30
         ))
 
         // Exit — solid dark button

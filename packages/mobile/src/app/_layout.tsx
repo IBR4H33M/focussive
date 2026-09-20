@@ -12,14 +12,16 @@ import { SessionProvider } from '@/context/SessionContext';
 import { ThemeProvider } from '@/utils/ThemeProvider';
 import { useTheme, useIsDark } from '@/utils/theme';
 import {
-  hasRequiredPermissions,
+  hasUsageStatsPermission,
+  hasOverlayPermission,
   requestUsageStatsPermission,
   requestOverlayPermission,
   hasExactAlarmPermission,
   requestExactAlarmPermission,
+  requestNotificationPermission,
 } from '@focussive/app-blocker';
 import { setupNotificationHandler } from '@/utils/sessionReminders';
-import PermissionModal from '@/components/PermissionModal';
+import PermissionModal, { MissingPermissions } from '@/components/PermissionModal';
 
 // Configure foreground notification display once at module load
 setupNotificationHandler();
@@ -31,6 +33,12 @@ function RootLayoutContent() {
   const router = useRouter();
   const segments = useSegments();
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [missingPermissions, setMissingPermissions] = useState<MissingPermissions>({
+    usageAccess: false,
+    overlay: false,
+    exactAlarm: false,
+    notifications: false,
+  });
 
   useEffect(() => {
     const openSessionFromNotification = (response: Notifications.NotificationResponse) => {
@@ -73,17 +81,31 @@ function RootLayoutContent() {
       if (isLoading || !isAuthenticated) return;
       (async () => {
         try {
-          const [hasRequired, hasExactAlarm, notifStatus] = await Promise.all([
-            hasRequiredPermissions(),
+          const [usage, overlay, exactAlarm, notifStatus] = await Promise.all([
+            hasUsageStatsPermission(),
+            hasOverlayPermission(),
             Platform.OS === 'android' ? hasExactAlarmPermission() : Promise.resolve(true),
             Notifications.getPermissionsAsync(),
           ]);
 
           const notifGranted = notifStatus.granted;
-          const allGranted = hasRequired && hasExactAlarm && notifGranted;
+          const missingUsage = !usage;
+          const missingOverlay = !overlay;
+          const missingAlarm = Platform.OS === 'android' && !exactAlarm;
+          const missingNotif = !notifGranted;
 
-          if (!allGranted) {
+          const anyMissing = missingUsage || missingOverlay || missingAlarm || missingNotif;
+
+          if (anyMissing) {
+            setMissingPermissions({
+              usageAccess: missingUsage,
+              overlay: missingOverlay,
+              exactAlarm: missingAlarm,
+              notifications: missingNotif,
+            });
             setShowPermissionModal(true);
+          } else {
+            setShowPermissionModal(false);
           }
         } catch {
           // Not on Android or module unavailable — skip silently
@@ -94,12 +116,10 @@ function RootLayoutContent() {
 
   const handleGrantPermissions = async () => {
     try {
-      await Promise.all([
-        requestUsageStatsPermission(),
-        requestOverlayPermission(),
-        Platform.OS === 'android' ? requestExactAlarmPermission() : Promise.resolve(),
-        Notifications.requestPermissionsAsync(),
-      ]);
+      if (missingPermissions.usageAccess) await requestUsageStatsPermission();
+      if (missingPermissions.overlay) await requestOverlayPermission();
+      if (missingPermissions.exactAlarm && Platform.OS === 'android') await requestExactAlarmPermission();
+      if (missingPermissions.notifications) await requestNotificationPermission();
     } catch {
       // Ignore errors
     }
@@ -119,6 +139,7 @@ function RootLayoutContent() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <PermissionModal
         visible={showPermissionModal}
+        missingPermissions={missingPermissions}
         onDismiss={() => setShowPermissionModal(false)}
         onGrantPermissions={handleGrantPermissions}
       />

@@ -2,7 +2,7 @@
 // Focussive Mobile — Violation Overlay Component
 // ============================================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,10 @@ import {
   StyleSheet,
   Modal,
   Pressable,
+  Image,
 } from 'react-native';
+import { MOTIVATIONAL_QUOTES } from '@focussive/shared';
+import { userApi } from '@/utils/api';
 
 type OverlayScreen = 'idle' | 'selectBreak' | 'selectAllow';
 
@@ -42,15 +45,35 @@ export default function ViolationOverlay({
   const [screen, setScreen] = useState<OverlayScreen>('idle');
   const [breakMinutes, setBreakMinutes] = useState(1);
   const [allowMinutes, setAllowMinutes] = useState(1);
+  const [quote, setQuote] = useState<string>('');
+  const [quoteEnabled, setQuoteEnabled] = useState(true);
+  const [gifEnabled, setGifEnabled] = useState(false);
+  const [gifUrl, setGifUrl] = useState<string | null>(null);
 
   const name = appName || websiteName || 'this app';
 
-  // Reset state when overlay opens/closes
-  React.useEffect(() => {
+  // Reset state and pick random quote when overlay opens
+  useEffect(() => {
     if (visible) {
       setScreen('idle');
       setBreakMinutes(1);
       setAllowMinutes(1);
+      const randomIdx = Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length);
+      setQuote(MOTIVATIONAL_QUOTES[randomIdx]);
+
+      userApi.getProfile().then((data: any) => {
+        if (data) {
+          if (typeof data.overlay_quote_enabled === 'boolean') {
+            setQuoteEnabled(data.overlay_quote_enabled);
+          }
+          if (typeof data.overlay_gif_enabled === 'boolean') {
+            setGifEnabled(data.overlay_gif_enabled);
+          }
+          if (data.overlay_gif_url) {
+            setGifUrl(data.overlay_gif_url);
+          }
+        }
+      }).catch(() => {});
     }
   }, [visible]);
 
@@ -73,9 +96,25 @@ export default function ViolationOverlay({
           {screen === 'idle' && (
             <>
               <Text style={styles.title}>Distraction Detected</Text>
-              <Text style={styles.subtitle}>
+              <Text style={[styles.subtitle, { marginBottom: 16 }]}>
                 You're using {name} during a focus session
               </Text>
+
+              {/* Custom GIF if enabled */}
+              {gifEnabled && gifUrl ? (
+                <Image
+                  source={{ uri: gifUrl }}
+                  style={styles.overlayGif}
+                  resizeMode="contain"
+                />
+              ) : null}
+
+              {/* Motivational Quote if enabled */}
+              {quoteEnabled && quote ? (
+                <Text style={styles.quoteText}>{quote}</Text>
+              ) : (
+                <View style={{ marginBottom: 16 }} />
+              )}
 
               <View style={styles.buttons}>
                 {/* Take a Break */}
@@ -214,6 +253,21 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     marginBottom: 40,
     textAlign: 'center',
+  },
+  overlayGif: {
+    width: 140,
+    height: 140,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  quoteText: {
+    fontSize: 13,
+    color: '#FFD166',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: 24,
+    paddingHorizontal: 8,
+    lineHeight: 18,
   },
   buttons: {
     width: '100%',

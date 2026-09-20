@@ -8,20 +8,30 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
+
+export interface MissingPermissions {
+  usageAccess?: boolean;
+  overlay?: boolean;
+  exactAlarm?: boolean;
+  notifications?: boolean;
+}
 
 interface PermissionModalProps {
   visible: boolean;
   onDismiss: () => void;
   onGrantPermissions: () => void;
+  missingPermissions?: MissingPermissions;
 }
 
 export default function PermissionModal({
   visible,
   onDismiss,
   onGrantPermissions,
+  missingPermissions,
 }: PermissionModalProps) {
   const theme = useTheme();
+  const isDark = useIsDark();
   const router = useRouter();
 
   const handleGrantPermissions = async () => {
@@ -36,6 +46,37 @@ export default function PermissionModal({
     }, 300);
   };
 
+  const showUsage = missingPermissions ? missingPermissions.usageAccess : true;
+  const showOverlay = missingPermissions ? missingPermissions.overlay : true;
+  const showAlarm = missingPermissions ? missingPermissions.exactAlarm : (Platform.OS === 'android');
+  const showNotif = missingPermissions ? missingPermissions.notifications : true;
+
+  const items: { name: string; description: string }[] = [];
+  if (showUsage) {
+    items.push({
+      name: 'Usage Access',
+      description: 'To detect which app is in the foreground',
+    });
+  }
+  if (showOverlay) {
+    items.push({
+      name: 'Display Over Other Apps',
+      description: 'To show the block overlay on top of apps',
+    });
+  }
+  if (Platform.OS === 'android' && showAlarm) {
+    items.push({
+      name: 'Precise Alarms',
+      description: 'For accurate session reminder notifications',
+    });
+  }
+  if (showNotif) {
+    items.push({
+      name: Platform.OS === 'android' ? 'Post Notifications' : 'Notifications',
+      description: 'To send session alerts and reminders',
+    });
+  }
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -48,44 +89,23 @@ export default function PermissionModal({
           </Text>
 
           <View style={[styles.permissionsList, { borderTopColor: theme.border }]}>
-            <PermissionItem
-              name="Usage Access"
-              description="To detect which app is in the foreground"
-              theme={theme}
-            />
-            <PermissionItem
-              name="Display Over Other Apps"
-              description="To show the block overlay on top of apps"
-              theme={theme}
-            />
-            {Platform.OS === 'android' && (
-              <>
-                <PermissionItem
-                  name="Precise Alarms"
-                  description="For accurate session reminder notifications"
-                  theme={theme}
-                />
-                <PermissionItem
-                  name="Post Notifications"
-                  description="To send session alerts and reminders"
-                  theme={theme}
-                  isLast
-                />
-              </>
-            )}
-            {Platform.OS !== 'android' && (
+            {items.map((item, index) => (
               <PermissionItem
-                name="Notifications"
-                description="To send session alerts and reminders"
+                key={item.name}
+                name={item.name}
+                description={item.description}
                 theme={theme}
-                isLast
+                isLast={index === items.length - 1}
               />
-            )}
+            ))}
           </View>
 
           <View style={styles.buttonRow}>
             <TouchableOpacity
-              style={styles.buttonLater}
+              style={[
+                styles.buttonLater,
+                { backgroundColor: isDark ? '#1E1E1E' : '#757575' },
+              ]}
               onPress={onDismiss}
             >
               <Text style={styles.buttonText}>
@@ -209,7 +229,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000000',
+    color: '#FFFFFF',
   },
   buttonTextGrant: {
     fontSize: 14,

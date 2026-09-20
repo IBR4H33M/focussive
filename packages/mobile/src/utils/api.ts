@@ -154,6 +154,22 @@ export const sessionApi = {
   cancel: (id: string, reason?: string) =>
     apiRequest(`/sessions/${id}/cancel`, { method: 'POST', body: { reason } }),
 
+  skip: (id: string) =>
+    apiRequest<{
+      message: string;
+      skipped_until: string;
+      monthly_skip_limit?: number;
+      skips_used_this_month?: number;
+      skips_remaining?: number;
+    }>(`/sessions/${id}/skip`, { method: 'POST' }),
+
+  getSkipStatus: () =>
+    apiRequest<{
+      monthly_skip_limit: number;
+      skips_used_this_month: number;
+      skips_remaining: number;
+    }>('/sessions/skip-status'),
+
   start: (id: string) =>
     apiRequest(`/sessions/${id}/start`, { method: 'POST' }),
 
@@ -226,10 +242,18 @@ export const historyApi = {
 // --- User API ---
 
 export const userApi = {
-  getProfile: () => apiRequest('/user/profile'),
+  getProfile: () =>
+    apiRequest<Record<string, unknown>>('/user/profile'),
 
-  updateProfile: (body: { name?: string; age?: number }) =>
-    apiRequest('/user/profile', { method: 'PUT', body }),
+  updateProfile: (body: {
+    name?: string;
+    age?: number;
+    avatar_url?: string;
+    overlay_quote_enabled?: boolean;
+    overlay_gif_enabled?: boolean;
+    overlay_gif_url?: string;
+    monthly_skip_limit?: number;
+  }) => apiRequest('/user/profile', { method: 'PUT', body }),
 
   updatePassword: (body: { current_password: string; new_password: string; new_password_confirm: string }) =>
     apiRequest('/user/password', { method: 'PUT', body }),

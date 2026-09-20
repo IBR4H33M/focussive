@@ -10,6 +10,7 @@ interface User {
   email: string;
   name: string;
   age?: number;
+  avatar_url?: string;
 }
 
 interface AuthState {

@@ -13,12 +13,18 @@ import {
   TextInput,
   Modal,
   Animated,
+  AppState,
+  Image,
+  Switch,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/utils/theme';
 import { useAuth } from '@/context/AuthContext';
 import { userApi, sessionApi } from '@/utils/api';
+import { uploadImageToCloudinary } from '@/utils/cloudinary';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -28,6 +34,7 @@ import {
   requestOverlayPermission,
   hasExactAlarmPermission,
   requestExactAlarmPermission,
+  requestNotificationPermission,
 } from '@focussive/app-blocker';
 import { useThemeContext, type ThemePreference } from '@/utils/theme';
 import { getReminderMinutes, setReminderMinutes, scheduleSessionReminders } from '@/utils/sessionReminders';
@@ -179,11 +186,25 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [use24Hour, setUse24Hour] = useState(true);
+  const isDark = themeCtx.isDark;
+
+  // Quote and GIF preferences
+  const [quoteEnabled, setQuoteEnabled] = useState(true);
+  const [gifEnabled, setGifEnabled] = useState(false);
+  const [gifUrl, setGifUrl] = useState<string | null>(null);
+  const [uploadingGif, setUploadingGif] = useState(false);
 
   // Session reminder state
   const [reminderMinutes, setReminderMinutesState] = useState(15);
   const [reminderModalVisible, setReminderModalVisible] = useState(false);
   const [reminderInputValue, setReminderInputValue] = useState('15');
+
+  // Monthly skip limit state
+  const [skipLimit, setSkipLimit] = useState(5);
+  const [skipsUsedThisMonth, setSkipsUsedThisMonth] = useState(0);
+  const [skipsRemaining, setSkipsRemaining] = useState(5);
+  const [skipLimitModalVisible, setSkipLimitModalVisible] = useState(false);
+  const [skipLimitInputValue, setSkipLimitInputValue] = useState('5');
 
   // Permission accordion state
   const [permAccordionOpen, setPermAccordionOpen] = useState(params.expandPermissions === 'true');
@@ -231,6 +252,31 @@ export default function SettingsScreen() {
       checkPermissionStatuses();
     }, [])
   );
+
+  // Auto-check permissions immediately when app comes back to foreground (e.g. from Android Settings)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        checkPermissionStatuses();
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const refreshAnim = useRef(new Animated.Value(0)).current;
+
+  async function handleRefreshPermissions() {
+    Animated.timing(refreshAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start(() => {
+      refreshAnim.setValue(0);
+    });
+    await checkPermissionStatuses();
+  }
 
   // Cleanup spinner interval on unmount
   useEffect(() => {
@@ -352,10 +398,103 @@ export default function SettingsScreen() {
 
   async function fetchProfile() {
     try {
-      const data = await userApi.getProfile() as { name: string; email: string; age?: number };
+      const data = await userApi.getProfile() as any;
       setProfile(data);
+      if (data) {
+        if (typeof data.overlay_quote_enabled === 'boolean') {
+          setQuoteEnabled(data.overlay_quote_enabled);
+        }
+        if (typeof data.overlay_gif_enabled === 'boolean') {
+          setGifEnabled(data.overlay_gif_enabled);
+        }
+        if (data.overlay_gif_url) {
+          setGifUrl(data.overlay_gif_url);
+        }
+        if (typeof data.monthly_skip_limit === 'number') {
+          setSkipLimit(data.monthly_skip_limit);
+          setSkipLimitInputValue(String(data.monthly_skip_limit));
+        }
+        if (typeof data.skips_used_this_month === 'number') {
+          setSkipsUsedThisMonth(data.skips_used_this_month);
+        }
+        if (typeof data.skips_remaining === 'number') {
+          setSkipsRemaining(data.skips_remaining);
+        }
+      }
     } catch {
       // Use auth context user as fallback
+    }
+  }
+
+  async function saveSkipLimit() {
+    const parsed = parseInt(skipLimitInputValue, 10);
+    if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+      Alert.alert('Invalid Value', 'Please enter a number between 0 and 100.');
+      return;
+    }
+    try {
+      await userApi.updateProfile({ monthly_skip_limit: parsed });
+      setSkipLimit(parsed);
+      setSkipsRemaining(Math.max(0, parsed - skipsUsedThisMonth));
+      setSkipLimitModalVisible(false);
+      Alert.alert('Saved', `Monthly skip limit updated to ${parsed} session${parsed !== 1 ? 's' : ''} per month.`);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to update skip limit');
+    }
+  }
+
+  async function handleToggleQuote(val: boolean) {
+    setQuoteEnabled(val);
+    try {
+      await userApi.updateProfile({ overlay_quote_enabled: val });
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update quote preference');
+    }
+  }
+
+  async function handleToggleGif(val: boolean) {
+    if (val && !gifUrl) {
+      handlePickGif();
+      return;
+    }
+    setGifEnabled(val);
+    try {
+      await userApi.updateProfile({ overlay_gif_enabled: val });
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update GIF preference');
+    }
+  }
+
+  async function handlePickGif() {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please grant photo library access to upload a custom GIF.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]?.uri) {
+        setUploadingGif(true);
+        const uploadedUrl = await uploadImageToCloudinary(result.assets[0].uri);
+        setGifUrl(uploadedUrl);
+        setGifEnabled(true);
+        await userApi.updateProfile({
+          overlay_gif_url: uploadedUrl,
+          overlay_gif_enabled: true,
+        });
+        fetchProfile();
+        Alert.alert('Success', 'Custom overlay GIF updated successfully!');
+      }
+    } catch (error) {
+      Alert.alert('Upload Error', error instanceof Error ? error.message : 'Failed to upload GIF');
+    } finally {
+      setUploadingGif(false);
     }
   }
 
@@ -454,300 +593,441 @@ export default function SettingsScreen() {
 
       {/* Profile Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: '700' }]}>PROFILE</Text>
+        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>PROFILE</Text>
 
-        <View style={styles.profileRow}>
-          <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
-            <Text style={styles.avatarText}>
-              {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
-            </Text>
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+          <View style={[styles.profileRow, { padding: 16, marginBottom: 0 }]}>
+            {profile && (profile as any).avatar_url ? (
+              <Image source={{ uri: (profile as any).avatar_url }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
+                <Text style={styles.avatarText}>
+                  {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, { color: theme.text }]}>
+                {profile?.name || user?.name}
+              </Text>
+              <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
+                {profile?.email || user?.email}
+              </Text>
+            </View>
           </View>
-          <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, { color: theme.text }]}>
-              {profile?.name || user?.name}
-            </Text>
-            <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
-              {profile?.email || user?.email}
-            </Text>
-          </View>
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          <TouchableOpacity style={styles.cardItem} onPress={openEditModal} activeOpacity={0.7}>
+            <Text style={[styles.menuText, { color: theme.text }]}>Edit Profile</Text>
+            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          <TouchableOpacity style={styles.cardItem} onPress={() => setPasswordModalVisible(true)} activeOpacity={0.7}>
+            <Text style={[styles.menuText, { color: theme.text }]}>Change Password</Text>
+            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.menuItem} onPress={openEditModal}>
-          <Text style={[styles.menuText, { color: theme.text }]}>Edit Profile</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem} onPress={() => setPasswordModalVisible(true)}>
-          <Text style={[styles.menuText, { color: theme.text }]}>Change Password</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
-
       </View>
-      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* Preferences */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: '700' }]}>PREFERENCES</Text>
+        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>PREFERENCES</Text>
 
-        <View style={styles.menuItem}>
-          <Text style={[styles.menuText, { color: theme.text }]}>Time Format</Text>
-          <TimeFormatToggle use24Hour={use24Hour} onToggle={toggleTimeFormat} theme={theme} />
-        </View>
-
-        <View style={[styles.menuItem, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
-          <Text style={[styles.menuText, { color: theme.text }]}>Appearance</Text>
-          <ThemeModeToggle
-            preference={themeCtx.preference}
-            onSelect={(p) => themeCtx.setPreference(p)}
-            theme={theme}
-          />
-        </View>
-
-        {/* Session Reminder */}
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            setReminderInputValue(String(reminderMinutes));
-            setReminderModalVisible(true);
-          }}
-          activeOpacity={0.7}
-        >
-          <View>
-            <Text style={[styles.menuText, { color: theme.text }]}>Session Reminder</Text>
-            <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
-              {reminderMinutes} min before session
-            </Text>
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+          <View style={styles.cardItem}>
+            <Text style={[styles.menuText, { color: theme.text }]}>Time Format</Text>
+            <TimeFormatToggle use24Hour={use24Hour} onToggle={toggleTimeFormat} theme={theme} />
           </View>
-          <Ionicons name="notifications-outline" size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+            <Text style={[styles.menuText, { color: theme.text }]}>Appearance</Text>
+            <ThemeModeToggle
+              preference={themeCtx.preference}
+              onSelect={(p) => themeCtx.setPreference(p)}
+              theme={theme}
+            />
+          </View>
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          {/* Session Reminder */}
+          <TouchableOpacity
+            style={styles.cardItem}
+            onPress={() => {
+              setReminderInputValue(String(reminderMinutes));
+              setReminderModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View>
+              <Text style={[styles.menuText, { color: theme.text }]}>Session Reminder</Text>
+              <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
+                {reminderMinutes} min before session
+              </Text>
+            </View>
+            <Ionicons name="notifications-outline" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          {/* Monthly Skip Limit */}
+          <TouchableOpacity
+            style={styles.cardItem}
+            onPress={() => {
+              setSkipLimitInputValue(String(skipLimit));
+              setSkipLimitModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View>
+              <Text style={[styles.menuText, { color: theme.text }]}>Monthly Skip Limit</Text>
+              <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
+                {skipsRemaining} of {skipLimit} skips remaining this month
+              </Text>
+            </View>
+            <Ionicons name="play-forward-outline" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          {/* Motivational Quotes */}
+          <View style={styles.cardItem}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={[styles.menuText, { color: theme.text }]}>Motivational Quotes</Text>
+              <Text style={[styles.reminderSubtext, { color: theme.textSecondary, marginTop: 2 }]}>
+                Show inspirational quotes on blocker overlay
+              </Text>
+            </View>
+            <Switch
+              value={quoteEnabled}
+              onValueChange={handleToggleQuote}
+              trackColor={{ false: theme.border, true: theme.accent }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          {/* Custom GIF Overlay */}
+          <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={[styles.menuText, { color: theme.text }]}>Custom GIF Overlay</Text>
+                <Text style={[styles.reminderSubtext, { color: theme.textSecondary, marginTop: 2 }]}>
+                  Show animated GIF on blocker overlay
+                </Text>
+              </View>
+              <Switch
+                value={gifEnabled}
+                onValueChange={handleToggleGif}
+                trackColor={{ false: theme.border, true: theme.accent }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              {gifUrl ? (
+                <Image
+                  source={{ uri: gifUrl }}
+                  style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: theme.card }}
+                />
+              ) : null}
+              <TouchableOpacity
+                style={[styles.uploadGifBtn, { backgroundColor: `${theme.accent}20` }]}
+                onPress={handlePickGif}
+                disabled={uploadingGif}
+              >
+                {uploadingGif ? (
+                  <ActivityIndicator size="small" color={theme.accent} />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="cloud-upload-outline" size={16} color={theme.accent} />
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: theme.accent }}>
+                      {gifUrl ? 'Change GIF' : 'Upload GIF'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </View>
-      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* System */}
       <View style={styles.section} ref={permissionsRef}>
-        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: '700' }]}>SYSTEM</Text>
+        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>SYSTEM</Text>
 
-        {/* App Permissions Accordion */}
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={togglePermAccordion}
-          activeOpacity={0.7}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-            <Text style={[styles.menuText, { color: theme.text }]}>App permissions</Text>
-            {permsMissing && (
-              <Ionicons name="warning-outline" size={16} color={theme.danger} />
-            )}
-            {allPermsGranted && (
-              <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
-            )}
-          </View>
-          <Animated.View
-            style={{
-              transform: [{
-                rotate: accordionAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '180deg'],
-                }),
-              }],
-            }}
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+          {/* App Permissions Accordion */}
+          <TouchableOpacity
+            style={styles.cardItem}
+            onPress={togglePermAccordion}
+            activeOpacity={0.7}
           >
-            <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
-          </Animated.View>
-        </TouchableOpacity>
-
-        {/* Accordion body */}
-        {permAccordionOpen && (
-          <View
-            style={[
-              styles.accordionBody,
-              { backgroundColor: theme.surface, borderColor: theme.border },
-            ]}
-          >
-            {/* Usage Access */}
-            <TouchableOpacity
-              style={styles.permRow}
-              onPress={() => {
-                requestUsageStatsPermission();
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.permTitle, { color: theme.text }]}>Usage Access</Text>
-                <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
-                  Required to detect which app is in the foreground
-                </Text>
-              </View>
-              {hasUsageStats === null ? (
-                <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
-              ) : hasUsageStats ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
-              ) : (
-                <Ionicons name="warning" size={22} color={theme.danger} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              <Text style={[styles.menuText, { color: theme.text }]}>App permissions</Text>
+              {permsMissing && (
+                <Ionicons name="warning-outline" size={16} color={theme.danger} />
               )}
-            </TouchableOpacity>
-
-            <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
-
-            {/* Overlay */}
-            <TouchableOpacity
-              style={styles.permRow}
-              onPress={() => {
-                requestOverlayPermission();
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.permTitle, { color: theme.text }]}>Display Over Other Apps</Text>
-                <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
-                  Required to show the block overlay on top of apps
-                </Text>
-              </View>
-              {hasOverlay === null ? (
-                <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
-              ) : hasOverlay ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
-              ) : (
-                <Ionicons name="warning" size={22} color={theme.danger} />
-              )}
-            </TouchableOpacity>
-
-            <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
-
-            {/* Exact Alarm */}
-            <TouchableOpacity
-              style={styles.permRow}
-              onPress={() => {
-                requestExactAlarmPermission();
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.permTitle, { color: theme.text }]}>Allow Precise Alarms</Text>
-                <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
-                  Required for accurate session reminder notifications
-                </Text>
-              </View>
-              {hasExactAlarm === null ? (
-                <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
-              ) : hasExactAlarm ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
-              ) : (
-                <Ionicons name="warning" size={22} color={theme.danger} />
-              )}
-            </TouchableOpacity>
-
-            <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
-
-            {/* Notifications */}
-            <TouchableOpacity
-              style={styles.permRow}
-              onPress={() => {
-                Notifications.requestPermissionsAsync();
-                setTimeout(() => checkPermissionStatuses(), 500);
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.permTitle, { color: theme.text }]}>Allow Notifications</Text>
-                <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
-                  Required to send session reminders and alerts
-                </Text>
-              </View>
-              {hasNotifications === null ? (
-                <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
-              ) : hasNotifications ? (
-                <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
-              ) : (
-                <Ionicons name="warning" size={22} color={theme.danger} />
-              )}
-            </TouchableOpacity>
-
-          </View>
-        )}
-
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(auth)/extension-qr' as never)}>
-          <Text style={[styles.menuText, { color: theme.text }]}>Extension</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-          </View>
-        </TouchableOpacity>
-
-        {/* Version */}
-        <View style={[styles.menuItem, { flexDirection: 'column', alignItems: 'stretch', gap: 4 }]}>
-          <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7}>
-            <Text style={[styles.menuText, { color: theme.text }]}>Version</Text>
-            <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>v1.0.0</Text>
-          </TouchableOpacity>
-
-          {backendStatus !== 'idle' && (
-            <View style={{ marginTop: 8, paddingTop: 8, borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth }}>
-              {backendStatus === 'checking' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>Checking</Text>
-                  <Text style={{ fontSize: 14, color: theme.textSecondary, fontWeight: '600', fontFamily: 'monospace' }}>
-                    {spinnerChar}
-                  </Text>
-                </View>
-              )}
-
-              {backendStatus === 'online' && (
-                <View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="checkmark-circle" size={14} color={theme.accent} />
-                    <Text style={{ fontSize: 13, color: theme.accent, fontWeight: '600' }}>Server online</Text>
-                  </View>
-                  {lastCheckedTime && (
-                    <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>
-                      Last checked: {lastCheckedTime}
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {backendStatus === 'offline' && (
-                <View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="close-circle" size={14} color="#FF6B6B" />
-                    <Text style={{ fontSize: 13, color: '#FF6B6B', fontWeight: '600' }}>Server offline</Text>
-                  </View>
-                  {lastCheckedTime && (
-                    <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>
-                      Last checked: {lastCheckedTime}
-                    </Text>
-                  )}
-                </View>
+              {allPermsGranted && (
+                <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
               )}
             </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleRefreshPermissions();
+                }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={{ padding: 4 }}
+                activeOpacity={0.6}
+              >
+                <Animated.View
+                  style={{
+                    transform: [{
+                      rotate: refreshAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      }),
+                    }],
+                  }}
+                >
+                  <Ionicons name="refresh-outline" size={20} color={theme.accent} />
+                </Animated.View>
+              </TouchableOpacity>
+
+              <Animated.View
+                style={{
+                  transform: [{
+                    rotate: accordionAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '180deg'],
+                    }),
+                  }],
+                }}
+              >
+                <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+              </Animated.View>
+            </View>
+          </TouchableOpacity>
+
+          {/* Accordion body */}
+          {permAccordionOpen && (
+            <View
+              style={[
+                styles.accordionBody,
+                { backgroundColor: theme.background, borderColor: theme.border, marginHorizontal: 14, marginBottom: 14 },
+              ]}
+            >
+              {/* Usage Access */}
+              <TouchableOpacity
+                style={styles.permRow}
+                onPress={() => {
+                  requestUsageStatsPermission();
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.permTitle, { color: theme.text }]}>Usage Access</Text>
+                  <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                    Required to detect which app is in the foreground
+                  </Text>
+                </View>
+                {hasUsageStats === null ? (
+                  <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                ) : hasUsageStats ? (
+                  <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+                ) : (
+                  <Ionicons name="warning" size={22} color={theme.danger} />
+                )}
+              </TouchableOpacity>
+
+              <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
+
+              {/* Overlay */}
+              <TouchableOpacity
+                style={styles.permRow}
+                onPress={() => {
+                  requestOverlayPermission();
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.permTitle, { color: theme.text }]}>Display Over Other Apps</Text>
+                  <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                    Required to show the block overlay on top of apps
+                  </Text>
+                </View>
+                {hasOverlay === null ? (
+                  <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                ) : hasOverlay ? (
+                  <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+                ) : (
+                  <Ionicons name="warning" size={22} color={theme.danger} />
+                )}
+              </TouchableOpacity>
+
+              <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
+
+              {/* Exact Alarm */}
+              <TouchableOpacity
+                style={styles.permRow}
+                onPress={() => {
+                  requestExactAlarmPermission();
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.permTitle, { color: theme.text }]}>Allow Precise Alarms</Text>
+                  <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                    Required for accurate session reminder notifications
+                  </Text>
+                </View>
+                {hasExactAlarm === null ? (
+                  <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                ) : hasExactAlarm ? (
+                  <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+                ) : (
+                  <Ionicons name="warning" size={22} color={theme.danger} />
+                )}
+              </TouchableOpacity>
+
+              <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
+
+              {/* Notifications */}
+              <TouchableOpacity
+                style={styles.permRow}
+                onPress={async () => {
+                  try {
+                    const current = await Notifications.getPermissionsAsync();
+                    if (!current.granted && current.canAskAgain) {
+                      const req = await Notifications.requestPermissionsAsync();
+                      if (req.granted) {
+                        checkPermissionStatuses();
+                        return;
+                      }
+                    }
+                  } catch {}
+                  requestNotificationPermission();
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.permTitle, { color: theme.text }]}>Allow Notifications</Text>
+                  <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                    Required to send session reminders and alerts
+                  </Text>
+                </View>
+                {hasNotifications === null ? (
+                  <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                ) : hasNotifications ? (
+                  <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+                ) : (
+                  <Ionicons name="warning" size={22} color={theme.danger} />
+                )}
+              </TouchableOpacity>
+            </View>
           )}
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          <TouchableOpacity style={styles.cardItem} onPress={() => router.push('/(auth)/extension-qr' as never)} activeOpacity={0.7}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={[styles.menuText, { color: theme.text }]}>Extension</Text>
+              <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          {/* Version */}
+          <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 4 }]}>
+            <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7}>
+              <Text style={[styles.menuText, { color: theme.text }]}>Version</Text>
+              <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>v1.0.0</Text>
+            </TouchableOpacity>
+
+            {backendStatus !== 'idle' && (
+              <View style={{ marginTop: 8, paddingTop: 8, borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth }}>
+                {backendStatus === 'checking' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 13, color: theme.textSecondary }}>Checking</Text>
+                    <Text style={{ fontSize: 14, color: theme.textSecondary, fontWeight: '600', fontFamily: 'monospace' }}>
+                      {spinnerChar}
+                    </Text>
+                  </View>
+                )}
+
+                {backendStatus === 'online' && (
+                  <View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="checkmark-circle" size={14} color={theme.accent} />
+                      <Text style={{ fontSize: 13, color: theme.accent, fontWeight: '600' }}>Server online</Text>
+                    </View>
+                    {lastCheckedTime && (
+                      <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>
+                        Last checked: {lastCheckedTime}
+                      </Text>
+                    )}
+                  </View>
+                )}
+
+                {backendStatus === 'offline' && (
+                  <View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="close-circle" size={14} color="#FF6B6B" />
+                      <Text style={{ fontSize: 13, color: theme.danger, fontWeight: '600' }}>Server offline</Text>
+                    </View>
+                    {lastCheckedTime && (
+                      <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>
+                        Last checked: {lastCheckedTime}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
         </View>
       </View>
-      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* Data */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: '700' }]}>DATA</Text>
+        <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>DATA</Text>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/history/manage' as never)}>
-          <Text style={[styles.menuText, { color: theme.text }]}>Manage History</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+          <TouchableOpacity style={styles.cardItem} onPress={() => router.push('/history/manage' as never)} activeOpacity={0.7}>
+            <Text style={[styles.menuText, { color: theme.text }]}>Manage History</Text>
+            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       {/* Actions */}
       <View style={styles.section}>
-        <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-          <Text style={[styles.logoutText, { color: theme.danger }]}>Log Out</Text>
-        </TouchableOpacity>
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+          <TouchableOpacity style={styles.cardItem} onPress={handleLogout} activeOpacity={0.7}>
+            <Text style={[styles.logoutText, { color: theme.danger }]}>Log Out</Text>
+            <Ionicons name="log-out-outline" size={18} color={theme.danger} />
+          </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.deleteAccountBtn, { backgroundColor: theme.danger }]} onPress={handleDeleteAccount}>
-          <Ionicons name="trash-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-          <Text style={styles.deleteAccountText}>Delete Account</Text>
-        </TouchableOpacity>
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          <View style={{ padding: 12 }}>
+            <TouchableOpacity style={[styles.deleteAccountBtn, { backgroundColor: theme.danger }]} onPress={handleDeleteAccount} activeOpacity={0.8}>
+              <Ionicons name="trash-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.deleteAccountText}>Delete Account</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-      <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
       <Text style={[styles.version, { color: theme.textSecondary }]}>Focussive v1.0.0</Text>
 
@@ -897,15 +1177,110 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Monthly Skip Limit Modal */}
+      <Modal visible={skipLimitModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Monthly Skip Limit</Text>
+            <Text style={[styles.reminderModalDesc, { color: theme.textSecondary }]}>
+              Set how many focus sessions you can skip each calendar month. Default is 5.
+            </Text>
+
+            {/* Quick presets */}
+            <View style={styles.reminderPresets}>
+              {[3, 5, 10, 15].map((preset) => (
+                <TouchableOpacity
+                  key={preset}
+                  style={[
+                    styles.reminderPresetBtn,
+                    {
+                      backgroundColor:
+                        skipLimitInputValue === String(preset)
+                          ? theme.accentDark
+                          : theme.surface,
+                    },
+                  ]}
+                  onPress={() => setSkipLimitInputValue(String(preset))}
+                >
+                  <Text
+                    style={[
+                      styles.reminderPresetText,
+                      {
+                        color:
+                          skipLimitInputValue === String(preset)
+                            ? '#FFFFFF'
+                            : theme.textSecondary,
+                      },
+                    ]}
+                  >
+                    {preset}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Custom input */}
+            <View style={styles.reminderCustomRow}>
+              <TextInput
+                style={[styles.reminderInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+                placeholder="Custom limit"
+                placeholderTextColor={theme.textSecondary}
+                value={skipLimitInputValue}
+                onChangeText={setSkipLimitInputValue}
+                keyboardType="numeric"
+                maxLength={3}
+              />
+              <Text style={{ color: theme.textSecondary, fontSize: 14 }}>skips / mo</Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: theme.surface }]}
+                onPress={() => setSkipLimitModalVisible(false)}
+              >
+                <Text style={{ color: theme.textSecondary }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: theme.accent }]}
+                onPress={saveSkipLimit}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  section: { marginBottom: 32 },
-  sectionTitle: { fontSize: 12, fontWeight: '600', letterSpacing: 2, marginBottom: 16 },
-  sectionDivider: { height: StyleSheet.hairlineWidth, marginBottom: 32 },
+  section: { marginBottom: 28 },
+  sectionTitle: { fontSize: 12, letterSpacing: 2, marginBottom: 12 },
+  sectionDivider: { height: StyleSheet.hairlineWidth, marginBottom: 28 },
+  sectionCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  cardItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  cardDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 16,
+  },
+  uploadGifBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
   profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 16 },
   avatar: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: 22, fontWeight: '600', color: '#1a1a1a' },

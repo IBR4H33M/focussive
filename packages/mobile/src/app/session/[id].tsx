@@ -21,8 +21,9 @@ import { useTheme, useIsDark } from '@/utils/theme';
 import { sessionApi, appGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
 import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, formatDuration, formatTime, formatCountdown, getRemainingSeconds } from '@focussive/shared';
-import type { Session, AppGroup } from '@focussive/shared';
+import type { Session, AppGroup, SessionTimeSlot } from '@focussive/shared';
 import InstalledApps from '@focussive/installed-apps';
+import TimeSlotPicker from '@/components/TimeSlotPicker';
 
 const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.MONDAY, label: 'Mon' },
@@ -80,10 +81,9 @@ export default function SessionDetailScreen() {
 
   // Edit form state
   const [editName, setEditName] = useState('');
-  const [editDurationHours, setEditDurationHours] = useState('0');
-  const [editDurationMinutes, setEditDurationMinutes] = useState('25');
-  const [editHours, setEditHours] = useState('');
-  const [editMinutes, setEditMinutes] = useState('');
+  const [editTimeSlots, setEditTimeSlots] = useState<SessionTimeSlot[]>([
+    { start_time: '08:00', end_time: '09:00' },
+  ]);
   const [editSchedule, setEditSchedule] = useState<ScheduleType>(ScheduleType.TODAY);
   const [editScheduleDays, setEditScheduleDays] = useState<Weekday[]>([]);
   const [editMobileFocus, setEditMobileFocus] = useState(false);
@@ -143,12 +143,21 @@ export default function SessionDetailScreen() {
   function openEditModal() {
     if (!session) return;
     setEditName(session.name);
-    const totalMins = session.duration;
-    setEditDurationHours(String(Math.floor(totalMins / 60)));
-    setEditDurationMinutes(String(totalMins % 60));
-    const [h, m] = session.start_time.split(':');
-    setEditHours(h);
-    setEditMinutes(m);
+    if (session.time_slots && session.time_slots.length > 0) {
+      setEditTimeSlots(session.time_slots);
+    } else {
+      const [sh, sm] = (session.start_time || '08:00').split(':').map(Number);
+      const startMin = sh * 60 + sm;
+      const endMin = (startMin + (session.duration || 30)) % (24 * 60);
+      const eh = Math.floor(endMin / 60);
+      const em = endMin % 60;
+      setEditTimeSlots([
+        {
+          start_time: session.start_time || '08:00',
+          end_time: `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`,
+        },
+      ]);
+    }
     setEditSchedule((session.schedule as ScheduleType) || ScheduleType.TODAY);
     setEditScheduleDays((session.schedule_days as Weekday[]) || []);
     setEditMobileFocus(session.mobile_focus || false);
@@ -186,6 +195,84 @@ export default function SessionDetailScreen() {
     );
   }
 
+  async function handleSkipSession() {
+    if (!session) return;
+
+    try {
+      const status = await sessionApi.getSkipStatus();
+      if (status && status.skips_remaining <= 0) {
+        Alert.alert(
+          'Skip Limit Reached',
+          `You have used all ${status.monthly_skip_limit} skips for this month. You can adjust your limit in Settings > Preferences.`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const remainingText = status ? ` (${status.skips_remaining} skip${status.skips_remaining === 1 ? '' : 's'} left this month)` : '';
+
+      Alert.alert(
+        'Skip this session?',
+        `This session will be skipped for this occurrence${remainingText}.\n\nIt will not count as a violation and no history will be logged. It will resume automatically on the next scheduled day.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Skip',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const res = await sessionApi.skip(session.id);
+                await refreshSessions();
+                const remainingAfter = res.skips_remaining !== undefined ? ` (${res.skips_remaining} skip${res.skips_remaining === 1 ? '' : 's'} remaining this month)` : '';
+                Alert.alert('Session Skipped', `The session has been skipped for today${remainingAfter}.`, [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      if (router.canGoBack()) router.back();
+                      else router.replace('/(tabs)');
+                    },
+                  },
+                ]);
+              } catch (err: any) {
+                Alert.alert('Error', err.message || 'Failed to skip session');
+              }
+            },
+          },
+        ]
+      );
+    } catch {
+      // If fetching status failed, fallback to direct skip attempt
+      Alert.alert(
+        'Skip this session?',
+        'This session will be skipped for this occurrence. It will not count as a violation and no history will be logged. It will resume automatically on the next scheduled day.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Skip',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await sessionApi.skip(session.id);
+                await refreshSessions();
+                Alert.alert('Session Skipped', 'The session has been skipped for today.', [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      if (router.canGoBack()) router.back();
+                      else router.replace('/(tabs)');
+                    },
+                  },
+                ]);
+              } catch (skipErr: any) {
+                Alert.alert('Error', skipErr.message || 'Failed to skip session');
+              }
+            },
+          },
+        ]
+      );
+    }
+  }
+
   function handleCancelSession() {
     if (!session) return;
     Alert.alert(
@@ -219,31 +306,30 @@ export default function SessionDetailScreen() {
       Alert.alert('Error', 'Session name is required');
       return;
     }
-    const dh = parseInt(editDurationHours, 10) || 0;
-    const dm = parseInt(editDurationMinutes, 10) || 0;
-    const duration = dh * 60 + dm;
-    if (duration < 1) {
-      Alert.alert('Error', 'Duration must be at least 1 minute');
+    if (!editTimeSlots || editTimeSlots.length === 0) {
+      Alert.alert('Error', 'Please add at least one time duration');
       return;
     }
-    const sh = parseInt(editHours, 10) || 0;
-    const sm = parseInt(editMinutes, 10) || 0;
-    if (sh < 0 || sh > 23 || sm < 0 || sm > 59) {
-      Alert.alert('Error', 'Please enter a valid time');
-      return;
-    }
+
+    const primarySlot = editTimeSlots[0];
+    const [sh, sm] = primarySlot.start_time.split(':').map(Number);
+    const [eh, em] = primarySlot.end_time.split(':').map(Number);
+    let slotMinutes = (eh * 60 + em) - (sh * 60 + sm);
+    if (slotMinutes <= 0) slotMinutes += 24 * 60;
+    const duration = Math.max(1, slotMinutes);
 
     setSaving(true);
     try {
       await sessionApi.update(id, {
         name: editName.trim(),
         duration,
-        start_time: `${sh.toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`,
+        start_time: primarySlot.start_time,
+        time_slots: editTimeSlots,
         schedule: editSchedule,
         schedule_days: editSchedule !== ScheduleType.TODAY ? editScheduleDays : [],
         mobile_focus: editMobileFocus,
         browser_focus: editBrowserFocus,
-        app_group_id: editMobileFocus ? editGroupId : null,
+        app_group_ids: editMobileFocus && editGroupId ? [editGroupId] : [],
         blocked_websites: editBrowserFocus ? editWebsites : [],
       });
       setEditModalVisible(false);
@@ -399,6 +485,17 @@ export default function SessionDetailScreen() {
             <Text style={[styles.cancelSessionBtnText, { color: '#FFFFFF' }]}>Cancel Session</Text>
           </TouchableOpacity>
         )}
+
+        {/* Skip this session button — upcoming or running sessions */}
+        {(isActive || session.status === SessionStatus.SCHEDULED) && (
+          <TouchableOpacity
+            style={[styles.skipSessionBtn, { borderColor: theme.border, backgroundColor: theme.surface }]}
+            onPress={handleSkipSession}
+          >
+            <Ionicons name="play-forward-outline" size={16} color={theme.text} />
+            <Text style={[styles.skipSessionBtnText, { color: theme.text }]}>Skip this session</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Break Picker Modal */}
@@ -452,40 +549,13 @@ export default function SessionDetailScreen() {
             placeholderTextColor={theme.textSecondary}
           />
 
-          <Text style={[styles.label, { color: theme.textSecondary }]}>DURATION</Text>
-          <View style={styles.timeRow}>
-            <TextInput
-              style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-              value={editDurationHours} onChangeText={setEditDurationHours}
-              keyboardType="numeric" maxLength={2} placeholder="0"
-              placeholderTextColor={theme.textSecondary}
-            />
-            <Text style={[styles.timeSep, { color: theme.textSecondary }]}>h</Text>
-            <TextInput
-              style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-              value={editDurationMinutes} onChangeText={setEditDurationMinutes}
-              keyboardType="numeric" maxLength={2} placeholder="25"
-              placeholderTextColor={theme.textSecondary}
-            />
-            <Text style={[styles.timeSep, { color: theme.textSecondary }]}>m</Text>
-          </View>
-
-          <Text style={[styles.label, { color: theme.textSecondary }]}>START TIME</Text>
-          <View style={styles.timeRow}>
-            <TextInput
-              style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-              value={editHours} onChangeText={setEditHours}
-              keyboardType="numeric" maxLength={2} placeholder="HH"
-              placeholderTextColor={theme.textSecondary}
-            />
-            <Text style={[styles.timeSep, { color: theme.text }]}>:</Text>
-            <TextInput
-              style={[styles.timeInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-              value={editMinutes} onChangeText={setEditMinutes}
-              keyboardType="numeric" maxLength={2} placeholder="MM"
-              placeholderTextColor={theme.textSecondary}
-            />
-          </View>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Time durations</Text>
+          <TimeSlotPicker
+            slots={editTimeSlots}
+            onChangeSlots={setEditTimeSlots}
+            theme={theme}
+            maxSlots={5}
+          />
 
           <Text style={[styles.label, { color: theme.textSecondary }]}>SCHEDULE</Text>
           <View style={styles.scheduleRow}>
@@ -734,4 +804,6 @@ const styles = StyleSheet.create({
   breakOngoingLabel: { fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
   cancelSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, marginTop: 16 },
   cancelSessionBtnText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  skipSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 1.5, marginTop: 14 },
+  skipSessionBtnText: { fontSize: 14, fontWeight: '600' },
 });

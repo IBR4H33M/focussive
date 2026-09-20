@@ -2,7 +2,7 @@
 // Focussive Mobile — Stats Screen
 // ============================================================
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,9 +15,14 @@ import {
   Modal,
   Animated,
   Platform,
+  Image,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/utils/theme';
-import { historyApi } from '@/utils/api';
+import { historyApi, userApi } from '@/utils/api';
+import { useAuth } from '@/context/AuthContext';
+import { uploadToCloudinary } from '@/utils/cloudinary';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
 import type { SessionHistory } from '@focussive/shared';
@@ -93,6 +98,77 @@ export default function StatsScreen() {
   const [customInputVisible, setCustomInputVisible] = useState(false);
   const [customInput, setCustomInput] = useState('14');
 
+  // Profile & avatar state
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  useEffect(() => {
+    userApi.getProfile().then(p => setProfile(p)).catch(() => {});
+  }, []);
+
+  async function pickAndUploadAvatar() {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission required', 'Permission to access gallery is required to upload an avatar.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      const localUri = result.assets[0].uri;
+      setAvatarUploading(true);
+
+      let finalUrl = localUri;
+      try {
+        finalUrl = await uploadToCloudinary(localUri, 'image');
+      } catch (uploadErr) {
+        console.warn('[Avatar] Cloudinary upload fallback:', uploadErr);
+      }
+
+      const updated = await userApi.updateProfile({ avatar_url: finalUrl });
+      setProfile(updated);
+      Alert.alert('Success', 'Profile picture updated successfully!');
+    } catch (err: any) {
+      Alert.alert('Upload Error', err.message || 'Failed to update profile picture');
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  // ─── Last Week Stats (7 days preceding today) ───
+  const { lastWeekHoursText, lastWeekSessionsText } = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const lastWeekCompleted = history.filter(h => {
+      if (h.status !== 'completed') return false;
+      const d = new Date(h.created_at);
+      return d >= sevenDaysAgo && d < todayStart;
+    });
+
+    const sessionCount = lastWeekCompleted.length;
+    const totalMinutes = lastWeekCompleted.reduce(
+      (sum, h) => sum + (h.actual_duration ?? h.scheduled_duration ?? 0),
+      0
+    );
+    const hours = Math.floor(totalMinutes / 60);
+
+    return {
+      lastWeekHoursText: `${hours} hours spent on focus last week`,
+      lastWeekSessionsText: `${sessionCount} sessions completed last week`,
+    };
+  }, [history]);
+
   const fetchHistory = useCallback(async () => {
     try {
       const response = await historyApi.getAll(1, 200);
@@ -159,6 +235,62 @@ export default function StatsScreen() {
   function renderOverview() {
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.sectionContent} showsVerticalScrollIndicator={false}>
+
+        {/* Profile Header with Name, Avatar Upload & Weekly Summary */}
+        <View style={[styles.profileCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.profileHeaderRow}>
+            <TouchableOpacity
+              onPress={pickAndUploadAvatar}
+              activeOpacity={0.8}
+              style={styles.avatarTouchable}
+            >
+              {avatarUploading ? (
+                <View style={[styles.profileAvatar, { backgroundColor: `${theme.accent}30` }]}>
+                  <ActivityIndicator size="small" color={theme.accent} />
+                </View>
+              ) : (profile?.avatar_url || user?.avatar_url) ? (
+                <Image
+                  source={{ uri: profile?.avatar_url || user?.avatar_url }}
+                  style={styles.profileAvatar}
+                />
+              ) : (
+                <View style={[styles.profileAvatar, { backgroundColor: theme.accent }]}>
+                  <Text style={styles.profileAvatarText}>
+                    {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <View style={[styles.cameraBadge, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <Ionicons name="camera" size={11} color={theme.text} />
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.profileInfoCol}>
+              <Text style={[styles.profileNameText, { color: theme.text }]} numberOfLines={1}>
+                {profile?.name || user?.name || 'Focus User'}
+              </Text>
+              <Text style={[styles.profileSubtext, { color: theme.textSecondary }]}>
+                Tap avatar to update picture
+              </Text>
+            </View>
+          </View>
+
+          {/* Under profile pic and name: last week stats */}
+          <View style={[styles.weeklyStatsContainer, { backgroundColor: theme.surface, borderColor: `${theme.border}40` }]}>
+            <View style={styles.weeklyStatRow}>
+              <Ionicons name="time-outline" size={16} color={theme.accent} />
+              <Text style={[styles.weeklyStatText, { color: theme.text }]}>
+                {lastWeekHoursText}
+              </Text>
+            </View>
+            <View style={styles.weeklyStatRow}>
+              <Ionicons name="checkmark-circle-outline" size={16} color="#10B981" />
+              <Text style={[styles.weeklyStatText, { color: theme.text }]}>
+                {lastWeekSessionsText}
+              </Text>
+            </View>
+          </View>
+        </View>
 
         {/* Period Selector */}
         <TouchableOpacity
@@ -598,6 +730,74 @@ const styles = StyleSheet.create({
   tabIndicator: { position: 'absolute', bottom: 0, height: 2, borderRadius: 1 },
 
   sectionContent: { padding: 16, paddingBottom: 48 },
+
+  // Profile header & weekly stats
+  profileCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  profileHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 12,
+  },
+  avatarTouchable: {
+    position: 'relative',
+  },
+  profileAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileInfoCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  profileNameText: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  profileSubtext: {
+    fontSize: 12,
+  },
+  weeklyStatsContainer: {
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 8,
+    borderWidth: 1,
+  },
+  weeklyStatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  weeklyStatText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
 
   // Period selector
   periodBtn: {

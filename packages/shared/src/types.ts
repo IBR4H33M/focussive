@@ -51,8 +51,26 @@ export interface User {
   name: string;
   password_hash: string;
   age?: number;
+  avatar_url?: string;
+  overlay_quote_enabled?: boolean;
+  overlay_gif_enabled?: boolean;
+  overlay_gif_url?: string;
+  monthly_skip_limit?: number;
+  skips_used_this_month?: number;
+  skips_remaining?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface SkipStatusResponse {
+  monthly_skip_limit: number;
+  skips_used_this_month: number;
+  skips_remaining: number;
+}
+
+export interface SessionTimeSlot {
+  start_time: string; // HH:mm format
+  end_time: string;   // HH:mm format
 }
 
 export interface Session {
@@ -64,6 +82,8 @@ export interface Session {
   /** RECURRING: weekday strings. SCHEDULED: ISO date strings ("2026-07-01"). TODAY: empty. */
   schedule_days: string[];
   start_time: string; // HH:mm format
+  time_slots?: SessionTimeSlot[];
+  skipped_until?: string | null;
   mobile_focus: boolean;
   browser_focus: boolean;
   app_group_ids?: string[];
@@ -321,4 +341,24 @@ export const PREDEFINED_BLOCKED_WEBSITES: string[] = [
   'linkedin.com',
   'tumblr.com',
   '9gag.com',
+];
+
+// --- Motivational Productivity Quotes for Block Overlay ---
+
+export const MOTIVATIONAL_QUOTES: string[] = [
+  "Focus is a muscle. Every time you resist a distraction, you make it stronger.",
+  "You do not rise to the level of your goals. You fall to the level of your systems. — James Clear",
+  "The secret of getting ahead is getting started. — Mark Twain",
+  "It is not that we have a short time to live, but that we waste a lot of it. — Seneca",
+  "Action is the foundational key to all success. — Pablo Picasso",
+  "Do what you have to do until you can do what you want to do. — Oprah Winfrey",
+  "Starve your distractions, feed your focus.",
+  "Your future is created by what you do today, not tomorrow.",
+  "Deep work is the ability to focus without distraction on a cognitively demanding task. — Cal Newport",
+  "Stay focused, go after your dreams, and keep moving toward your goals.",
+  "You can have results or excuses. Not both.",
+  "Small disciplines repeated with consistency every day lead to great achievements.",
+  "Don't count the days, make the days count. — Muhammad Ali",
+  "Discipline is choosing between what you want now and what you want most. — Abraham Lincoln",
+  "Turn down the noise. Focus on what truly moves the needle.",
 ];
