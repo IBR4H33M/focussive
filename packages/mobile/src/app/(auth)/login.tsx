@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -78,7 +79,11 @@ export default function LoginScreen() {
       >
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <Text style={[styles.logoIcon, { color: theme.accent }]}>↩</Text>
+          <Image
+            source={require('../../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={[styles.logoText, { color: theme.text }]}>Focussive</Text>
           <Text style={[styles.tagline, { color: theme.textSecondary }]}>
             Focus. One session at a time.
@@ -161,9 +166,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 48,
   },
-  logoIcon: {
-    fontSize: 64,
-    marginBottom: 8,
+  logoImage: {
+    width: 72,
+    height: 72,
+    marginBottom: 16,
+    borderRadius: 16,
   },
   logoText: {
     fontSize: 32,
