@@ -24,8 +24,21 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
+export interface SecondFactorInfo {
+  strategy: string;
+  phoneNumberId?: string;
+  emailAddressId?: string;
+}
+
+export interface LoginResult {
+  needs_second_factor?: boolean;
+  second_factors?: SecondFactorInfo[];
+}
+
 export interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult | void>;
+  verifySecondFactor: (code: string, strategy?: string) => Promise<void>;
+  resendSecondFactorCode: (strategy?: string) => Promise<void>;
   signup: (data: {
     email: string;
     name: string;
@@ -74,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [isSignedIn, clerkUser]);
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string): Promise<LoginResult | void> {
     if (!isSignInLoaded || !signIn) {
       throw new Error('Sign-in service is not ready. Please try again.');
     }
@@ -86,8 +99,118 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (result.status === 'complete') {
       await setSignInActive({ session: result.createdSessionId });
+      return;
+    }
+
+    if (result.status === 'needs_second_factor' || (result.status as string) === 'needs_client_trust') {
+      const factors = (
+        (signIn?.supportedSecondFactors && signIn.supportedSecondFactors.length > 0)
+          ? signIn.supportedSecondFactors
+          : (result.supportedSecondFactors && result.supportedSecondFactors.length > 0)
+          ? result.supportedSecondFactors
+          : (result as any).supported_second_factors ||
+            (signIn as any)?.supported_second_factors ||
+            []
+      ) as SecondFactorInfo[];
+
+      console.log('[Clerk] needs_second_factor! Factors:', JSON.stringify(factors, null, 2));
+
+      const emailFactor = factors.find((f) => f.strategy === 'email_code');
+      const phoneFactor = factors.find((f) => f.strategy === 'phone_code');
+      const targetFactor: SecondFactorInfo = emailFactor || phoneFactor || factors[0] || { strategy: 'email_code' };
+
+      const prepConfig: any = { strategy: targetFactor.strategy || 'email_code' };
+      if (targetFactor.emailAddressId) {
+        prepConfig.emailAddressId = targetFactor.emailAddressId;
+      }
+      if (targetFactor.phoneNumberId) {
+        prepConfig.phoneNumberId = targetFactor.phoneNumberId;
+      }
+
+      console.log('[Clerk] Preparing second factor with config:', prepConfig);
+      const client = (signIn || result) as any;
+
+      if (client && typeof client.prepareSecondFactor === 'function') {
+        try {
+          await client.prepareSecondFactor(prepConfig);
+          console.log('[Clerk] Verification code dispatched successfully!');
+        } catch (prepErr: any) {
+          console.error('[Clerk] Error preparing second factor with config:', prepErr);
+          if (prepConfig.emailAddressId) {
+            try {
+              console.log('[Clerk] Retrying prepareSecondFactor with strategy only...');
+              await client.prepareSecondFactor({ strategy: prepConfig.strategy as any });
+              console.log('[Clerk] Verification code dispatched on retry!');
+            } catch (retryErr) {
+              console.error('[Clerk] Retry prepare failed:', retryErr);
+              throw retryErr || prepErr;
+            }
+          } else {
+            throw prepErr;
+          }
+        }
+      }
+
+      return {
+        needs_second_factor: true,
+        second_factors: factors.length > 0 ? factors : [targetFactor],
+      };
+    }
+
+    throw new Error(`Sign-in status: ${result.status}`);
+  }
+
+  async function resendSecondFactorCode(strategy: string = 'email_code') {
+    if (!isSignInLoaded || !signIn) {
+      throw new Error('Sign-in service is not ready.');
+    }
+    const factors = (
+      (signIn.supportedSecondFactors && signIn.supportedSecondFactors.length > 0)
+        ? signIn.supportedSecondFactors
+        : []
+    ) as SecondFactorInfo[];
+
+    const factor = strategy
+      ? factors.find((f) => f.strategy === strategy)
+      : factors.find((f) => f.strategy === 'email_code') || factors[0] || { strategy: 'email_code' };
+
+    const targetStrat = factor?.strategy || strategy || 'email_code';
+    const prepConfig: any = { strategy: targetStrat };
+    if (factor?.emailAddressId) prepConfig.emailAddressId = factor.emailAddressId;
+    if (factor?.phoneNumberId) prepConfig.phoneNumberId = factor.phoneNumberId;
+
+    try {
+      await signIn.prepareSecondFactor(prepConfig as any);
+    } catch (err) {
+      if (prepConfig.emailAddressId) {
+        await signIn.prepareSecondFactor({ strategy: targetStrat as any });
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  async function verifySecondFactor(code: string, strategy?: string) {
+    if (!isSignInLoaded || !signIn) {
+      throw new Error('Sign-in service is not ready. Please try again.');
+    }
+
+    const factors = (signIn.supportedSecondFactors || []) as SecondFactorInfo[];
+    const selected = strategy
+      ? factors.find((f) => f.strategy === strategy)
+      : factors.find((f) => f.strategy === 'email_code') || factors[0];
+
+    const strat = selected?.strategy || strategy || 'email_code';
+
+    const result = await signIn.attemptSecondFactor({
+      strategy: strat as any,
+      code: code.trim(),
+    });
+
+    if (result.status === 'complete') {
+      await setSignInActive({ session: result.createdSessionId });
     } else {
-      throw new Error(`Sign-in status: ${result.status}`);
+      throw new Error(`Second factor verification incomplete: ${result.status}`);
     }
   }
 
@@ -159,6 +282,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated,
         login,
+        verifySecondFactor,
+        resendSecondFactorCode,
         signup,
         verifyEmail,
         resendVerificationCode,

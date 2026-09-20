@@ -188,27 +188,29 @@ export default function ThemedAlert() {
                 styles.dialog,
                 {
                   backgroundColor: theme.surface,
-                  borderColor: theme.border,
                   opacity: opacityAnim,
                   transform: [{ scale: scaleAnim }],
                 },
               ]}
             >
-              {/* Header Icon */}
-              <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
-                <Ionicons name={iconName} size={30} color={iconColor} />
+              {/* Content Row: Left Icon, Right Text Details */}
+              <View style={styles.bodyRow}>
+                <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
+                  <Ionicons name={iconName} size={24} color={iconColor} />
+                </View>
+
+                <View style={styles.textColumn}>
+                  <Text style={[styles.title, { color: theme.text }]}>
+                    {alert.title}
+                  </Text>
+
+                  {Boolean(alert.message) && (
+                    <Text style={[styles.message, { color: theme.textSecondary }]}>
+                      {alert.message}
+                    </Text>
+                  )}
+                </View>
               </View>
-
-              {/* Title & Message */}
-              <Text style={[styles.title, { color: theme.text }]}>
-                {alert.title}
-              </Text>
-
-              {Boolean(alert.message) && (
-                <Text style={[styles.message, { color: theme.textSecondary }]}>
-                  {alert.message}
-                </Text>
-              )}
 
               {/* Action Buttons */}
               <View
@@ -268,40 +270,46 @@ const styles = StyleSheet.create({
   },
   dialog: {
     width: '100%',
-    maxWidth: 340,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    paddingHorizontal: 22,
-    paddingTop: 24,
-    paddingBottom: 20,
-    alignItems: 'center',
+    maxWidth: 360,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
   },
+  bodyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+    marginBottom: 16,
+    gap: 14,
+  },
   iconContainer: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginTop: 2,
+  },
+  textColumn: {
+    flex: 1,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 8,
-    lineHeight: 24,
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'left',
+    marginBottom: 4,
+    lineHeight: 22,
   },
   message: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-    marginBottom: 22,
-    paddingHorizontal: 4,
+    fontSize: 13.5,
+    lineHeight: 19,
+    textAlign: 'left',
   },
   buttonRow: {
     flexDirection: 'row',
