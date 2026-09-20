@@ -5,7 +5,8 @@
 import React, { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, Platform } from 'react-native';
+import { View, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SessionProvider } from '@/context/SessionContext';
@@ -163,6 +164,16 @@ function RootLayoutContent() {
           headerShown: false,
           contentStyle: { backgroundColor: theme.background },
           animation: 'slide_from_right',
+          headerLeft: ({ canGoBack }) =>
+            canGoBack ? (
+              <TouchableOpacity
+                onPress={() => router.back()}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="chevron-back" size={24} color={theme.text} />
+              </TouchableOpacity>
+            ) : null,
         }}
       >
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />

@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/utils/theme';
 
@@ -141,8 +142,10 @@ export default function VerifyEmailScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.replace('/(auth)/login' as never)}
+          activeOpacity={0.7}
         >
-          <Text style={[styles.backButtonText, { color: theme.textSecondary }]}>← Back to Login</Text>
+          <Ionicons name="chevron-back" size={18} color={theme.textSecondary} style={{ marginRight: 2 }} />
+          <Text style={[styles.backButtonText, { color: theme.textSecondary }]}>Back to Login</Text>
         </TouchableOpacity>
 
         {/* Title & Info */}
@@ -231,6 +234,8 @@ const styles = StyleSheet.create({
     top: 60,
     left: 24,
     paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButtonText: {
     fontSize: 14,

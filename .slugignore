@@ -1,0 +1,15 @@
+packages/mobile/
+packages/extension/
+packages/installed-apps/
+packages/app-blocker/
+android/
+.expo/
+-Force/
+.vscode/
+.agents/
+.claude/
+*.apk
+*.aab
+*.paint
+focussive.paint
+focussive.png
