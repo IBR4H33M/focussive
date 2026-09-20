@@ -5,7 +5,7 @@
 
 ---
 
-## 🏗️ Architecture & Monorepo Overview
+## Architecture & Monorepo Overview
 
 Focussive is organized as a `pnpm` workspace containing multiple interdependent packages:
 
@@ -28,7 +28,7 @@ focussive/
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ### 1. Prerequisites
 - **Node.js**: `>= 22.0.0`
@@ -69,7 +69,7 @@ pnpm dev:extension
 
 ---
 
-## 📱 Mobile App (Android)
+## Mobile App (Android)
 
 Built with **Expo SDK 56**, **React Native 0.85**, and custom native Android modules.
 
@@ -127,7 +127,7 @@ packages/mobile/
 
 ---
 
-## 🛠️ Monorepo Build Scripts
+## Monorepo Build Scripts
 
 | Script | Command | Description |
 |--------|---------|-------------|
@@ -144,7 +144,7 @@ packages/mobile/
 
 ---
 
-## ☁️ Exporting EAS Cloud Dev Builds
+## Exporting EAS Cloud Dev Builds
 
 To export a cloud development build directly using EAS CLI:
 
@@ -161,13 +161,13 @@ pnpm build:mobile:dev
 
 ---
 
-## 🚀 Complete Build & Deployment Guide
+## Complete Build & Deployment Guide
 
 For full instructions on local APK/AAB builds, EAS cloud profiles, database migrations, and backend hosting (Heroku, Fly.io, Render):
 
-👉 **[Read DEPLOYMENT.md](./DEPLOYMENT.md)**
+**[Read DEPLOYMENT.md](./DEPLOYMENT.md)**
 
 ---
 
-## 📄 License
+## License
 Private & Proprietary. All rights reserved.
