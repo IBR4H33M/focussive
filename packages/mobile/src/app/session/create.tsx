@@ -333,41 +333,72 @@ export default function CreateSessionScreen() {
           { key: ScheduleType.TODAY, label: 'Today' },
           { key: ScheduleType.SCHEDULED, label: 'Scheduled' },
           { key: ScheduleType.RECURRING, label: 'Recurring' },
-        ] as const).map(opt => (
-          <TouchableOpacity
-            key={String(opt.key)}
-            style={[
-              styles.scheduleBtn,
-              { borderColor: schedule === opt.key ? theme.accent : theme.border },
-              schedule === opt.key && { backgroundColor: `${theme.accent}20` },
-            ]}
-            onPress={() => setSchedule(opt.key)}
-          >
-            <Text style={[styles.scheduleBtnText, { color: schedule === opt.key ? theme.accent : theme.textSecondary }]}>
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        ] as const).map(opt => {
+          const isSelected = schedule === opt.key;
+          return (
+            <TouchableOpacity
+              key={String(opt.key)}
+              style={[
+                styles.scheduleBtn,
+                { backgroundColor: isSelected ? theme.accent : theme.surface },
+              ]}
+              onPress={() => setSchedule(opt.key)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.scheduleBtnText,
+                  {
+                    color: isSelected ? '#FFFFFF' : theme.textSecondary,
+                    fontWeight: isSelected ? '600' : '400',
+                  },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Recurring: weekday picker */}
       {schedule === ScheduleType.RECURRING && (
         <View style={styles.daysRow}>
-          {WEEKDAYS.map(day => (
-            <TouchableOpacity
-              key={day.key}
-              style={[
-                styles.dayBtn,
-                { borderColor: recurringDays.includes(day.key) ? theme.accent : theme.border },
-                recurringDays.includes(day.key) && { backgroundColor: `${theme.accent}20` },
-              ]}
-              onPress={() => toggleRecurringDay(day.key)}
-            >
-              <Text style={[styles.dayBtnText, { color: recurringDays.includes(day.key) ? theme.accent : theme.textSecondary }]}>
-                {day.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {WEEKDAYS.map((day, index) => {
+            const isSelected = recurringDays.includes(day.key);
+            const prevSelected = index > 0 && recurringDays.includes(WEEKDAYS[index - 1].key);
+            const nextSelected = index < WEEKDAYS.length - 1 && recurringDays.includes(WEEKDAYS[index + 1].key);
+
+            return (
+              <TouchableOpacity
+                key={day.key}
+                style={[
+                  styles.dayBtn,
+                  isSelected && {
+                    backgroundColor: theme.accent,
+                    borderTopLeftRadius: prevSelected ? 0 : 10,
+                    borderBottomLeftRadius: prevSelected ? 0 : 10,
+                    borderTopRightRadius: nextSelected ? 0 : 10,
+                    borderBottomRightRadius: nextSelected ? 0 : 10,
+                  },
+                ]}
+                onPress={() => toggleRecurringDay(day.key)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.dayBtnText,
+                    {
+                      color: isSelected ? '#FFFFFF' : theme.textSecondary,
+                      fontWeight: isSelected ? '600' : '400',
+                    },
+                  ]}
+                >
+                  {day.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
 
@@ -656,11 +687,11 @@ const styles = StyleSheet.create({
   ampmBtn: { width: 52, height: 48, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
   ampmText: { fontSize: 14, fontWeight: '500' },
   scheduleRow: { flexDirection: 'row', gap: 8 },
-  scheduleBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
-  scheduleBtnText: { fontSize: 13, fontWeight: '400' },
-  daysRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
-  dayBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
-  dayBtnText: { fontSize: 12, fontWeight: '400' },
+  scheduleBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 0, alignItems: 'center', justifyContent: 'center' },
+  scheduleBtnText: { fontSize: 13 },
+  daysRow: { flexDirection: 'row', gap: 0, marginTop: 14, borderRadius: 10, overflow: 'hidden' },
+  dayBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0 },
+  dayBtnText: { fontSize: 13 },
   selectedDatesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   datePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
   datePillText: { fontSize: 12, fontWeight: '500' },

@@ -563,28 +563,71 @@ export default function SessionDetailScreen() {
               { key: ScheduleType.TODAY, label: 'Today' },
               { key: ScheduleType.SCHEDULED, label: 'Specific Days' },
               { key: ScheduleType.RECURRING, label: 'Recurring' },
-            ].map(opt => (
-              <TouchableOpacity
-                key={opt.key}
-                style={[styles.scheduleBtn, { borderColor: editSchedule === opt.key ? theme.accent : theme.border }, editSchedule === opt.key && { backgroundColor: `${theme.accent}20` }]}
-                onPress={() => setEditSchedule(opt.key)}
-              >
-                <Text style={[styles.scheduleBtnText, { color: editSchedule === opt.key ? theme.accent : theme.textSecondary }]}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
+            ].map(opt => {
+              const isSelected = editSchedule === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[
+                    styles.scheduleBtn,
+                    { backgroundColor: isSelected ? theme.accent : theme.surface },
+                  ]}
+                  onPress={() => setEditSchedule(opt.key)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.scheduleBtnText,
+                      {
+                        color: isSelected ? '#FFFFFF' : theme.textSecondary,
+                        fontWeight: isSelected ? '600' : '400',
+                      },
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {editSchedule !== ScheduleType.TODAY && (
             <View style={styles.daysRow}>
-              {WEEKDAYS.map(day => (
-                <TouchableOpacity
-                  key={day.key}
-                  style={[styles.dayBtn, { borderColor: editScheduleDays.includes(day.key) ? theme.accent : theme.border }, editScheduleDays.includes(day.key) && { backgroundColor: `${theme.accent}20` }]}
-                  onPress={() => toggleDay(day.key)}
-                >
-                  <Text style={[styles.dayBtnText, { color: editScheduleDays.includes(day.key) ? theme.accent : theme.textSecondary }]}>{day.label}</Text>
-                </TouchableOpacity>
-              ))}
+              {WEEKDAYS.map((day, index) => {
+                const isSelected = editScheduleDays.includes(day.key);
+                const prevSelected = index > 0 && editScheduleDays.includes(WEEKDAYS[index - 1].key);
+                const nextSelected = index < WEEKDAYS.length - 1 && editScheduleDays.includes(WEEKDAYS[index + 1].key);
+
+                return (
+                  <TouchableOpacity
+                    key={day.key}
+                    style={[
+                      styles.dayBtn,
+                      isSelected && {
+                        backgroundColor: theme.accent,
+                        borderTopLeftRadius: prevSelected ? 0 : 10,
+                        borderBottomLeftRadius: prevSelected ? 0 : 10,
+                        borderTopRightRadius: nextSelected ? 0 : 10,
+                        borderBottomRightRadius: nextSelected ? 0 : 10,
+                      },
+                    ]}
+                    onPress={() => toggleDay(day.key)}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.dayBtnText,
+                        {
+                          color: isSelected ? '#FFFFFF' : theme.textSecondary,
+                          fontWeight: isSelected ? '600' : '400',
+                        },
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 
@@ -766,11 +809,11 @@ const styles = StyleSheet.create({
   timeInput: { width: 70, height: 48, borderWidth: 1, borderRadius: 10, textAlign: 'center', fontSize: 18, fontWeight: '300' },
   timeSep: { fontSize: 24, fontWeight: '300' },
   scheduleRow: { flexDirection: 'row', gap: 8 },
-  scheduleBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
-  scheduleBtnText: { fontSize: 13, fontWeight: '400' },
-  daysRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
-  dayBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
-  dayBtnText: { fontSize: 12, fontWeight: '400' },
+  scheduleBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 0, alignItems: 'center', justifyContent: 'center' },
+  scheduleBtnText: { fontSize: 13 },
+  daysRow: { flexDirection: 'row', gap: 0, marginTop: 14, borderRadius: 10, overflow: 'hidden' },
+  dayBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0 },
+  dayBtnText: { fontSize: 13 },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, paddingHorizontal: 2, borderWidth: 0 },
   toggleLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   toggleLabel: { fontSize: 15, fontWeight: '500' },

@@ -1,19 +1,24 @@
 // ============================================================
 // Focussive Mobile — TimeSlotPicker Component
+// Free-scrollable Samsung Alarm Clock Style Wheel Picker
 // ============================================================
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  PanResponder,
-  GestureResponderEvent,
-  PanResponderGestureState,
+  ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { SessionTimeSlot } from '@focussive/shared';
+
+const ITEM_HEIGHT = 44;
+const VISIBLE_HEIGHT = ITEM_HEIGHT * 3; // 132px (3 items visible: previous, selected, next)
+const REPETITIONS = 3; // 3 cycles to allow free looping fling momentum
 
 interface TimeSlotPickerProps {
   slots: SessionTimeSlot[];
@@ -24,78 +29,141 @@ interface TimeSlotPickerProps {
 }
 
 /**
- * A single swipeable / tappable number unit (hours or minutes)
+ * Free-scrollable column with physics momentum (Samsung Alarm clock style)
  */
-function SwipeNumberUnit({
+function WheelColumn({
   value,
-  min,
-  max,
-  step = 1,
+  count,
   onChange,
   theme,
-  label,
+  width = 54,
 }: {
   value: number;
-  min: number;
-  max: number;
-  step?: number;
+  count: number; // 24 for hours, 60 for minutes
   onChange: (val: number) => void;
   theme: any;
-  label?: string;
+  width?: number;
 }) {
-  const accumulatedDy = useRef(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const isDragging = useRef(false);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 5,
-      onPanResponderGrant: () => {
-        accumulatedDy.current = 0;
-      },
-      onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
-        const threshold = 18; // pixels of drag to trigger a step
-        const diff = gestureState.dy - accumulatedDy.current;
-        if (Math.abs(diff) >= threshold) {
-          const steps = Math.trunc(diff / threshold);
-          accumulatedDy.current += steps * threshold;
-          // Swipe up (negative dy) increments; swipe down (positive dy) decrements
-          const delta = -steps * step;
-          let next = (value + delta) % (max + 1);
-          if (next < min) next = max - (min - next - 1);
-          onChange(next);
-        }
-      },
-    })
-  ).current;
+  // Middle cycle starts at index (1 * count)
+  const initialOffset = (1 * count + value) * ITEM_HEIGHT;
+  const currentCenter = useRef(1 * count + value);
+  const [centerIndex, setCenterIndex] = useState(1 * count + value);
 
-  function increment() {
-    const next = value + step > max ? min : value + step;
-    onChange(next);
-  }
+  // Generate 3 repetitions of numbers 0..count-1
+  const items = useMemo(() => {
+    const list: number[] = [];
+    for (let r = 0; r < REPETITIONS; r++) {
+      for (let i = 0; i < count; i++) {
+        list.push(i);
+      }
+    }
+    return list;
+  }, [count]);
 
-  function decrement() {
-    const next = value - step < min ? max : value - step;
-    onChange(next);
-  }
+  // Sync when prop value changes from outside
+  useEffect(() => {
+    if (!isDragging.current) {
+      const targetIndex = 1 * count + value;
+      currentCenter.current = targetIndex;
+      setCenterIndex(targetIndex);
+      scrollRef.current?.scrollTo({ y: targetIndex * ITEM_HEIGHT, animated: false });
+    }
+  }, [value, count]);
 
-  const formatted = value.toString().padStart(2, '0');
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const idx = Math.round(y / ITEM_HEIGHT);
+    if (idx !== currentCenter.current) {
+      currentCenter.current = idx;
+      setCenterIndex(idx);
+    }
+  };
+
+  const handleScrollEnd = (offsetY: number) => {
+    isDragging.current = false;
+    const idx = Math.round(offsetY / ITEM_HEIGHT);
+    const val = ((idx % count) + count) % count;
+    const normalizedIndex = 1 * count + val;
+    currentCenter.current = normalizedIndex;
+    setCenterIndex(normalizedIndex);
+    onChange(val);
+
+    // Silently re-center into middle cycle so user can scroll indefinitely
+    const normalizedY = normalizedIndex * ITEM_HEIGHT;
+    scrollRef.current?.scrollTo({ y: normalizedY, animated: false });
+  };
+
+  const handleItemPress = (index: number) => {
+    const val = ((index % count) + count) % count;
+    const targetY = index * ITEM_HEIGHT;
+    scrollRef.current?.scrollTo({ y: targetY, animated: true });
+    currentCenter.current = index;
+    setCenterIndex(index);
+    onChange(val);
+  };
 
   return (
-    <View style={styles.unitContainer} {...panResponder.panHandlers}>
-      <TouchableOpacity onPress={increment} hitSlop={{ top: 8, bottom: 4, left: 8, right: 8 }}>
-        <Text style={[styles.arrowText, { color: theme.textSecondary }]}>▲</Text>
-      </TouchableOpacity>
-      <Text style={[styles.unitNumber, { color: theme.text }]}>{formatted}</Text>
-      <TouchableOpacity onPress={decrement} hitSlop={{ top: 4, bottom: 8, left: 8, right: 8 }}>
-        <Text style={[styles.arrowText, { color: theme.textSecondary }]}>▼</Text>
-      </TouchableOpacity>
-      {label && <Text style={[styles.unitLabel, { color: theme.textSecondary }]}>{label}</Text>}
+    <View style={[styles.wheelContainer, { width, height: VISIBLE_HEIGHT }]}>
+      <ScrollView
+        ref={scrollRef}
+        nestedScrollEnabled={true}
+        showsVerticalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToInterval={ITEM_HEIGHT}
+        snapToAlignment="start"
+        contentOffset={{ x: 0, y: initialOffset }}
+        contentContainerStyle={{ paddingVertical: ITEM_HEIGHT }}
+        onScrollBeginDrag={() => {
+          isDragging.current = true;
+        }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={(e) => handleScrollEnd(e.nativeEvent.contentOffset.y)}
+        onScrollEndDrag={(e) => {
+          // If slow drag stopped without momentum, snap immediately
+          if (!e.nativeEvent.velocity?.y || Math.abs(e.nativeEvent.velocity.y) < 0.1) {
+            handleScrollEnd(e.nativeEvent.contentOffset.y);
+          }
+        }}
+        overScrollMode="never"
+      >
+        {items.map((num, idx) => {
+          const isCenter = idx === centerIndex;
+          const isAdjacent = Math.abs(idx - centerIndex) === 1;
+
+          return (
+            <TouchableOpacity
+              key={`item-${idx}`}
+              onPress={() => handleItemPress(idx)}
+              activeOpacity={0.7}
+              style={styles.wheelItem}
+            >
+              <Text
+                style={[
+                  styles.wheelNumber,
+                  {
+                    color: isCenter ? theme.text : theme.textSecondary,
+                    fontSize: isCenter ? 32 : isAdjacent ? 18 : 14,
+                    fontWeight: isCenter ? '700' : '400',
+                    opacity: isCenter ? 1 : isAdjacent ? 0.35 : 0.12,
+                  },
+                ]}
+              >
+                {num.toString().padStart(2, '0')}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
 
 /**
- * A color-filled box containing Start or End time [HH : MM]
+ * Free-floating time display [HH : MM] without any container box or border
  */
 function TimeBox({
   timeStr,
@@ -121,21 +189,24 @@ function TimeBox({
   }
 
   return (
-    <View style={[styles.timeBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      <SwipeNumberUnit
+    <View style={styles.timeBox}>
+      {/* Hours Column (0..23) */}
+      <WheelColumn
         value={hours}
-        min={0}
-        max={23}
-        step={1}
+        count={24}
         onChange={setHours}
         theme={theme}
       />
-      <Text style={[styles.colon, { color: theme.textSecondary }]}>:</Text>
-      <SwipeNumberUnit
+
+      {/* Colon */}
+      <View style={styles.colonContainer}>
+        <Text style={[styles.colon, { color: theme.textSecondary }]}>:</Text>
+      </View>
+
+      {/* Minutes Column (0..59 with 1-min accuracy) */}
+      <WheelColumn
         value={minutes}
-        min={0}
-        max={59}
-        step={5}
+        count={60}
         onChange={setMinutes}
         theme={theme}
       />
@@ -180,19 +251,19 @@ export default function TimeSlotPicker({
     <View style={styles.container}>
       {slots.map((slot, index) => (
         <View key={`slot-${index}`} style={styles.slotRow}>
-          {/* Left: Start time box */}
+          {/* Left: Start time without container */}
           <TimeBox
             timeStr={slot.start_time}
             onChangeTime={(val) => handleUpdateSlot(index, 'start_time', val)}
             theme={theme}
           />
 
-          {/* Gap with Dash icon in between */}
+          {/* Dash separator in between */}
           <View style={styles.dashContainer}>
-            <Ionicons name="remove-outline" size={20} color={theme.textSecondary} />
+            <Ionicons name="remove-outline" size={22} color={theme.textSecondary} />
           </View>
 
-          {/* Right: End time box */}
+          {/* Right: End time without container */}
           <TimeBox
             timeStr={slot.end_time}
             onChangeTime={(val) => handleUpdateSlot(index, 'end_time', val)}
@@ -204,19 +275,19 @@ export default function TimeSlotPicker({
             <TouchableOpacity
               onPress={() => handleRemoveSlot(index)}
               style={styles.deleteBtn}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Ionicons name="close-circle-outline" size={20} color={theme.danger || '#EF4444'} />
+              <Ionicons name="close-circle-outline" size={22} color={theme.danger || '#EF4444'} />
             </TouchableOpacity>
           )}
         </View>
       ))}
 
-      {/* Below the time durations: Plus icon ONLY (no texts) */}
+      {/* Plus icon ONLY (no container box, clean rounded button) */}
       {slots.length < maxSlots && (
         <TouchableOpacity
           onPress={handleAddSlot}
-          style={[styles.addSlotBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          style={[styles.addSlotBtn, { backgroundColor: `${theme.accent}18` }]}
           activeOpacity={0.7}
         >
           <Ionicons name="add" size={24} color={theme.accent} />
@@ -229,65 +300,61 @@ export default function TimeSlotPicker({
 const styles = StyleSheet.create({
   container: {
     marginVertical: 4,
-    gap: 12,
+    gap: 16,
   },
   slotRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
+  // Container removed completely: no border, no background, no box
   timeBox: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 64,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
-  unitContainer: {
+  wheelContainer: {
+    overflow: 'hidden',
+  },
+  wheelItem: {
+    height: ITEM_HEIGHT,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
   },
-  unitNumber: {
-    fontSize: 22,
-    fontWeight: '600',
+  wheelNumber: {
     fontVariant: ['tabular-nums'],
-    marginVertical: 2,
+    letterSpacing: 0.5,
   },
-  unitLabel: {
-    fontSize: 9,
-    textTransform: 'uppercase',
-  },
-  arrowText: {
-    fontSize: 10,
-    opacity: 0.6,
+  colonContainer: {
+    height: VISIBLE_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
   },
   colon: {
-    fontSize: 22,
-    fontWeight: '500',
-    marginHorizontal: 4,
-    marginBottom: 4,
+    fontSize: 28,
+    fontWeight: '300',
+    lineHeight: 32,
   },
   dashContainer: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   deleteBtn: {
-    marginLeft: 8,
+    marginLeft: 6,
     padding: 4,
   },
   addSlotBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
-    marginTop: 4,
+    marginTop: 8,
   },
 });
