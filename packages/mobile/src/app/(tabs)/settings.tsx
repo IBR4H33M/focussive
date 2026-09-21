@@ -195,6 +195,7 @@ export default function SettingsScreen() {
   const [gifEnabled, setGifEnabled] = useState(false);
   const [gifUrl, setGifUrl] = useState<string | null>(null);
   const [uploadingGif, setUploadingGif] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Session reminder state
   const [reminderMinutes, setReminderMinutesState] = useState(15);
@@ -514,6 +515,35 @@ export default function SettingsScreen() {
     }
   }
 
+  async function handlePickAvatar() {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please grant photo library access to update your profile picture.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]?.uri) {
+        setAvatarUploading(true);
+        const uploadedUrl = await uploadImageToCloudinary(result.assets[0].uri, 'image');
+        await userApi.updateProfile({ avatar_url: uploadedUrl });
+        await fetchProfile();
+        Alert.alert('Success', 'Profile picture updated successfully!');
+      }
+    } catch (error) {
+      Alert.alert('Upload Error', error instanceof Error ? error.message : 'Failed to update profile picture');
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
   function openEditModal() {
     setEditName(profile?.name || user?.name || '');
     setEditAge(profile?.age?.toString() || '');
@@ -613,15 +643,43 @@ export default function SettingsScreen() {
 
         <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
           <View style={[styles.profileRow, { padding: 16, marginBottom: 0 }]}>
-            {profile && (profile as any).avatar_url ? (
-              <Image source={{ uri: (profile as any).avatar_url }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
-                <Text style={styles.avatarText}>
-                  {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
-                </Text>
+            <TouchableOpacity
+              onPress={handlePickAvatar}
+              disabled={avatarUploading}
+              activeOpacity={0.8}
+              style={{ position: 'relative' }}
+            >
+              {avatarUploading ? (
+                <View style={[styles.avatar, { backgroundColor: `${theme.accent}30`, justifyContent: 'center', alignItems: 'center' }]}>
+                  <ActivityIndicator size="small" color={theme.accent} />
+                </View>
+              ) : (profile && (profile as any).avatar_url) || user?.avatar_url ? (
+                <Image source={{ uri: (profile as any)?.avatar_url || user?.avatar_url }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
+                  <Text style={styles.avatarText}>
+                    {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  right: -2,
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: theme.surfaceAlt || theme.surface,
+                  borderWidth: 1.5,
+                  borderColor: theme.surface,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Ionicons name="camera" size={11} color={theme.text} />
               </View>
-            )}
+            </TouchableOpacity>
             <View style={styles.profileInfo}>
               <Text style={[styles.profileName, { color: theme.text }]}>
                 {profile?.name || user?.name}
@@ -631,6 +689,17 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </View>
+
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+          <TouchableOpacity style={styles.cardItem} onPress={handlePickAvatar} disabled={avatarUploading} activeOpacity={0.7}>
+            <Text style={[styles.menuText, { color: theme.text }]}>Change Profile Picture</Text>
+            {avatarUploading ? (
+              <ActivityIndicator size="small" color={theme.accent} />
+            ) : (
+              <Ionicons name="camera-outline" size={18} color={theme.textSecondary} />
+            )}
+          </TouchableOpacity>
 
           <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 

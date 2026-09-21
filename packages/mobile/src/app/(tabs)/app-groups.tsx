@@ -1,5 +1,5 @@
 // ============================================================
-// Focussive Mobile — Configuration Screen (Sessions + Groups)
+// Focussive Mobile — Rules Screen (Sessions + Groups)
 // ============================================================
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -43,7 +43,7 @@ const COMMON_WEBSITES = [
   'whatsapp.com', 'telegram.org', 'spotify.com',
 ];
 
-export default function ConfigurationScreen() {
+export default function RulesScreen() {
   const theme = useTheme();
   const isDark = useIsDark();
   const insets = useSafeAreaInsets();
@@ -396,6 +396,7 @@ export default function ConfigurationScreen() {
           <TouchableOpacity
             style={[
               styles.segmentTab,
+              styles.segmentTabLeft,
               activeTab === 'sessions' && {
                 backgroundColor: theme.accent,
               },
@@ -422,6 +423,7 @@ export default function ConfigurationScreen() {
           <TouchableOpacity
             style={[
               styles.segmentTab,
+              styles.segmentTabRight,
               activeTab === 'groups' && {
                 backgroundColor: theme.accent,
               },
@@ -934,8 +936,19 @@ const styles = StyleSheet.create({
   segmentTab: {
     flex: 1,
     paddingVertical: 10,
+    marginVertical: -2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  segmentTabLeft: {
+    marginLeft: -2,
+    borderTopLeftRadius: 10.5,
+    borderBottomLeftRadius: 10.5,
+  },
+  segmentTabRight: {
+    marginRight: -2,
+    borderTopRightRadius: 10.5,
+    borderBottomRightRadius: 10.5,
   },
   segmentText: {
     fontSize: 14,

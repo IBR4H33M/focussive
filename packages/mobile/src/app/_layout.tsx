@@ -26,8 +26,10 @@ import PermissionModal, { MissingPermissions } from '@/components/PermissionModa
 import { ClerkProvider } from '@clerk/clerk-expo';
 import { tokenCache } from '@/utils/cache';
 import { SubscriptionProvider } from '@/context/SubscriptionContext';
+import { useSessions } from '@/context/SessionContext';
 import PaywallModal from '@/components/PaywallModal';
 import ThemedAlert, { installThemedAlert } from '@/components/ThemedAlert';
+import SessionCompleteCard from '@/components/SessionCompleteCard';
 import Constants from 'expo-constants';
 
 const clerkPublishableKey =
@@ -46,6 +48,7 @@ function RootLayoutContent() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const { completedSessionTierData, dismissCompletedTierCard } = useSessions();
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [missingPermissions, setMissingPermissions] = useState<MissingPermissions>({
     usageAccess: false,
@@ -159,6 +162,15 @@ function RootLayoutContent() {
       />
       <PaywallModal />
       <ThemedAlert />
+      <SessionCompleteCard
+        visible={!!completedSessionTierData}
+        tier={completedSessionTierData?.tier ?? null}
+        sessionName={completedSessionTierData?.sessionName ?? ''}
+        durationMinutes={completedSessionTierData?.durationMinutes ?? 0}
+        violationsBlocked={completedSessionTierData?.violationsBlocked ?? 0}
+        onDismiss={dismissCompletedTierCard}
+        onViewBadges={() => router.push('/(tabs)/stats' as never)}
+      />
       <Stack
         screenOptions={{
           headerShown: false,

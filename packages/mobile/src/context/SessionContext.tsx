@@ -5,6 +5,7 @@
 import React, {
   createContext,
   useContext,
+  useState,
   useReducer,
   useEffect,
   useCallback,
@@ -16,6 +17,11 @@ import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener } 
 import { useAuth } from './AuthContext';
 import { type Session, type AppGroup, ViolationAction } from '@focussive/shared';
 import { scheduleSessionReminders } from '@/utils/sessionReminders';
+import {
+  evaluateSessionQualityTier,
+  recordEarnedTier,
+  type QualityTierInfo,
+} from '@/utils/gamification';
 
 // Poll every 30 seconds — aggressive 5s polling was causing Supabase rate-limits
 const POLL_INTERVAL_MS = 30_000;
@@ -34,9 +40,19 @@ type SessionAction =
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'CLEAR_ERROR' };
 
+export interface CompletedSessionTierData {
+  tier: QualityTierInfo;
+  sessionName: string;
+  durationMinutes: number;
+  violationsBlocked: number;
+}
+
 interface SessionContextType extends SessionState {
   refreshSessions: () => Promise<void>;
   handleBreak: (sessionId: string, minutes: number) => Promise<void>;
+  completedSessionTierData: CompletedSessionTierData | null;
+  dismissCompletedTierCard: () => void;
+  triggerSessionComplete: (data: CompletedSessionTierData) => void;
 }
 
 const SessionContext = createContext<SessionContextType | null>(null);
@@ -77,6 +93,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const breakEndedListenerRef = useRef<ReturnType<typeof addListener> | null>(null);
   const breakTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [completedSessionTierData, setCompletedSessionTierData] = useState<CompletedSessionTierData | null>(null);
+  const prevActiveSessionsRef = useRef<Session[]>([]);
+
+  const dismissCompletedTierCard = useCallback(() => {
+    setCompletedSessionTierData(null);
+  }, []);
+
+  const triggerSessionComplete = useCallback((data: CompletedSessionTierData) => {
+    recordEarnedTier(data.tier.key);
+    setCompletedSessionTierData(data);
+  }, []);
+
   const [state, dispatch] = useReducer(sessionReducer, {
     activeSessions: [],
     upcomingSessions: [],
@@ -106,6 +134,34 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
         return true;
       });
+
+      // Detect if an active session just ended / elapsed
+      if (prevActiveSessionsRef.current.length > 0) {
+        const activeIds = new Set(activeSessions.map(s => s.id));
+        for (const prev of prevActiveSessionsRef.current) {
+          if (!activeIds.has(prev.id)) {
+            // Session completed!
+            const violationsCount = (prev as any).violations_count ?? 0;
+            const breaksCount = (prev as any).pause_count ?? 0;
+            const tier = evaluateSessionQualityTier({
+              actualDuration: prev.duration,
+              scheduledDuration: prev.duration,
+              violationsCount,
+              breaksUsedCount: breaksCount,
+              status: 'completed',
+            });
+            recordEarnedTier(tier.key);
+            setCompletedSessionTierData({
+              tier,
+              sessionName: prev.name,
+              durationMinutes: prev.duration,
+              violationsBlocked: violationsCount,
+            });
+            break;
+          }
+        }
+      }
+      prevActiveSessionsRef.current = activeSessions;
 
       dispatch({
         type: 'SET_SESSIONS',
@@ -294,7 +350,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ ...state, refreshSessions, handleBreak }}>
+    <SessionContext.Provider
+      value={{
+        ...state,
+        refreshSessions,
+        handleBreak,
+        completedSessionTierData,
+        dismissCompletedTierCard,
+        triggerSessionComplete,
+      }}
+    >
       {children}
     </SessionContext.Provider>
   );

@@ -221,9 +221,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setIsTrialActive(true);
 
       Alert.alert(
-        'Trial Activated! 🎉',
+        'Trial Activated',
         'Your 3-week free trial has begun. Enjoy unlimited app groups, website blocking groups, and full session history!',
-        [{ text: 'Awesome', onPress: () => closePaywall() }]
+        [{ text: 'Continue', onPress: () => closePaywall() }]
       );
       return true;
     } catch (err) {
@@ -263,7 +263,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
               status: 'active',
             });
             await refreshSubscription();
-            Alert.alert('Subscribed! 🚀', 'Welcome to Focussive Premium!');
+            Alert.alert('Subscribed', 'Welcome to Focussive Premium!');
             closePaywall();
             return true;
           }

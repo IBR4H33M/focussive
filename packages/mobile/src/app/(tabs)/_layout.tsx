@@ -3,11 +3,18 @@
 // ============================================================
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Custom Tab Icons
+const TAB_ICONS = {
+  dashboard: require('../../../assets/images/tabIcons/dashboard.png'),
+  rules: require('../../../assets/images/tabIcons/rules.png'),
+  stats: require('../../../assets/images/tabIcons/stats.png'),
+  settings: require('../../../assets/images/tabIcons/settings.png'),
+};
 
 // Rectangular with rounded corners ("island") tab bar dimensions
 const ISLAND_HEIGHT = 62;
@@ -19,11 +26,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const bottomMargin = Math.max(insets.bottom, 12) + 6;
 
-  // Filter out routes that are hidden (e.g. href: null)
-  const visibleRoutes = state.routes.filter((route: any) => {
-    const { options } = descriptors[route.key];
-    return (options as any).href !== null;
-  });
+  const TAB_ORDER = ['index', 'app-groups', 'stats', 'settings'];
+  const visibleRoutes = TAB_ORDER
+    .map((name) => state.routes.find((route: any) => route.name === name))
+    .filter(Boolean) as any[];
 
   return (
     <View
@@ -35,9 +41,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         },
       ]}
     >
-      {visibleRoutes.map((route: any) => {
+      {visibleRoutes.map((route: any, index: number) => {
         const { options } = descriptors[route.key];
         const isFocused = state.routes[state.index].key === route.key;
+        const isFirst = index === 0;
+        const isLast = index === visibleRoutes.length - 1;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -70,15 +78,16 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             activeOpacity={0.8}
             style={styles.tabItem}
           >
-            {/* Active highlight container: smaller rectangle with rounded corners covering full vertical length */}
+            {/* Active highlight container: covers full vertical height, flush to ends, with all corners rounded */}
             {isFocused && (
               <View
                 style={[
                   styles.activeIndicator,
                   {
                     backgroundColor: isDark
-                      ? 'rgba(255, 255, 255, 0.22)'
-                      : 'rgba(255, 255, 255, 0.25)',
+                      ? 'rgba(0, 0, 0, 0.22)'
+                      : 'rgba(0, 0, 0, 0.25)',
+                    borderRadius: ISLAND_RADIUS,
                   },
                 ]}
               />
@@ -137,16 +146,24 @@ export default function TabLayout() {
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="speedometer-outline" size={20} color={color} />
+            <Image
+              source={TAB_ICONS.dashboard}
+              style={{ width: 22, height: 22, tintColor: color }}
+              resizeMode="contain"
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="app-groups"
         options={{
-          title: 'Configuration',
+          title: 'Rules',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="options-outline" size={20} color={color} />
+            <Image
+              source={TAB_ICONS.rules}
+              style={{ width: 22, height: 22, tintColor: color }}
+              resizeMode="contain"
+            />
           ),
         }}
       />
@@ -155,7 +172,11 @@ export default function TabLayout() {
         options={{
           title: 'Stats',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="analytics-outline" size={20} color={color} />
+            <Image
+              source={TAB_ICONS.stats}
+              style={{ width: 22, height: 22, tintColor: color }}
+              resizeMode="contain"
+            />
           ),
         }}
       />
@@ -164,7 +185,11 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="settings-outline" size={20} color={color} />
+            <Image
+              source={TAB_ICONS.settings}
+              style={{ width: 22, height: 22, tintColor: color }}
+              resizeMode="contain"
+            />
           ),
         }}
       />
@@ -184,10 +209,11 @@ const styles = StyleSheet.create({
     right: 20,
     height: ISLAND_HEIGHT,
     borderRadius: ISLAND_RADIUS,
+    overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     elevation: 0,
     shadowOpacity: 0,
   },
@@ -202,9 +228,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    left: 3,
-    right: 3,
-    borderRadius: 12,
+    left: 0,
+    right: 0,
+    borderRadius: ISLAND_RADIUS,
   },
   tabContent: {
     alignItems: 'center',

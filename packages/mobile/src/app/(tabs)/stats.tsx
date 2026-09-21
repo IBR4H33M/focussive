@@ -18,16 +18,26 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { useTheme, useIsDark } from '@/utils/theme';
-import { historyApi, userApi } from '@/utils/api';
+import { historyApi, userApi, appGroupApi } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { uploadToCloudinary } from '@/utils/cloudinary';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
-import type { SessionHistory } from '@focussive/shared';
+import type { SessionHistory, AppGroup } from '@focussive/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  QUALITY_TIERS,
+  type QualityTierKey,
+  type QualityTierInfo,
+  MILESTONE_BADGES,
+  type MilestoneKey,
+  evaluateMilestones,
+  calculateLongestCleanStreak,
+  getSelectedArchetype,
+  setSelectedArchetype,
+  getEarnedTierCounts,
+} from '@/utils/gamification';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -35,41 +45,73 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DISTRACTED_MINS_PER_VIOLATION = 5;
 
 // ─── Period helpers ──────────────────────────────────────────
-type PeriodKey = 'day' | 'week' | 'month' | 'year' | 'custom';
+type PeriodKey = 'week' | 'month' | 'year' | 'custom';
 
 interface Period {
   key: PeriodKey;
   label: string;
 }
 
+const nowRef = new Date();
+const currentMonthName = nowRef.toLocaleString('en-US', { month: 'long' });
+const currentYear = nowRef.getFullYear();
+
 const PERIODS: Period[] = [
-  { key: 'day',   label: 'Yesterday' },
-  { key: 'week',  label: 'Last 7 days' },
-  { key: 'month', label: 'Last 30 days' },
-  { key: 'year',  label: 'Last year' },
+  { key: 'week',   label: 'Last 7 days' },
+  { key: 'month',  label: `${currentMonthName} ${currentYear}` },
+  { key: 'year',   label: 'Last 1 year' },
   { key: 'custom', label: 'Custom' },
 ];
 
 function getDateRange(period: PeriodKey, customDays: number): { from: Date; to: Date } {
-  const to = new Date();
-  to.setHours(0, 0, 0, 0); // start of today (exclusive — we always exclude today)
+  const today = new Date();
+  // Yesterday end-of-day (23:59:59.999) — rolling range starts from previous day
+  const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 23, 59, 59, 999);
 
   const from = new Date(to);
   switch (period) {
-    case 'day':   from.setDate(from.getDate() - 1); break;
-    case 'week':  from.setDate(from.getDate() - 7); break;
-    case 'month': from.setDate(from.getDate() - 30); break;
-    case 'year':  from.setDate(from.getDate() - 365); break;
-    case 'custom': from.setDate(from.getDate() - Math.max(1, customDays)); break;
+    case 'week': {
+      // 7 days ending at yesterday (inclusive)
+      from.setDate(from.getDate() - 6);
+      from.setHours(0, 0, 0, 0);
+      break;
+    }
+    case 'month': {
+      // Current month up to yesterday
+      from.setDate(1);
+      from.setHours(0, 0, 0, 0);
+      break;
+    }
+    case 'year': {
+      // 1 year ending at yesterday (e.g. Sep 19 2025 to Sep 20 2026)
+      from.setFullYear(from.getFullYear() - 1);
+      from.setDate(from.getDate() - 1);
+      from.setHours(0, 0, 0, 0);
+      break;
+    }
+    case 'custom': {
+      from.setDate(from.getDate() - Math.max(1, customDays) + 1);
+      from.setHours(0, 0, 0, 0);
+      break;
+    }
   }
   return { from, to };
+}
+
+function getPeriodSectionTitle(key: PeriodKey): string {
+  switch (key) {
+    case 'week':   return 'Last 7 days stats';
+    case 'month':  return `${currentMonthName} ${currentYear} stats`;
+    case 'year':   return 'Last 1 year stats';
+    case 'custom': return 'Custom stats';
+  }
 }
 
 function filterByPeriod(history: SessionHistory[], period: PeriodKey, customDays: number): SessionHistory[] {
   const { from, to } = getDateRange(period, customDays);
   return history.filter(h => {
     const d = new Date(h.created_at);
-    return d >= from && d < to;
+    return d >= from && d <= to;
   });
 }
 
@@ -82,7 +124,6 @@ export default function StatsScreen() {
   const isDark = useIsDark();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const indicatorAnim = useRef(new Animated.Value(0)).current;
   const { isPremium, openPaywall } = useSubscription();
 
   const [activeSection, setActiveSection] = useState(0);
@@ -104,73 +145,47 @@ export default function StatsScreen() {
   // Profile & avatar state
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
-  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // App Groups & Gamification state
+  const [appGroups, setAppGroups] = useState<AppGroup[]>([]);
+  const [selectedArchetype, setSelectedArchetypeState] = useState<string | null>(null);
+  const [tierCounts, setTierCounts] = useState<Record<QualityTierKey, number>>({
+    legendary: 0,
+    epic: 0,
+    rare: 0,
+    uncommon: 0,
+    common: 0,
+  });
+  const [archetypeModalVisible, setArchetypeModalVisible] = useState(false);
+  const [selectedTierDetail, setSelectedTierDetail] = useState<QualityTierInfo | null>(null);
 
   useEffect(() => {
     userApi.getProfile().then(p => setProfile(p)).catch(() => {});
+    appGroupApi.getAll().then(res => setAppGroups((res.data as AppGroup[]) || [])).catch(() => {});
+    getSelectedArchetype().then(a => setSelectedArchetypeState(a));
   }, []);
 
-  async function pickAndUploadAvatar() {
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissionResult.granted) {
-        Alert.alert('Permission required', 'Permission to access gallery is required to upload an avatar.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (result.canceled || !result.assets?.[0]?.uri) return;
-
-      const localUri = result.assets[0].uri;
-      setAvatarUploading(true);
-
-      let finalUrl = localUri;
-      try {
-        finalUrl = await uploadToCloudinary(localUri, 'image');
-      } catch (uploadErr) {
-        console.warn('[Avatar] Cloudinary upload fallback:', uploadErr);
-      }
-
-      const updated = await userApi.updateProfile({ avatar_url: finalUrl });
-      setProfile(updated);
-      Alert.alert('Success', 'Profile picture updated successfully!');
-    } catch (err: any) {
-      Alert.alert('Upload Error', err.message || 'Failed to update profile picture');
-    } finally {
-      setAvatarUploading(false);
+  // Sync tier counts whenever history updates
+  useEffect(() => {
+    if (history.length > 0) {
+      getEarnedTierCounts(history).then(counts => setTierCounts(counts));
     }
-  }
-
-  // ─── Last Week Stats (7 days preceding today) ───
-  const { lastWeekHoursText, lastWeekSessionsText } = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const sevenDaysAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    const lastWeekCompleted = history.filter(h => {
-      if (h.status !== 'completed') return false;
-      const d = new Date(h.created_at);
-      return d >= sevenDaysAgo && d < todayStart;
-    });
-
-    const sessionCount = lastWeekCompleted.length;
-    const totalMinutes = lastWeekCompleted.reduce(
-      (sum, h) => sum + (h.actual_duration ?? h.scheduled_duration ?? 0),
-      0
-    );
-    const hours = Math.floor(totalMinutes / 60);
-
-    return {
-      lastWeekHoursText: `${hours} hours spent on focus last week`,
-      lastWeekSessionsText: `${sessionCount} sessions completed last week`,
-    };
   }, [history]);
+
+  // Milestone evaluations
+  const milestones = useMemo(() => evaluateMilestones(history, appGroups), [history, appGroups]);
+
+  const totalBadgesEarned = useMemo(() => {
+    const milestoneCount = Object.values(milestones).filter(m => m.isUnlocked).length;
+    const tierCount = Object.values(tierCounts).reduce((acc, count) => acc + (count > 0 ? 1 : 0), 0);
+    return milestoneCount + tierCount;
+  }, [milestones, tierCounts]);
+
+  async function handleEquipArchetype(badgeTitle: string) {
+    setSelectedArchetypeState(badgeTitle);
+    await setSelectedArchetype(badgeTitle);
+    setArchetypeModalVisible(false);
+  }
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -188,14 +203,12 @@ export default function StatsScreen() {
   function goToSection(index: number) {
     setActiveSection(index);
     scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
-    Animated.spring(indicatorAnim, { toValue: index, useNativeDriver: true, tension: 80, friction: 12 }).start();
   }
 
   function onScrollEnd(e: any) {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     if (index !== activeSection) {
       setActiveSection(index);
-      Animated.spring(indicatorAnim, { toValue: index, useNativeDriver: true, tension: 80, friction: 12 }).start();
     }
   }
 
@@ -241,177 +254,332 @@ export default function StatsScreen() {
 
   // ─── Overview ────────────────────────────────────────────
   function renderOverview() {
+    const cleanStreak = calculateLongestCleanStreak(filtered);
+    const focusHours = Math.floor(totalFocusMinutes / 60);
+    const focusMins = totalFocusMinutes % 60;
+    const formattedFocusTime = `${focusHours}h ${focusMins.toString().padStart(2, '0')}m`;
+
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.sectionContent} showsVerticalScrollIndicator={false}>
 
-        {/* Profile Header with Name, Avatar Upload & Weekly Summary */}
-        <View style={[styles.profileCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.profileHeaderRow}>
-            <TouchableOpacity
-              onPress={pickAndUploadAvatar}
-              activeOpacity={0.8}
-              style={styles.avatarTouchable}
-            >
-              {avatarUploading ? (
-                <View style={[styles.profileAvatar, { backgroundColor: `${theme.accent}30` }]}>
-                  <ActivityIndicator size="small" color={theme.accent} />
-                </View>
-              ) : (profile?.avatar_url || user?.avatar_url) ? (
-                <Image
-                  source={{ uri: profile?.avatar_url || user?.avatar_url }}
-                  style={styles.profileAvatar}
-                />
-              ) : (
-                <View style={[styles.profileAvatar, { backgroundColor: theme.accent }]}>
-                  <Text style={styles.profileAvatarText}>
-                    {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <View style={[styles.cameraBadge, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <Ionicons name="camera" size={11} color={theme.text} />
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.profileInfoCol}>
-              <Text style={[styles.profileNameText, { color: theme.text }]} numberOfLines={1}>
-                {profile?.name || user?.name || 'Focus User'}
-              </Text>
-              <Text style={[styles.profileSubtext, { color: theme.textSecondary }]}>
-                Tap avatar to update picture
-              </Text>
-            </View>
-          </View>
-
-          {/* Under profile pic and name: last week stats */}
-          <View style={[styles.weeklyStatsContainer, { backgroundColor: theme.surface, borderColor: `${theme.border}40` }]}>
-            <View style={styles.weeklyStatRow}>
-              <Ionicons name="time-outline" size={16} color={theme.accent} />
-              <Text style={[styles.weeklyStatText, { color: theme.text }]}>
-                {lastWeekHoursText}
-              </Text>
-            </View>
-            <View style={styles.weeklyStatRow}>
-              <Ionicons name="checkmark-circle-outline" size={16} color="#10B981" />
-              <Text style={[styles.weeklyStatText, { color: theme.text }]}>
-                {lastWeekSessionsText}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Period Selector */}
-        <TouchableOpacity
-          style={[styles.periodBtn, { backgroundColor: theme.card }]}
-          onPress={() => setPeriodDropdownVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.periodBtnText, { color: theme.text }]}>{periodLabel}</Text>
-          <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
-        </TouchableOpacity>
-
-        {/* Total Focus Time — hero */}
-        <View style={styles.heroBlock}>
-          <Text style={[styles.heroNumber, { color: theme.text }]}>{formatDuration(totalFocusMinutes)}</Text>
-          <Text style={[styles.heroLabel, { color: theme.textSecondary }]}>Total Focus Time</Text>
-        </View>
-
-        {/* Row: sessions + violations */}
-        <View style={styles.statRow}>
-          <View style={[styles.statBox, { backgroundColor: theme.card }]}>
-            <Text style={[styles.statValue, { color: theme.text }]}>{totalSessions}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Sessions</Text>
-          </View>
-          <View style={[styles.statBox, { backgroundColor: theme.card }]}>
-            <Text style={[styles.statValue, { color: totalViolations > 0 ? theme.danger : theme.text }]}>{totalViolations}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Violations</Text>
-            {totalViolations > 0 && (
-              <View style={styles.violationSubRow}>
-                <View style={styles.violationSubItem}>
-                  <Ionicons name="phone-portrait-outline" size={11} color={theme.textSecondary} />
-                  <Text style={[styles.violationSubText, { color: theme.textSecondary }]}>{totalAppViolations}</Text>
-                </View>
-                <View style={styles.violationSubItem}>
-                  <Ionicons name="globe-outline" size={11} color={theme.textSecondary} />
-                  <Text style={[styles.violationSubText, { color: theme.textSecondary }]}>{totalWebViolations}</Text>
-                </View>
+        {/* Profile Header without container */}
+        <View style={styles.cleanProfileRow}>
+          <View style={styles.avatarTouchable}>
+            {(profile?.avatar_url || user?.avatar_url) ? (
+              <Image
+                source={{ uri: profile?.avatar_url || user?.avatar_url }}
+                style={styles.profileAvatar}
+              />
+            ) : (
+              <View style={[styles.profileAvatar, { backgroundColor: theme.accent }]}>
+                <Text style={styles.profileAvatarText}>
+                  {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
+                </Text>
               </View>
             )}
           </View>
+
+          <View style={styles.profileInfoCol}>
+            <Text style={[styles.profileNameText, { color: theme.text }]} numberOfLines={1}>
+              {profile?.name || user?.name || 'Focus User'}
+            </Text>
+
+            {/* Archetype title under profile name */}
+            <TouchableOpacity
+              style={[
+                styles.archetypePill,
+                {
+                  backgroundColor: selectedArchetype ? `${theme.accent}18` : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                  borderColor: selectedArchetype ? theme.accent : theme.border,
+                },
+              ]}
+              onPress={() => setArchetypeModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={selectedArchetype ? 'sparkles' : 'ribbon-outline'}
+                size={13}
+                color={selectedArchetype ? theme.accent : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.archetypePillText,
+                  { color: selectedArchetype ? theme.accent : theme.textSecondary },
+                ]}
+              >
+                {selectedArchetype || 'Select Archetype'}
+              </Text>
+              <Ionicons name="chevron-forward" size={12} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Focus vs Distracted Bar */}
-        {totalFocusMinutes > 0 && (
-          <View style={[styles.barSection, { backgroundColor: theme.card }]}>
-            <Text style={[styles.barTitle, { color: theme.textSecondary }]}>FOCUS BREAKDOWN</Text>
+        {/* ── Earned Badges Section ── */}
+        <View style={styles.badgesSectionContainer}>
+          <View style={styles.badgesSectionHeader}>
+            <Text style={[styles.badgesSectionTitle, { color: theme.text }]}>
+              Earned badges
+            </Text>
+            <View style={[styles.badgesCountPill, { backgroundColor: `${theme.accent}20` }]}>
+              <Text style={[styles.badgesCountText, { color: theme.accent }]}>
+                {totalBadgesEarned} unlocked
+              </Text>
+            </View>
+          </View>
 
-            {/* Bar */}
-            <View style={styles.barTrack}>
-              {/* Focused portion */}
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    flex: focusedMinutes,
-                    backgroundColor: theme.accent,
-                    borderTopLeftRadius: 6,
-                    borderBottomLeftRadius: 6,
-                    borderTopRightRadius: distractedMinutes === 0 ? 6 : 0,
-                    borderBottomRightRadius: distractedMinutes === 0 ? 6 : 0,
-                  },
-                ]}
-              />
-              {/* Distracted portion */}
-              {distractedMinutes > 0 && (
+          {/* Session Quality Tiers */}
+          <Text style={[styles.badgeSubheading, { color: theme.textSecondary }]}>
+            SESSION QUALITY TIERS
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tiersScrollRow}
+          >
+            {Object.values(QUALITY_TIERS).map(tier => {
+              const count = tierCounts[tier.key] || 0;
+              return (
+                <TouchableOpacity
+                  key={tier.key}
+                  style={[
+                    styles.tierCard,
+                    {
+                      backgroundColor: count > 0 ? tier.bgColor : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'),
+                      borderColor: count > 0 ? tier.borderColor : theme.border,
+                      opacity: count > 0 ? 1 : 0.65,
+                    },
+                  ]}
+                  onPress={() => setSelectedTierDetail(tier)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.tierIconBox, { backgroundColor: `${tier.color}25` }]}>
+                    <Ionicons name={tier.icon as any} size={18} color={tier.color} />
+                  </View>
+                  <Text style={[styles.tierCardTitle, { color: theme.text }]}>
+                    {tier.name}
+                  </Text>
+                  <View style={[styles.tierCountBadge, { backgroundColor: count > 0 ? tier.color : theme.surface }]}>
+                    <Text style={[styles.tierCountText, { color: count > 0 ? '#FFFFFF' : theme.textSecondary }]}>
+                      {count > 0 ? `×${count}` : '0'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Collectible Milestone Badges */}
+          <Text style={[styles.badgeSubheading, { color: theme.textSecondary, marginTop: 18 }]}>
+            COLLECTIBLE MILESTONES
+          </Text>
+          <View style={styles.milestonesList}>
+            {Object.entries(milestones).map(([key, item]) => {
+              const isEquipped = selectedArchetype === item.badge.title;
+              return (
+                <View
+                  key={key}
+                  style={[
+                    styles.milestoneCard,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: item.isUnlocked ? `${item.badge.color}60` : theme.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.milestoneTopRow}>
+                    <View style={[styles.milestoneIconBox, { backgroundColor: `${item.badge.color}20` }]}>
+                      <Ionicons name={item.badge.icon as any} size={20} color={item.badge.color} />
+                    </View>
+                    <View style={styles.milestoneInfo}>
+                      <View style={styles.milestoneTitleRow}>
+                        <Text style={[styles.milestoneTitle, { color: theme.text }]}>
+                          {item.badge.title}
+                        </Text>
+                        {item.isUnlocked ? (
+                          <View style={[styles.unlockedBadge, { backgroundColor: '#10B98120' }]}>
+                            <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                            <Text style={styles.unlockedBadgeText}>Earned</Text>
+                          </View>
+                        ) : (
+                          <Text style={[styles.progressText, { color: theme.textSecondary }]}>
+                            {item.current} / {item.target}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={[styles.milestoneQuote, { color: theme.textSecondary }]}>
+                        "{item.badge.quote}"
+                      </Text>
+                      <Text style={[styles.milestoneReq, { color: theme.textSecondary }]}>
+                        {item.badge.requirement}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {item.isUnlocked ? (
+                    <TouchableOpacity
+                      style={[
+                        styles.equipBtn,
+                        {
+                          backgroundColor: isEquipped ? theme.accent : `${theme.accent}18`,
+                          borderColor: theme.accent,
+                        },
+                      ]}
+                      onPress={() => handleEquipArchetype(item.badge.title)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={isEquipped ? 'checkmark' : 'sparkles-outline'}
+                        size={14}
+                        color={isEquipped ? '#FFFFFF' : theme.accent}
+                      />
+                      <Text
+                        style={[
+                          styles.equipBtnText,
+                          { color: isEquipped ? '#FFFFFF' : theme.accent },
+                        ]}
+                      >
+                        {isEquipped ? 'Active Archetype' : 'Select as Archetype'}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={[styles.progressBarBg, { backgroundColor: theme.surface }]}>
+                      <View
+                        style={[
+                          styles.progressBarFill,
+                          {
+                            width: `${Math.min(100, Math.round((item.current / item.target) * 100))}%`,
+                            backgroundColor: item.badge.color,
+                          },
+                        ]}
+                      />
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ── Period Stats Section ── */}
+        <View style={styles.periodStatsSection}>
+          <View style={styles.periodHeaderRow}>
+            <Text style={[styles.periodSectionTitle, { color: theme.text }]}>
+              {getPeriodSectionTitle(activePeriod)}
+            </Text>
+            <TouchableOpacity
+              style={[styles.periodBtnClean, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => setPeriodDropdownVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.periodBtnText, { color: theme.text }]}>{periodLabel}</Text>
+              <Ionicons name="chevron-down" size={14} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* 4 Requested Metrics Grid */}
+          <View style={styles.metricsGrid}>
+            <View style={[styles.metricCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.metricIconRow}>
+                <Ionicons name="checkmark-done-circle-outline" size={17} color={theme.accent} />
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Sessions completed</Text>
+              </View>
+              <Text style={[styles.metricValue, { color: theme.text }]}>{completedOnly.length}</Text>
+            </View>
+
+            <View style={[styles.metricCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.metricIconRow}>
+                <Ionicons name="time-outline" size={17} color="#3B82F6" />
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Hours focused</Text>
+              </View>
+              <Text style={[styles.metricValue, { color: theme.text }]}>{formattedFocusTime}</Text>
+            </View>
+
+            <View style={[styles.metricCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.metricIconRow}>
+                <Ionicons name="shield-outline" size={17} color={totalViolations > 0 ? theme.danger : '#10B981'} />
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Distraction attempts</Text>
+              </View>
+              <Text style={[styles.metricValue, { color: totalViolations > 0 ? theme.danger : theme.text }]}>
+                {totalViolations} blocked
+              </Text>
+            </View>
+
+            <View style={[styles.metricCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.metricIconRow}>
+                <Ionicons name="flame-outline" size={17} color="#F59E0B" />
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Longest clean streak</Text>
+              </View>
+              <Text style={[styles.metricValue, { color: theme.text }]}>
+                {cleanStreak} session{cleanStreak !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          </View>
+
+          {/* Focus vs Distracted Bar */}
+          {totalFocusMinutes > 0 && (
+            <View style={[styles.barSection, { backgroundColor: theme.card }]}>
+              <Text style={[styles.barTitle, { color: theme.textSecondary }]}>FOCUS BREAKDOWN</Text>
+              <View style={styles.barTrack}>
                 <View
                   style={[
                     styles.barFill,
                     {
-                      flex: Math.min(distractedMinutes, totalFocusMinutes),
-                      backgroundColor: theme.danger,
-                      borderTopRightRadius: 6,
-                      borderBottomRightRadius: 6,
+                      flex: focusedMinutes,
+                      backgroundColor: theme.accent,
+                      borderTopLeftRadius: 6,
+                      borderBottomLeftRadius: 6,
+                      borderTopRightRadius: distractedMinutes === 0 ? 6 : 0,
+                      borderBottomRightRadius: distractedMinutes === 0 ? 6 : 0,
                     },
                   ]}
                 />
-              )}
-            </View>
-
-            {/* Legend */}
-            <View style={styles.legendRow}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: theme.accent }]} />
-                <Text style={[styles.legendText, { color: theme.textSecondary }]}>
-                  Focused — {formatDuration(focusedMinutes)}
-                </Text>
+                {distractedMinutes > 0 && (
+                  <View
+                    style={[
+                      styles.barFill,
+                      {
+                        flex: Math.min(distractedMinutes, totalFocusMinutes),
+                        backgroundColor: theme.danger,
+                        borderTopRightRadius: 6,
+                        borderBottomRightRadius: 6,
+                      },
+                    ]}
+                  />
+                )}
               </View>
-              {distractedMinutes > 0 && (
+              <View style={styles.legendRow}>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: theme.danger }]} />
+                  <View style={[styles.legendDot, { backgroundColor: theme.accent }]} />
                   <Text style={[styles.legendText, { color: theme.textSecondary }]}>
-                    Distracted — {formatDuration(Math.min(distractedMinutes, totalFocusMinutes))}
+                    Focused — {formatDuration(focusedMinutes)}
                   </Text>
                 </View>
-              )}
+                {distractedMinutes > 0 && (
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: theme.danger }]} />
+                    <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+                      Distracted — {formatDuration(Math.min(distractedMinutes, totalFocusMinutes))}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <View style={[styles.focusPctRow, { borderTopColor: theme.border }]}>
+                <Text style={[styles.focusPctLabel, { color: theme.textSecondary }]}>Focus score</Text>
+                <Text style={[styles.focusPct, { color: focusPct >= 80 ? theme.accent : focusPct >= 50 ? '#F0A500' : theme.danger }]}>
+                  {focusPct}%
+                </Text>
+              </View>
             </View>
+          )}
 
-            {/* Percentage */}
-            <View style={[styles.focusPctRow, { borderTopColor: theme.border }]}>
-              <Text style={[styles.focusPctLabel, { color: theme.textSecondary }]}>Focus score</Text>
-              <Text style={[styles.focusPct, { color: focusPct >= 80 ? theme.accent : focusPct >= 50 ? '#F0A500' : theme.danger }]}>
-                {focusPct}%
-              </Text>
+          {filtered.length === 0 && !loading && (
+            <View style={styles.emptyBlock}>
+              <Ionicons name="bar-chart-outline" size={44} color={theme.textSecondary} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>No data for this period</Text>
+              <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>Try selecting a wider range</Text>
             </View>
-          </View>
-        )}
-
-        {filtered.length === 0 && !loading && (
-          <View style={styles.emptyBlock}>
-            <Ionicons name="bar-chart-outline" size={44} color={theme.textSecondary} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No data for this period</Text>
-            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>Try selecting a wider range</Text>
-          </View>
-        )}
+          )}
+        </View>
       </ScrollView>
     );
   }
@@ -509,30 +677,55 @@ export default function StatsScreen() {
     );
   }
 
-  // ─── Tab indicator ───────────────────────────────────────
-  const indicatorTranslateX = indicatorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, SCREEN_WIDTH / 2],
-  });
-
   // ─── Render ──────────────────────────────────────────────
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
-
-      {/* Section Tab Bar */}
-      <View style={[styles.tabBar, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        {SECTIONS.map((s, i) => (
-          <TouchableOpacity key={s} style={styles.tabItem} onPress={() => goToSection(i)}>
-            <Text style={[styles.tabText, { color: activeSection === i ? theme.accent : theme.textSecondary }]}>{s}</Text>
-          </TouchableOpacity>
-        ))}
-        <Animated.View
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Top Segmented Control: "Overview" and "History" in a single bordered container matching Rules */}
+      <View style={[styles.topBarWrapper, { paddingTop: Math.max(insets.top + 16, 36) }]}>
+        <View
           style={[
-            styles.tabIndicator,
-            { backgroundColor: theme.accent, width: SCREEN_WIDTH / 2 },
-            { transform: [{ translateX: indicatorTranslateX }] },
+            styles.segmentContainer,
+            {
+              borderColor: theme.accent,
+              backgroundColor: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.04)',
+            },
           ]}
-        />
+        >
+          {SECTIONS.map((sectionName, index) => {
+            const isSelected = activeSection === index;
+            const isFirst = index === 0;
+            const isLast = index === SECTIONS.length - 1;
+            return (
+              <TouchableOpacity
+                key={sectionName}
+                style={[
+                  styles.segmentTab,
+                  isFirst && styles.segmentTabLeft,
+                  isLast && styles.segmentTabRight,
+                  isSelected && {
+                    backgroundColor: theme.accent,
+                  },
+                ]}
+                onPress={() => goToSection(index)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    {
+                      color: isSelected
+                        ? (isDark ? '#2F3456' : '#FFFFFF')
+                        : theme.accent,
+                      fontWeight: isSelected ? '700' : '600',
+                    },
+                  ]}
+                >
+                  {sectionName}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       {/* Horizontal pager */}
@@ -770,6 +963,131 @@ export default function StatsScreen() {
           ) : null}
         </View>
       </Modal>
+
+      {/* ── Archetype Selection Modal ── */}
+      <Modal
+        visible={archetypeModalVisible}
+        transparent
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setArchetypeModalVisible(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+          <View style={[styles.modalHandle, { backgroundColor: theme.border }]} />
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Select Archetype</Text>
+            <TouchableOpacity
+              onPress={() => setArchetypeModalVisible(false)}
+              style={[styles.closeBtn, { backgroundColor: theme.surface }]}
+            >
+              <Ionicons name="close" size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+            <Text style={[styles.archetypeModalDesc, { color: theme.textSecondary }]}>
+              Choose an earned milestone badge to display as your Archetype under your profile name.
+            </Text>
+
+            {Object.entries(milestones).map(([key, item]) => {
+              const isEquipped = selectedArchetype === item.badge.title;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.archetypeOptionCard,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: isEquipped ? theme.accent : theme.border,
+                      opacity: item.isUnlocked ? 1 : 0.6,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (item.isUnlocked) {
+                      handleEquipArchetype(item.badge.title);
+                    }
+                  }}
+                  disabled={!item.isUnlocked}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.milestoneIconBox, { backgroundColor: `${item.badge.color}20` }]}>
+                    <Ionicons name={item.badge.icon as any} size={20} color={item.badge.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={[styles.milestoneTitle, { color: theme.text }]}>{item.badge.title}</Text>
+                      {item.isUnlocked ? (
+                        <View style={[styles.unlockedBadge, { backgroundColor: '#10B98120' }]}>
+                          <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                          <Text style={styles.unlockedBadgeText}>{isEquipped ? 'Active' : 'Unlocked'}</Text>
+                        </View>
+                      ) : (
+                        <Text style={[styles.progressText, { color: theme.textSecondary }]}>
+                          {item.current} / {item.target}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={[styles.milestoneQuote, { color: theme.textSecondary }]}>
+                      "{item.badge.quote}"
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Quality Tier Detail Modal ── */}
+      <Modal
+        visible={!!selectedTierDetail}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedTierDetail(null)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownBackdrop}
+          activeOpacity={1}
+          onPress={() => setSelectedTierDetail(null)}
+        >
+          {selectedTierDetail && (
+            <View
+              style={[
+                styles.tierDetailModalCard,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: selectedTierDetail.borderColor,
+                },
+              ]}
+            >
+              <View style={[styles.tierIconBoxLarge, { backgroundColor: selectedTierDetail.bgColor }]}>
+                <Ionicons name={selectedTierDetail.icon as any} size={32} color={selectedTierDetail.color} />
+              </View>
+              <Text style={[styles.tierDetailTitle, { color: selectedTierDetail.color }]}>
+                {selectedTierDetail.name.toUpperCase()} TIER
+              </Text>
+              <Text style={[styles.tierDetailTagline, { color: theme.text }]}>
+                {selectedTierDetail.tagline}
+              </Text>
+              <Text style={[styles.tierDetailDesc, { color: theme.textSecondary }]}>
+                {selectedTierDetail.description}
+              </Text>
+              <View style={[styles.tierDetailCountRow, { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)' }]}>
+                <Text style={[styles.tierDetailCountLabel, { color: theme.textSecondary }]}>Times Earned</Text>
+                <Text style={[styles.tierDetailCountNum, { color: theme.text }]}>
+                  {tierCounts[selectedTierDetail.key] || 0}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.tierDetailCloseBtn, { backgroundColor: selectedTierDetail.color }]}
+                onPress={() => setSelectedTierDetail(null)}
+              >
+                <Text style={styles.tierDetailCloseBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -792,107 +1110,291 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 32 },
 
   // Tabs
-  tabBar: { flexDirection: 'row', height: 46, borderBottomWidth: StyleSheet.hairlineWidth, position: 'relative' },
-  tabItem: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  tabText: { fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
-  tabIndicator: { position: 'absolute', bottom: 0, height: 2, borderRadius: 1 },
+  topBarWrapper: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  segmentTab: {
+    flex: 1,
+    paddingVertical: 10,
+    marginVertical: -2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentTabLeft: {
+    marginLeft: -2,
+    borderTopLeftRadius: 10.5,
+    borderBottomLeftRadius: 10.5,
+  },
+  segmentTabRight: {
+    marginRight: -2,
+    borderTopRightRadius: 10.5,
+    borderBottomRightRadius: 10.5,
+  },
+  segmentText: {
+    fontSize: 14,
+    letterSpacing: 0.3,
+  },
 
   sectionContent: { padding: 16, paddingBottom: 48 },
 
-  // Profile header & weekly stats
-  profileCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
-  profileHeaderRow: {
+  // Profile row without container
+  cleanProfileRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    marginBottom: 12,
+    marginBottom: 20,
   },
   avatarTouchable: {
     position: 'relative',
   },
   profileAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileAvatarText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '600',
-  },
-  cameraBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   profileInfoCol: {
     flex: 1,
     justifyContent: 'center',
+    gap: 4,
   },
   profileNameText: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontSize: 18,
+    fontWeight: '700',
   },
-  profileSubtext: {
-    fontSize: 12,
-  },
-  weeklyStatsContainer: {
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 8,
-    borderWidth: 1,
-  },
-  weeklyStatRow: {
+  archetypePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
   },
-  weeklyStatText: {
-    fontSize: 13,
-    fontWeight: '500',
+  archetypePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 
-  // Period selector
-  periodBtn: {
+  // Earned Badges Section
+  badgesSectionContainer: {
+    marginBottom: 24,
+  },
+  badgesSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  badgesSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  badgesCountPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  badgesCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  badgeSubheading: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    marginBottom: 10,
+  },
+  tiersScrollRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingBottom: 4,
+  },
+  tierCard: {
+    width: 96,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 10,
+    alignItems: 'center',
+    gap: 6,
+  },
+  tierIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tierCardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  tierCountBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  tierCountText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  // Milestone Badges
+  milestonesList: {
+    gap: 10,
+  },
+  milestoneCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  milestoneTopRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  milestoneIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  milestoneInfo: {
+    flex: 1,
+  },
+  milestoneTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  milestoneTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  unlockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  unlockedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  progressText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  milestoneQuote: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginBottom: 4,
+  },
+  milestoneReq: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  equipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  equipBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  progressBarBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+
+  // Period Stats Section
+  periodStatsSection: {
+    marginBottom: 24,
+  },
+  periodHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  periodSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  periodBtnClean: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
   },
-  periodBtnText: { fontSize: 14, fontWeight: '500' },
+  periodBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
 
-  // Hero
-  heroBlock: { alignItems: 'flex-start', marginBottom: 24 },
-  heroNumber: { fontSize: 48, fontWeight: '200', letterSpacing: -1.5 },
-  heroLabel: { fontSize: 13, fontWeight: '300', marginTop: 2 },
-
-  // Stats row
-  statRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  statBox: { flex: 1, borderRadius: 14, padding: 16 },
-  statValue: { fontSize: 28, fontWeight: '300', marginBottom: 2 },
-  statLabel: { fontSize: 12, fontWeight: '300' },
-  violationSubRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
-  violationSubItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  violationSubText: { fontSize: 12, fontWeight: '300' },
+  // 4 Metrics Grid
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  metricCard: {
+    width: (SCREEN_WIDTH - 32 - 10) / 2,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 6,
+  },
+  metricIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metricLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
 
   // Focus bar
   barSection: { borderRadius: 14, padding: 18, marginBottom: 24 },
@@ -916,6 +1418,89 @@ const styles = StyleSheet.create({
   emptyBlock: { alignItems: 'center', paddingTop: 48, gap: 10 },
   emptyTitle: { fontSize: 17, fontWeight: '300' },
   emptySubtitle: { fontSize: 13, fontWeight: '300' },
+
+  // Archetype & Tier Detail Modals
+  archetypeModalDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  archetypeOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 14,
+    marginBottom: 10,
+  },
+  tierDetailModalCard: {
+    width: SCREEN_WIDTH - 64,
+    borderRadius: 20,
+    borderWidth: 2,
+    padding: 24,
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  tierIconBoxLarge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  tierDetailTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  tierDetailTagline: {
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  tierDetailDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  tierDetailCountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  tierDetailCountLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  tierDetailCountNum: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  tierDetailCloseBtn: {
+    width: '100%',
+    height: 42,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tierDetailCloseBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 
   // History cards
   historyCard: { borderRadius: 12, padding: 14, marginBottom: 10 },
