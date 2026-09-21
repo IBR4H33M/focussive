@@ -151,6 +151,21 @@ object SessionNotifications {
         return views
     }
 
+    /** Resolve the small status bar icon from custom app resources with fallbacks. */
+    private fun getSmallIconResId(context: Context): Int {
+        val notifIconId = context.resources.getIdentifier("notification_icon", "drawable", context.packageName)
+        if (notifIconId != 0) return notifIconId
+
+        val icNotifId = context.resources.getIdentifier("ic_notification", "drawable", context.packageName)
+        if (icNotifId != 0) return icNotifId
+
+        if (context.applicationInfo.icon != 0) {
+            return context.applicationInfo.icon
+        }
+
+        return android.R.drawable.ic_dialog_info
+    }
+
     /** Build a complete notification instance. */
     fun buildNotification(
         context: Context,
@@ -175,7 +190,7 @@ object SessionNotifications {
         builder
             .setContentTitle(title)
             .setContentText(body)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(getSmallIconResId(context))
             .setOngoing(true)
             .setAutoCancel(false)
             .setOnlyAlertOnce(true)
