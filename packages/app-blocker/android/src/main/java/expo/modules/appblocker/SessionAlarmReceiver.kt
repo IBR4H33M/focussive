@@ -12,6 +12,18 @@ import android.os.Build
  */
 class SessionAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == "ACTION_SESSION_TEARDOWN") {
+            // Session finished! Dismiss ongoing notification and stop foreground service
+            SessionNotifications.cancel(context, SessionNotifications.ACTIVE_NOTIFICATION_ID)
+            try {
+                val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
+                    action = "STOP"
+                }
+                context.startService(serviceIntent)
+            } catch (_: Exception) {}
+            return
+        }
+
         val id = intent.getIntExtra("id", -1)
         val sessionId = intent.getStringExtra("sessionId") ?: return
         if (id == -1) return
@@ -25,6 +37,9 @@ class SessionAlarmReceiver : BroadcastReceiver() {
         SessionNotifications.post(context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText)
 
         if (isActive) {
+            // Dismiss reminder notifications immediately when session becomes active
+            SessionNotifications.cancelAllReminders(context)
+
             try {
                 val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
                     putExtra("SESSION_ID", sessionId)

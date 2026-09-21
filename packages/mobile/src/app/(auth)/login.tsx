@@ -214,7 +214,7 @@ export default function LoginScreen() {
             {/* Title & Info */}
             <View style={styles.twoFactorHeader}>
               <Text style={[styles.twoFactorTitle, { color: theme.text }]}>
-                Verify email for new device
+                Verify login for new device
               </Text>
               <Text style={[styles.twoFactorSubtitle, { color: theme.textSecondary }]}>
                 {factorStrategy === 'phone_code'

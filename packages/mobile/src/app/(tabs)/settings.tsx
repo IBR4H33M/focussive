@@ -644,16 +644,10 @@ export default function SettingsScreen() {
         <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
           <View style={[styles.profileRow, { padding: 16, marginBottom: 0 }]}>
             <TouchableOpacity
-              onPress={handlePickAvatar}
-              disabled={avatarUploading}
+              onPress={openEditModal}
               activeOpacity={0.8}
-              style={{ position: 'relative' }}
             >
-              {avatarUploading ? (
-                <View style={[styles.avatar, { backgroundColor: `${theme.accent}30`, justifyContent: 'center', alignItems: 'center' }]}>
-                  <ActivityIndicator size="small" color={theme.accent} />
-                </View>
-              ) : (profile && (profile as any).avatar_url) || user?.avatar_url ? (
+              {(profile && (profile as any).avatar_url) || user?.avatar_url ? (
                 <Image source={{ uri: (profile as any)?.avatar_url || user?.avatar_url }} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
@@ -662,23 +656,6 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               )}
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: -2,
-                  right: -2,
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  backgroundColor: theme.surfaceAlt || theme.surface,
-                  borderWidth: 1.5,
-                  borderColor: theme.surface,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                <Ionicons name="camera" size={11} color={theme.text} />
-              </View>
             </TouchableOpacity>
             <View style={styles.profileInfo}>
               <Text style={[styles.profileName, { color: theme.text }]}>
@@ -689,17 +666,6 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </View>
-
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
-
-          <TouchableOpacity style={styles.cardItem} onPress={handlePickAvatar} disabled={avatarUploading} activeOpacity={0.7}>
-            <Text style={[styles.menuText, { color: theme.text }]}>Change Profile Picture</Text>
-            {avatarUploading ? (
-              <ActivityIndicator size="small" color={theme.accent} />
-            ) : (
-              <Ionicons name="camera-outline" size={18} color={theme.textSecondary} />
-            )}
-          </TouchableOpacity>
 
           <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 
@@ -1170,6 +1136,65 @@ export default function SettingsScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Profile</Text>
+
+            {/* Avatar & Change Picture Button */}
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <TouchableOpacity
+                onPress={handlePickAvatar}
+                disabled={avatarUploading}
+                activeOpacity={0.8}
+                style={{ position: 'relative', marginBottom: 10 }}
+              >
+                {avatarUploading ? (
+                  <View style={[styles.avatar, { width: 80, height: 80, borderRadius: 40, backgroundColor: `${theme.accent}30`, justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="small" color={theme.accent} />
+                  </View>
+                ) : (profile && (profile as any).avatar_url) || user?.avatar_url ? (
+                  <Image source={{ uri: (profile as any)?.avatar_url || user?.avatar_url }} style={[styles.avatar, { width: 80, height: 80, borderRadius: 40 }]} />
+                ) : (
+                  <View style={[styles.avatar, { width: 80, height: 80, borderRadius: 40, backgroundColor: theme.accent, justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text style={[styles.avatarText, { fontSize: 32 }]}>
+                      {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: theme.accent,
+                    borderWidth: 2,
+                    borderColor: theme.card,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Ionicons name="camera" size={13} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handlePickAvatar}
+                disabled={avatarUploading}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+              >
+                {avatarUploading ? (
+                  <ActivityIndicator size="small" color={theme.accent} />
+                ) : (
+                  <>
+                    <Ionicons name="camera-outline" size={16} color={theme.accent} />
+                    <Text style={{ color: theme.accent, fontSize: 14, fontWeight: '600' }}>
+                      Change Profile Picture
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
             <TextInput
               style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
               placeholder="Name"

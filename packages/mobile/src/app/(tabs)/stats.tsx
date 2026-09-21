@@ -310,11 +310,6 @@ export default function StatsScreen() {
               onPress={() => setArchetypeModalVisible(true)}
               activeOpacity={0.7}
             >
-              <Ionicons
-                name={selectedArchetype ? 'sparkles' : 'ribbon-outline'}
-                size={13}
-                color={selectedArchetype ? theme.accent : theme.textSecondary}
-              />
               <Text
                 style={[
                   styles.archetypePillText,

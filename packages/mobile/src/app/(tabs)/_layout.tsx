@@ -148,7 +148,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Image
               source={TAB_ICONS.dashboard}
-              style={{ width: 22, height: 22, tintColor: color }}
+              style={{ width: 24, height: 24, tintColor: color }}
               resizeMode="contain"
             />
           ),
@@ -161,7 +161,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Image
               source={TAB_ICONS.rules}
-              style={{ width: 22, height: 22, tintColor: color }}
+              style={{ width: 24, height: 24, tintColor: color }}
               resizeMode="contain"
             />
           ),
@@ -174,7 +174,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Image
               source={TAB_ICONS.stats}
-              style={{ width: 22, height: 22, tintColor: color }}
+              style={{ width: 24, height: 24, tintColor: color }}
               resizeMode="contain"
             />
           ),
@@ -187,7 +187,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Image
               source={TAB_ICONS.settings}
-              style={{ width: 22, height: 22, tintColor: color }}
+              style={{ width: 24, height: 24, tintColor: color }}
               resizeMode="contain"
             />
           ),

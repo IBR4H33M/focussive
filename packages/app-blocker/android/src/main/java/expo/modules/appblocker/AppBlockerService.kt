@@ -43,6 +43,15 @@ class AppBlockerService : Service() {
     private val monitorRunnable = object : Runnable {
         override fun run() {
             if (!isMonitoring) return
+            // If session time elapsed, stop foreground service and clear ongoing notification
+            if (currentTargetMillis > 0L && System.currentTimeMillis() >= currentTargetMillis) {
+                Log.d("AppBlocker", "Session time elapsed; dismissing active notification and stopping service")
+                isMonitoring = false
+                stopForeground(true)
+                SessionNotifications.cancel(this@AppBlockerService, SessionNotifications.ACTIVE_NOTIFICATION_ID)
+                stopSelf()
+                return
+            }
             if (!breakActive) {
                 checkForegroundApp()
             }

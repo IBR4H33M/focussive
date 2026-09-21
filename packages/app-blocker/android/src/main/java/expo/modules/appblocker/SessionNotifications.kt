@@ -26,12 +26,8 @@ object SessionNotifications {
     const val ACTIVE_NOTIFICATION_ID = 1001
     private const val CHANNEL_REMINDER = "session-reminder"
     private const val CHANNEL_ACTIVE = "session-active"
-    private val COLOR_REMINDER = Color.parseColor("#8B1E1E") // Dark red for upcoming reminder countdown
-    private val COLOR_ACTIVE = Color.parseColor("#F87171")   // Light red for running session countdown
-
-    /** Notification surface colors matching custom layouts */
-    private val COLOR_SURFACE_ACTIVE = Color.parseColor("#1E2235")
-    private val COLOR_SURFACE_REMINDER = Color.parseColor("#7C8CA6")
+    private val COLOR_REMINDER = Color.parseColor("#6B7280") // Gray for upcoming reminder
+    private val COLOR_ACTIVE = Color.parseColor("#10B981")   // Emerald green for running session countdown
 
     @Volatile
     var latestActiveNotification: Notification? = null
@@ -71,6 +67,38 @@ object SessionNotifications {
         )
     }
 
+    /** Cancel any posted reminder notifications when active session begins. */
+    fun cancelAllReminders(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                manager.activeNotifications?.forEach { sbn ->
+                    if (sbn.id != ACTIVE_NOTIFICATION_ID) {
+                        cancel(context, sbn.id)
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    /** Schedule automatic dismissal of the active notification when session ends. */
+    fun scheduleTeardown(context: Context, timeoutAtMillis: Long) {
+        if (timeoutAtMillis <= System.currentTimeMillis()) return
+        val intent = Intent(context, SessionAlarmReceiver::class.java).apply {
+            action = "ACTION_SESSION_TEARDOWN"
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, 99999, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        try {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeoutAtMillis, pendingIntent)
+        } catch (_: SecurityException) {
+            alarmManager.set(AlarmManager.RTC_WAKEUP, timeoutAtMillis, pendingIntent)
+        }
+    }
+
     /**
      * Wire up a Chronometer to tick down to [targetAtMillis].
      *
@@ -108,11 +136,7 @@ object SessionNotifications {
         return views
     }
 
-    /**
-     * Collapsed row — matches custom surface so the
-     * notification looks intentional whether or not the user expands it.
-     * Android caps collapsed custom views at ~48dp, so this is a single row.
-     */
+    /** Collapsed row */
     private fun buildCollapsedView(
         context: Context,
         title: String,
@@ -148,8 +172,6 @@ object SessionNotifications {
             Notification.Builder(context)
         }
 
-        val surfaceColor = if (isActive) COLOR_SURFACE_ACTIVE else COLOR_SURFACE_REMINDER
-
         builder
             .setContentTitle(title)
             .setContentText(body)
@@ -159,15 +181,12 @@ object SessionNotifications {
             .setOnlyAlertOnce(true)
             .setWhen(targetAtMillis)
             .setShowWhen(true)
-            .setColor(surfaceColor)
-            .setColorized(true)
             .setContentIntent(openSessionIntent(context, sessionId, id))
 
-        // Fully custom views (no DecoratedCustomViewStyle) so our custom surface
-        // fills the notification body edge-to-edge instead of sitting in the
-        // system's inset card. Needs API 24+; older devices get the plain template.
+        // DecoratedCustomViewStyle: clean native system card style with no ugly fill container
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             builder.setPriority(Notification.PRIORITY_HIGH)
+            builder.setStyle(Notification.DecoratedCustomViewStyle())
             builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive))
             builder.setCustomBigContentView(buildExpandedView(context, title, targetAtMillis, isActive, violationsText))
         }
@@ -178,7 +197,7 @@ object SessionNotifications {
         }
 
         val notification = builder.build()
-        // Lock notification so it cannot be dismissed or cleared (like Spotify) for both running and upcoming reminder
+        // Lock notification so it cannot be dismissed or cleared for both running and upcoming reminder
         if (isActive) {
             notification.flags = notification.flags or Notification.FLAG_FOREGROUND_SERVICE or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
         } else {
@@ -205,6 +224,14 @@ object SessionNotifications {
         )
 
         if (isActive) {
+            // Dismiss reminder notifications immediately when session is active
+            cancelAllReminders(context)
+
+            // Schedule teardown when session finishes so notification disappears
+            if (timeoutAtMillis > System.currentTimeMillis()) {
+                scheduleTeardown(context, timeoutAtMillis)
+            }
+
             latestActiveNotification = notification
             val service = AppBlockerService.instance
             if (service != null) {

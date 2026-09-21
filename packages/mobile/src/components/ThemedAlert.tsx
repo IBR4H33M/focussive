@@ -129,7 +129,7 @@ export default function ThemedAlert() {
   const iconName = isError
     ? 'alert-circle'
     : isSuccess
-    ? 'checkmark-circle'
+    ? 'checkmark'
     : isWarning
     ? 'warning-outline'
     : 'information-circle';
@@ -145,7 +145,7 @@ export default function ThemedAlert() {
   const iconBg = isError
     ? theme.dangerBg
     : isSuccess
-    ? 'rgba(52, 199, 89, 0.15)'
+    ? 'transparent'
     : isWarning
     ? 'rgba(255, 149, 0, 0.15)'
     : isDark
@@ -190,13 +190,29 @@ export default function ThemedAlert() {
                   backgroundColor: theme.surface,
                   opacity: opacityAnim,
                   transform: [{ scale: scaleAnim }],
+                  shadowOpacity: isSuccess ? 0 : 0.3,
+                  elevation: isSuccess ? 0 : 8,
                 },
               ]}
             >
               {/* Content Row: Left Icon, Right Text Details */}
               <View style={styles.bodyRow}>
-                <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
-                  <Ionicons name={iconName} size={24} color={iconColor} />
+                <View
+                  style={[
+                    styles.iconContainer,
+                    {
+                      backgroundColor: iconBg,
+                      width: isSuccess ? 38 : 44,
+                      height: isSuccess ? 38 : 44,
+                      borderRadius: isSuccess ? 0 : 22,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={iconName}
+                    size={isSuccess ? 36 : 24}
+                    color={iconColor}
+                  />
                 </View>
 
                 <View style={styles.textColumn}>
