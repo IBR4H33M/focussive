@@ -2,7 +2,7 @@
 // Focussive Mobile — Session Detail + Edit Screen
 // ============================================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -66,7 +66,7 @@ function BreakDetailCountdown({ breakEndsAt }: { breakEndsAt: string }) {
 
 
 export default function SessionDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, action } = useLocalSearchParams<{ id: string; action?: string }>();
   const theme = useTheme();
   const isDark = useIsDark();
   const router = useRouter();
@@ -307,6 +307,14 @@ export default function SessionDetailScreen() {
       );
     }
   }
+
+  const skipHandledRef = useRef(false);
+  useEffect(() => {
+    if (session && action === 'skip' && !skipHandledRef.current) {
+      skipHandledRef.current = true;
+      handleSkipSession();
+    }
+  }, [session, action]);
 
   function handleCancelSession() {
     if (!session) return;

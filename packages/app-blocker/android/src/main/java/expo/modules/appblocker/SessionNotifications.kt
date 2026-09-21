@@ -26,8 +26,12 @@ object SessionNotifications {
     const val ACTIVE_NOTIFICATION_ID = 1001
     private const val CHANNEL_REMINDER = "session-reminder"
     private const val CHANNEL_ACTIVE = "session-active"
-    private val COLOR_REMINDER = Color.parseColor("#6B7280") // Gray for upcoming reminder
-    private val COLOR_ACTIVE = Color.parseColor("#10B981")   // Emerald green for running session countdown
+    private val COLOR_REMINDER = Color.parseColor("#8B1E1E") // Dark red for upcoming reminder countdown
+    private val COLOR_ACTIVE = Color.parseColor("#F87171")   // Light red for running session countdown
+
+    /** Notification surface colors matching custom layouts */
+    private val COLOR_SURFACE_ACTIVE = Color.parseColor("#1E2235")
+    private val COLOR_SURFACE_REMINDER = Color.parseColor("#7C8CA6")
 
     @Volatile
     var latestActiveNotification: Notification? = null
@@ -116,9 +120,23 @@ object SessionNotifications {
         }
     }
 
+    private fun skipSessionPendingIntent(context: Context, sessionId: String, requestCode: Int): PendingIntent {
+        val intent = Intent(context, SessionAlarmReceiver::class.java).apply {
+            action = "ACTION_SESSION_SKIP"
+            putExtra("id", requestCode)
+            putExtra("sessionId", sessionId)
+        }
+        return PendingIntent.getBroadcast(
+            context, requestCode + 30000, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
     /** Build the large, card-like expanded layout with the live countdown. */
     private fun buildExpandedView(
         context: Context,
+        id: Int,
+        sessionId: String,
         title: String,
         targetAtMillis: Long,
         isActive: Boolean,
@@ -132,6 +150,9 @@ object SessionNotifications {
 
         if (isActive) {
             views.setTextViewText(R.id.notif_violations, violationsText ?: "No violations")
+        } else {
+            val skipIntent = skipSessionPendingIntent(context, sessionId, id)
+            views.setOnClickPendingIntent(R.id.notif_skip_btn, skipIntent)
         }
         return views
     }
@@ -187,6 +208,8 @@ object SessionNotifications {
             Notification.Builder(context)
         }
 
+        val surfaceColor = if (isActive) COLOR_SURFACE_ACTIVE else COLOR_SURFACE_REMINDER
+
         builder
             .setContentTitle(title)
             .setContentText(body)
@@ -196,14 +219,29 @@ object SessionNotifications {
             .setOnlyAlertOnce(true)
             .setWhen(targetAtMillis)
             .setShowWhen(true)
+            .setColor(surfaceColor)
+            .setColorized(true)
             .setContentIntent(openSessionIntent(context, sessionId, id))
 
-        // DecoratedCustomViewStyle: clean native system card style with no ugly fill container
+        // For upcoming reminder notifications, add a quick Skip action
+        if (!isActive) {
+            val skipIntent = skipSessionPendingIntent(context, sessionId, id)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                builder.addAction(
+                    Notification.Action.Builder(
+                        null,
+                        "Skip",
+                        skipIntent
+                    ).build()
+                )
+            }
+        }
+
+        // Fully custom views so our custom surface fills the notification body edge-to-edge
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             builder.setPriority(Notification.PRIORITY_HIGH)
-            builder.setStyle(Notification.DecoratedCustomViewStyle())
             builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive))
-            builder.setCustomBigContentView(buildExpandedView(context, title, targetAtMillis, isActive, violationsText))
+            builder.setCustomBigContentView(buildExpandedView(context, id, sessionId, title, targetAtMillis, isActive, violationsText))
         }
 
         val timeoutMs = timeoutAtMillis - System.currentTimeMillis()

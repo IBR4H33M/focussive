@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingStart="4dp"
-    android:paddingEnd="4dp"
-    android:paddingTop="2dp"
-    android:paddingBottom="2dp">
+    android:background="@drawable/notification_bg"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
 
     <TextView
         android:id="@+id/notif_title"
@@ -15,8 +16,8 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:textSize="14sp"
-        android:textColor="?android:attr/textColorPrimary"
-        android:maxLines="1"
+        android:textColor="#FFFFFF"
+        android:maxLines="2"
         android:ellipsize="end" />
 
     <Chronometer
@@ -24,8 +25,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:textSize="22sp"
-        android:textColor="#10B981"
-        android:fontFamily="sans-serif-medium"
+        android:textSize="26sp"
+        android:textColor="#F87171"
+        android:fontFamily="sans-serif-light"
         android:gravity="end" />
 </LinearLayout>

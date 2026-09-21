@@ -3,6 +3,7 @@ package expo.modules.appblocker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 
 /**
@@ -21,6 +22,22 @@ class SessionAlarmReceiver : BroadcastReceiver() {
                 }
                 context.startService(serviceIntent)
             } catch (_: Exception) {}
+            return
+        }
+
+        if (intent.action == "ACTION_SESSION_SKIP") {
+            // Dismiss upcoming notification immediately
+            val notifId = intent.getIntExtra("id", -1)
+            if (notifId != -1) {
+                SessionNotifications.cancel(context, notifId)
+            }
+            val sessionId = intent.getStringExtra("sessionId") ?: return
+
+            // Open app via deep link to trigger skip confirmation flow
+            val launchIntent = Intent(Intent.ACTION_VIEW, Uri.parse("focussive://session/$sessionId?action=skip")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            context.startActivity(launchIntent)
             return
         }
 

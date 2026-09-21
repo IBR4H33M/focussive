@@ -89,7 +89,7 @@ export default function DashboardScreen() {
     }
   }
 
-  async function handleSkipUpcoming(session: Session) {
+  async function handleSkipSession(session: Session) {
     try {
       setIsSkippingUpcoming(true);
       const status = await sessionApi.getSkipStatus();
@@ -103,10 +103,14 @@ export default function DashboardScreen() {
       }
 
       const remainingText = status ? ` (${status.skips_remaining} skip${status.skips_remaining === 1 ? '' : 's'} left this month)` : '';
+      const isActiveSession = session.status === 'active' || session.status === 'paused';
+      const promptText = isActiveSession
+        ? `This active session "${session.name}" will be ended and skipped${remainingText}.\n\nIt will not count as a violation and will resume automatically on its next scheduled occurrence.`
+        : `This upcoming occurrence of "${session.name}" will be skipped${remainingText}.\n\nIt will resume automatically on its next scheduled occurrence.`;
 
       Alert.alert(
         'Skip this session?',
-        `This upcoming occurrence of "${session.name}" will be skipped${remainingText}.\n\nIt will resume automatically on its next scheduled occurrence.`,
+        promptText,
         [
           { text: 'Cancel', style: 'cancel', onPress: () => setIsSkippingUpcoming(false) },
           {
@@ -118,7 +122,7 @@ export default function DashboardScreen() {
                 const remainingAfter = res.skips_remaining !== undefined
                   ? ` (${res.skips_remaining} skip${res.skips_remaining === 1 ? '' : 's'} remaining this month)`
                   : '';
-                Alert.alert('Session Skipped', `The upcoming session has been skipped${remainingAfter}.`);
+                Alert.alert('Session Skipped', `The session has been skipped${remainingAfter}.`);
                 await refreshSessions();
               } catch (err: any) {
                 Alert.alert('Error', err.message || 'Failed to skip session');
@@ -130,9 +134,14 @@ export default function DashboardScreen() {
         ]
       );
     } catch {
+      const isActiveSession = session.status === 'active' || session.status === 'paused';
+      const promptText = isActiveSession
+        ? `This active session "${session.name}" will be ended and skipped.\n\nIt will not count as a violation and will resume automatically on its next scheduled occurrence.`
+        : `This upcoming occurrence of "${session.name}" will be skipped.\n\nIt will resume automatically on its next scheduled occurrence.`;
+
       Alert.alert(
         'Skip this session?',
-        `This upcoming occurrence of "${session.name}" will be skipped.\n\nIt will resume automatically on its next scheduled occurrence.`,
+        promptText,
         [
           { text: 'Cancel', style: 'cancel', onPress: () => setIsSkippingUpcoming(false) },
           {
@@ -141,7 +150,7 @@ export default function DashboardScreen() {
             onPress: async () => {
               try {
                 await sessionApi.skip(session.id);
-                Alert.alert('Session Skipped', 'The upcoming session has been skipped.');
+                Alert.alert('Session Skipped', 'The session has been skipped.');
                 await refreshSessions();
               } catch (err: any) {
                 Alert.alert('Error', err.message || 'Failed to skip session');
@@ -154,6 +163,8 @@ export default function DashboardScreen() {
       );
     }
   }
+
+  const currentActiveOrPaused = effectiveActiveSessions[0] || pausedSessions[0];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -184,6 +195,21 @@ export default function DashboardScreen() {
                 session={session as Session & { violations_count?: number }}
               />
             ))}
+            {/* If there is an active session, skip button appears underneath it */}
+            {currentActiveOrPaused && (
+              <TouchableOpacity
+                style={[
+                  styles.skipUpcomingBtn,
+                  { backgroundColor: theme.card },
+                ]}
+                onPress={() => handleSkipSession(currentActiveOrPaused)}
+                disabled={isSkippingUpcoming}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="play-forward-outline" size={15} color={theme.textSecondary} />
+                <Text style={[styles.skipUpcomingBtnText, { color: theme.text }]}>Skip this session</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -197,18 +223,21 @@ export default function DashboardScreen() {
               key={nextUpcomingSession.id}
               session={nextUpcomingSession as Session & { violations_count?: number; pause_count?: number }}
             />
-            <TouchableOpacity
-              style={[
-                styles.skipUpcomingBtn,
-                { backgroundColor: theme.card },
-              ]}
-              onPress={() => handleSkipUpcoming(nextUpcomingSession)}
-              disabled={isSkippingUpcoming}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="play-forward-outline" size={15} color={theme.textSecondary} />
-              <Text style={[styles.skipUpcomingBtnText, { color: theme.text }]}>Skip this session</Text>
-            </TouchableOpacity>
+            {/* Show skip button under upcoming ONLY if there is no active session */}
+            {!currentActiveOrPaused && (
+              <TouchableOpacity
+                style={[
+                  styles.skipUpcomingBtn,
+                  { backgroundColor: theme.card },
+                ]}
+                onPress={() => handleSkipSession(nextUpcomingSession)}
+                disabled={isSkippingUpcoming}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="play-forward-outline" size={15} color={theme.textSecondary} />
+                <Text style={[styles.skipUpcomingBtnText, { color: theme.text }]}>Skip this session</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
