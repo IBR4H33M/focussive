@@ -19,7 +19,7 @@ import { useSessions } from '@/context/SessionContext';
 import SessionCard from '@/components/SessionCard';
 import { sessionApi } from '@/utils/api';
 import type { Session } from '@focussive/shared';
-import { sortByNextOccurrence, getNextSessionOccurrence } from '@focussive/shared';
+import { sortByNextOccurrence, getNextSessionOccurrence, isSessionInActiveWindow } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,14 +33,28 @@ export default function DashboardScreen() {
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [cancellingSession, setCancellingSession] = useState<Session | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  const [isSkippingUpcoming, setIsSkippingUpcoming] = useState(false);
 
+  const now = new Date();
   const activeIds = new Set(activeSessions.map((s) => s.id));
   const pausedSessions = allSessions.filter((s) => s.status === 'paused');
   const pausedIds = new Set(pausedSessions.map((s) => s.id));
 
-  // Candidates for upcoming/scheduled: non-active, non-paused sessions
+  // Determine effective active sessions (include any session currently in its active window)
+  const windowActiveSessions = allSessions.filter(
+    (s) =>
+      !activeIds.has(s.id) &&
+      !pausedIds.has(s.id) &&
+      s.status !== 'completed' &&
+      s.status !== 'cancelled' &&
+      isSessionInActiveWindow(s, now)
+  );
+  const effectiveActiveSessions = [...activeSessions, ...windowActiveSessions];
+  const effectiveActiveIds = new Set(effectiveActiveSessions.map((s) => s.id));
+
+  // Candidates for upcoming/scheduled: non-active, non-paused, non-current-window sessions
   const candidates = (upcomingSessions.length > 0 ? upcomingSessions : allSessions.filter((s) => s.status === 'scheduled'))
-    .filter((s) => !activeIds.has(s.id) && !pausedIds.has(s.id));
+    .filter((s) => !effectiveActiveIds.has(s.id) && !pausedIds.has(s.id) && !isSessionInActiveWindow(s, now));
 
   // Sort by true next occurrence relative to now (e.g. 1:45 PM today comes before tomorrow 5:00 AM)
   const sortedCandidates = sortByNextOccurrence(candidates);
@@ -55,7 +69,7 @@ export default function DashboardScreen() {
   );
 
   function handleCancel(sessionId: string) {
-    const session = [...activeSessions, ...pausedSessions].find((s) => s.id === sessionId);
+    const session = [...effectiveActiveSessions, ...pausedSessions].find((s) => s.id === sessionId);
     if (session) {
       setCancellingSession(session);
       setCancelModalVisible(true);
@@ -75,6 +89,72 @@ export default function DashboardScreen() {
     }
   }
 
+  async function handleSkipUpcoming(session: Session) {
+    try {
+      setIsSkippingUpcoming(true);
+      const status = await sessionApi.getSkipStatus();
+      if (status && status.skips_remaining <= 0) {
+        Alert.alert(
+          'Skip Limit Reached',
+          `You have used all ${status.monthly_skip_limit} skips for this month. You can adjust your limit in Settings > Preferences.`
+        );
+        setIsSkippingUpcoming(false);
+        return;
+      }
+
+      const remainingText = status ? ` (${status.skips_remaining} skip${status.skips_remaining === 1 ? '' : 's'} left this month)` : '';
+
+      Alert.alert(
+        'Skip this session?',
+        `This upcoming occurrence of "${session.name}" will be skipped${remainingText}.\n\nIt will resume automatically on its next scheduled occurrence.`,
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => setIsSkippingUpcoming(false) },
+          {
+            text: 'Skip',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const res = await sessionApi.skip(session.id);
+                const remainingAfter = res.skips_remaining !== undefined
+                  ? ` (${res.skips_remaining} skip${res.skips_remaining === 1 ? '' : 's'} remaining this month)`
+                  : '';
+                Alert.alert('Session Skipped', `The upcoming session has been skipped${remainingAfter}.`);
+                await refreshSessions();
+              } catch (err: any) {
+                Alert.alert('Error', err.message || 'Failed to skip session');
+              } finally {
+                setIsSkippingUpcoming(false);
+              }
+            },
+          },
+        ]
+      );
+    } catch {
+      Alert.alert(
+        'Skip this session?',
+        `This upcoming occurrence of "${session.name}" will be skipped.\n\nIt will resume automatically on its next scheduled occurrence.`,
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => setIsSkippingUpcoming(false) },
+          {
+            text: 'Skip',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await sessionApi.skip(session.id);
+                Alert.alert('Session Skipped', 'The upcoming session has been skipped.');
+                await refreshSessions();
+              } catch (err: any) {
+                Alert.alert('Error', err.message || 'Failed to skip session');
+              } finally {
+                setIsSkippingUpcoming(false);
+              }
+            },
+          },
+        ]
+      );
+    }
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
@@ -88,10 +168,10 @@ export default function DashboardScreen() {
         }
       >
         {/* Active + Paused Sessions */}
-        {(activeSessions.length > 0 || pausedSessions.length > 0) && (
+        {(effectiveActiveSessions.length > 0 || pausedSessions.length > 0) && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ACTIVE</Text>
-            {activeSessions.map((session) => (
+            {effectiveActiveSessions.map((session) => (
               <SessionCard
                 key={session.id}
                 session={session as Session & { violations_count?: number }}
@@ -117,6 +197,18 @@ export default function DashboardScreen() {
               key={nextUpcomingSession.id}
               session={nextUpcomingSession as Session & { violations_count?: number; pause_count?: number }}
             />
+            <TouchableOpacity
+              style={[
+                styles.skipUpcomingBtn,
+                { backgroundColor: theme.card },
+              ]}
+              onPress={() => handleSkipUpcoming(nextUpcomingSession)}
+              disabled={isSkippingUpcoming}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="play-forward-outline" size={15} color={theme.textSecondary} />
+              <Text style={[styles.skipUpcomingBtnText, { color: theme.text }]}>Skip this session</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -238,6 +330,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+  skipUpcomingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+  skipUpcomingBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 12,

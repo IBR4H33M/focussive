@@ -179,7 +179,11 @@ object SessionNotifications {
 
         val notification = builder.build()
         // Lock notification so it cannot be dismissed or cleared (like Spotify) for both running and upcoming reminder
-        notification.flags = notification.flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
+        if (isActive) {
+            notification.flags = notification.flags or Notification.FLAG_FOREGROUND_SERVICE or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
+        } else {
+            notification.flags = notification.flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
+        }
         return notification
     }
 

@@ -3,6 +3,7 @@ package expo.modules.appblocker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 
 /**
  * Fires when a scheduled session-notification alarm goes off — works even if
@@ -22,5 +23,22 @@ class SessionAlarmReceiver : BroadcastReceiver() {
         val violationsText = intent.getStringExtra("violationsText")
 
         SessionNotifications.post(context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText)
+
+        if (isActive) {
+            try {
+                val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
+                    putExtra("SESSION_ID", sessionId)
+                    putExtra("SESSION_NAME", title)
+                    putExtra("END_AT_MILLIS", targetAtMillis)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
+            } catch (_: Exception) {
+                // Ignore if background service cannot start in restricted device states
+            }
+        }
     }
 }

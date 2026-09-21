@@ -263,3 +263,80 @@ export const sortByNextOccurrence = <T extends { schedule: string; schedule_days
   });
 };
 
+/**
+ * Checks whether a session should currently be running right now based on its
+ * schedule configuration (today, recurring, scheduled/later) and time window
+ * (start_time + duration or time_slots).
+ */
+export const isSessionInActiveWindow = (
+  session: {
+    schedule: string;
+    schedule_days?: string[];
+    start_time: string;
+    duration: number;
+    time_slots?: Array<{ start_time: string; end_time: string }>;
+    skipped_until?: string | null;
+    status?: string;
+  },
+  now: Date = new Date()
+): boolean => {
+  if (session.status === 'completed' || session.status === 'cancelled') {
+    return false;
+  }
+
+  // Check if session was skipped for this occurrence
+  if (session.skipped_until && new Date(session.skipped_until).getTime() > now.getTime()) {
+    return false;
+  }
+
+  // Check day match
+  const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const currentWeekday = weekdays[now.getDay()];
+  const schedule = (session.schedule || "").toLowerCase();
+  const scheduleDays = (Array.isArray(session.schedule_days) ? session.schedule_days : []).map(d => String(d).toLowerCase());
+
+  let isScheduledDay = false;
+  if (schedule === 'today') {
+    isScheduledDay = true;
+  } else if (schedule === 'recurring') {
+    isScheduledDay = scheduleDays.length === 0 || scheduleDays.includes(currentWeekday);
+  } else if (schedule === 'scheduled' || schedule === 'later') {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    isScheduledDay = scheduleDays.includes(todayStr);
+  }
+
+  if (!isScheduledDay) return false;
+
+  // Check time window
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (Array.isArray(session.time_slots) && session.time_slots.length > 0) {
+    for (const slot of session.time_slots) {
+      if (!slot.start_time || !slot.end_time) continue;
+      const [sh, sm] = slot.start_time.split(':').map(Number);
+      const [eh, em] = slot.end_time.split(':').map(Number);
+      if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) continue;
+      const slotStart = sh * 60 + sm;
+      let slotEnd = eh * 60 + em;
+      if (slotEnd <= slotStart) slotEnd += 24 * 60; // handles overnight slot
+      if (currentMinutes >= slotStart && currentMinutes < slotEnd) {
+        return true;
+      }
+    }
+  }
+
+  if (session.start_time) {
+    const [h, m] = session.start_time.split(':').map(Number);
+    if (!isNaN(h) && !isNaN(m)) {
+      const startMinutes = h * 60 + m;
+      const endMinutes = startMinutes + (session.duration || 25);
+      if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+

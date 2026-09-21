@@ -15,7 +15,7 @@ import React, {
 import { sessionApi, appGroupApi, violationApi } from '@/utils/api';
 import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
-import { type Session, type AppGroup, ViolationAction } from '@focussive/shared';
+import { type Session, type AppGroup, ViolationAction, SessionStatus, isSessionInActiveWindow } from '@focussive/shared';
 import { scheduleSessionReminders } from '@/utils/sessionReminders';
 import {
   evaluateSessionQualityTier,
@@ -82,6 +82,7 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
 export function SessionProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fastTickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Cache app groups so we don't re-fetch every 30s when the session hasn't changed
   const cachedGroupsRef = useRef<AppGroup[] | null>(null);
@@ -95,6 +96,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const [completedSessionTierData, setCompletedSessionTierData] = useState<CompletedSessionTierData | null>(null);
   const prevActiveSessionsRef = useRef<Session[]>([]);
+  const allSessionsRef = useRef<Session[]>([]);
+  const activeSessionsRef = useRef<Session[]>([]);
 
   const dismissCompletedTierCard = useCallback(() => {
     setCompletedSessionTierData(null);
@@ -123,8 +126,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ]);
 
       const allSessions = allRes.data as Session[];
-      const nowMs = Date.now();
-      const activeSessions = (activeRes.data as Session[]).filter((s) => {
+      const now = new Date();
+      const nowMs = now.getTime();
+
+      // 1. Existing active sessions from backend that haven't elapsed
+      const activeSessionsFromApi = (activeRes.data as Session[]).filter((s) => {
         if (s.started_at) {
           const startedAtMs = new Date(s.started_at).getTime();
           const endAtMs = startedAtMs + s.duration * 60_000;
@@ -135,9 +141,37 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return true;
       });
 
+      // 2. Evaluate all sessions to detect any scheduled sessions currently in their active window
+      const activeIds = new Set(activeSessionsFromApi.map(s => s.id));
+      const newlyActivated: Session[] = [];
+
+      for (const s of allSessions) {
+        if (!activeIds.has(s.id) && s.status === 'scheduled' && isSessionInActiveWindow(s, now)) {
+          const [hStr, mStr] = (s.start_time || '00:00').split(':');
+          const startD = new Date(now);
+          startD.setHours(parseInt(hStr, 10) || 0, parseInt(mStr, 10) || 0, 0, 0);
+
+          const activeSession: Session = {
+            ...s,
+            status: SessionStatus.ACTIVE,
+            started_at: s.started_at || startD.toISOString(),
+          };
+          newlyActivated.push(activeSession);
+          activeIds.add(s.id);
+
+          // Asynchronously notify backend to mark active
+          sessionApi.start(s.id).catch(() => {});
+        }
+      }
+
+      const activeSessions = [...activeSessionsFromApi, ...newlyActivated];
+      const upcomingSessions = (upcomingRes.data as Session[]).filter(s => !activeIds.has(s.id));
+
+      allSessionsRef.current = allSessions;
+      activeSessionsRef.current = activeSessions;
+
       // Detect if an active session just ended / elapsed
       if (prevActiveSessionsRef.current.length > 0) {
-        const activeIds = new Set(activeSessions.map(s => s.id));
         for (const prev of prevActiveSessionsRef.current) {
           if (!activeIds.has(prev.id)) {
             // Session completed!
@@ -167,7 +201,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         type: 'SET_SESSIONS',
         payload: {
           active: activeSessions,
-          upcoming: upcomingRes.data as Session[],
+          upcoming: upcomingSessions,
           all: allSessions,
         },
       });
@@ -191,6 +225,43 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isAuthenticated, refreshSessions]);
+
+  // In-memory 5s ticker: checks if any scheduled session enters active window (0 network overhead)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fastTickerRef.current = setInterval(() => {
+      const now = new Date();
+      const currentAll = allSessionsRef.current;
+      const currentActiveIds = new Set(activeSessionsRef.current.map(s => s.id));
+      let shouldRefresh = false;
+
+      for (const s of currentAll) {
+        if (!currentActiveIds.has(s.id) && s.status === 'scheduled' && isSessionInActiveWindow(s, now)) {
+          shouldRefresh = true;
+          break;
+        }
+      }
+
+      // Also check if an active session duration elapsed
+      for (const a of activeSessionsRef.current) {
+        if (a.started_at) {
+          const endMs = new Date(a.started_at).getTime() + a.duration * 60_000;
+          if (now.getTime() >= endMs) {
+            shouldRefresh = true;
+            break;
+          }
+        }
+      }
+
+      if (shouldRefresh) {
+        refreshSessions();
+      }
+    }, 5000);
+
+    return () => {
+      if (fastTickerRef.current) clearInterval(fastTickerRef.current);
     };
   }, [isAuthenticated, refreshSessions]);
 

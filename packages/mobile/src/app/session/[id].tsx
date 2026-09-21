@@ -25,6 +25,7 @@ import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, form
 import type { Session, AppGroup, SessionTimeSlot } from '@focussive/shared';
 import InstalledApps from '@focussive/installed-apps';
 import TimeSlotPicker from '@/components/TimeSlotPicker';
+import MiniCalendar from '@/components/MiniCalendar';
 
 const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.MONDAY, label: 'Mon' },
@@ -87,6 +88,7 @@ export default function SessionDetailScreen() {
   ]);
   const [editSchedule, setEditSchedule] = useState<ScheduleType>(ScheduleType.TODAY);
   const [editScheduleDays, setEditScheduleDays] = useState<Weekday[]>([]);
+  const [editScheduledDates, setEditScheduledDates] = useState<string[]>([]);
   const [editMobileFocus, setEditMobileFocus] = useState(false);
   const [editBrowserFocus, setEditBrowserFocus] = useState(false);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
@@ -175,13 +177,29 @@ export default function SessionDetailScreen() {
         },
       ]);
     }
-    setEditSchedule((session.schedule as ScheduleType) || ScheduleType.TODAY);
-    setEditScheduleDays((session.schedule_days as Weekday[]) || []);
+    const sched = (session.schedule as ScheduleType) || ScheduleType.TODAY;
+    setEditSchedule(sched);
+    if (sched === ScheduleType.RECURRING) {
+      setEditScheduleDays((session.schedule_days as Weekday[]) || []);
+      setEditScheduledDates([]);
+    } else if (sched === ScheduleType.SCHEDULED) {
+      setEditScheduledDates((session.schedule_days as string[]) || []);
+      setEditScheduleDays([]);
+    } else {
+      setEditScheduleDays([]);
+      setEditScheduledDates([]);
+    }
     setEditMobileFocus(session.mobile_focus || false);
     setEditBrowserFocus(session.browser_focus || false);
     setEditGroupId(session.app_group_ids?.[0] ?? null);
     setEditWebsites((session.blocked_websites as string[]) || []);
     setEditModalVisible(true);
+  }
+
+  function toggleEditScheduledDate(iso: string) {
+    setEditScheduledDates(prev =>
+      prev.includes(iso) ? prev.filter(d => d !== iso) : [...prev, iso]
+    );
   }
 
   function handleDelete() {
@@ -343,7 +361,12 @@ export default function SessionDetailScreen() {
         start_time: primarySlot.start_time,
         time_slots: editTimeSlots,
         schedule: editSchedule,
-        schedule_days: editSchedule !== ScheduleType.TODAY ? editScheduleDays : [],
+        schedule_days:
+          editSchedule === ScheduleType.RECURRING
+            ? editScheduleDays
+            : editSchedule === ScheduleType.SCHEDULED
+            ? editScheduledDates
+            : [],
         mobile_focus: editMobileFocus,
         browser_focus: editBrowserFocus,
         app_group_ids: editMobileFocus && editGroupId ? [editGroupId] : [],
@@ -413,11 +436,66 @@ export default function SessionDetailScreen() {
         {/* Name */}
         <Text style={[styles.sessionName, { color: theme.text }]}>{session.name}</Text>
 
-        {/* Details */}
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        {/* Details Card (borderless) */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderWidth: 0 }]}>
           <DetailRow icon="time-outline" label="Duration" value={formatDuration(session.duration)} theme={theme} />
           <DetailRow icon="play-outline" label="Start Time" value={formatTime(session.start_time)} theme={theme} />
-          <DetailRow icon="calendar-outline" label="Schedule" value={session.schedule} theme={theme} />
+          <DetailRow
+            icon="calendar-outline"
+            label="Schedule"
+            value={session.schedule === 'scheduled' ? 'Later' : session.schedule.charAt(0).toUpperCase() + session.schedule.slice(1)}
+            theme={theme}
+          />
+
+          {/* If recurring: show 7 weekday pills matching create session styling */}
+          {session.schedule === 'recurring' && (
+            <View style={styles.detailDaysRow}>
+              {WEEKDAYS.map((day, index) => {
+                const isSelected = ((session.schedule_days as string[]) || []).map(d => d.toLowerCase()).includes(day.key.toLowerCase());
+                const prevSelected = index > 0 && ((session.schedule_days as string[]) || []).map(d => d.toLowerCase()).includes(WEEKDAYS[index - 1].key.toLowerCase());
+                const nextSelected = index < WEEKDAYS.length - 1 && ((session.schedule_days as string[]) || []).map(d => d.toLowerCase()).includes(WEEKDAYS[index + 1].key.toLowerCase());
+                return (
+                  <View
+                    key={day.key}
+                    style={[
+                      styles.detailDayBtn,
+                      {
+                        backgroundColor: isSelected ? theme.accent : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                        borderTopLeftRadius: prevSelected ? 0 : 8,
+                        borderBottomLeftRadius: prevSelected ? 0 : 8,
+                        borderTopRightRadius: nextSelected ? 0 : 8,
+                        borderBottomRightRadius: nextSelected ? 0 : 8,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.detailDayBtnText,
+                        {
+                          color: isSelected ? (isDark ? '#2F3456' : '#FFFFFF') : theme.textSecondary,
+                          fontWeight: isSelected ? '700' : '500',
+                        },
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* If scheduled (Later): show date pills */}
+          {session.schedule === 'scheduled' && Array.isArray(session.schedule_days) && session.schedule_days.length > 0 && (
+            <View style={styles.detailDatesRow}>
+              {session.schedule_days.map((d: string) => (
+                <View key={d} style={[styles.detailDatePill, { backgroundColor: `${theme.accent}20` }]}>
+                  <Text style={[styles.detailDatePillText, { color: theme.accent }]}>{d}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
           {(session.violations_count ?? 0) > 0 && (
             <DetailRow icon="warning-outline" label="Violations" value={String(session.violations_count)} theme={theme} color={theme.danger} />
           )}
@@ -426,8 +504,8 @@ export default function SessionDetailScreen() {
           )}
         </View>
 
-        {/* Focus Modes */}
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        {/* Focus Modes Card (borderless) */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderWidth: 0 }]}>
           <FocusRow icon="phone-portrait-outline" label="Mobile Focus" enabled={session.mobile_focus || false} theme={theme} />
           <FocusRow icon="globe-outline" label="Browser Focus" enabled={session.browser_focus || false} theme={theme} />
         </View>
@@ -438,20 +516,22 @@ export default function SessionDetailScreen() {
           </Text>
         )}
 
-        {/* Action Buttons — shown for all non-active sessions */}
+        {/* Action Buttons — shown for all non-active sessions (Filled Buttons, Borderless) */}
         {!isActive && (
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
-              style={[styles.editBtn, { borderColor: theme.accent }]}
+              style={[styles.editBtn, { backgroundColor: theme.accent, borderWidth: 0 }]}
               onPress={openEditModal}
+              activeOpacity={0.8}
             >
-              <Ionicons name="create-outline" size={16} color={theme.accent} />
-              <Text style={[styles.editBtnText, { color: theme.accent }]}>Edit</Text>
+              <Ionicons name="create-outline" size={16} color={isDark ? '#2F3456' : '#FFFFFF'} />
+              <Text style={[styles.editBtnText, { color: isDark ? '#2F3456' : '#FFFFFF' }]}>Edit</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.deleteBtn, { backgroundColor: theme.danger, borderColor: theme.danger }]}
+              style={[styles.deleteBtn, { backgroundColor: theme.danger, borderWidth: 0 }]}
               onPress={handleDelete}
+              activeOpacity={0.8}
             >
               <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
               <Text style={[styles.deleteBtnText, { color: '#FFFFFF' }]}>Delete</Text>
@@ -459,13 +539,20 @@ export default function SessionDetailScreen() {
           </View>
         )}
 
-        {/* Take a Break button — active sessions with allow_breaks, not currently on break */}
+        {/* Take a Break button — active sessions with allow_breaks, not currently on break (Filled, Borderless) */}
         {isActive && session.allow_breaks && !isOnBreak && (
           <View style={{ paddingHorizontal: 0, marginBottom: 12 }}>
             {breakRemaining > 0 ? (
               <TouchableOpacity
-                style={[styles.breakBtn, { borderColor: isDark ? BREAK_ACCENT_DARK : BREAK_ACCENT_LIGHT }]}
+                style={[
+                  styles.breakBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(74, 222, 128, 0.22)' : 'rgba(34, 197, 94, 0.16)',
+                    borderWidth: 0,
+                  },
+                ]}
                 onPress={() => { setBreakPickerMinutes(1); setBreakModalVisible(true); }}
+                activeOpacity={0.8}
               >
                 <Text style={[styles.breakBtnText, { color: isDark ? BREAK_ACCENT_DARK : BREAK_ACCENT_LIGHT }]}>
                   Take a break
@@ -473,16 +560,16 @@ export default function SessionDetailScreen() {
                 <Text style={styles.breakBtnSub}>{breakRemaining} min remaining</Text>
               </TouchableOpacity>
             ) : (
-              <View style={[styles.breakBtn, { borderColor: theme.border, opacity: 0.45 }]}>
+              <View style={[styles.breakBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderWidth: 0, opacity: 0.5 }]}>
                 <Text style={[styles.breakBtnText, { color: theme.textSecondary }]}>No break time available</Text>
               </View>
             )}
           </View>
         )}
 
-        {/* Break ongoing indicator on session detail */}
+        {/* Break ongoing indicator on session detail (borderless) */}
         {isActive && isOnBreak && (
-          <View style={[styles.breakOngoingRow, { borderColor: `${activeGreen}40`, backgroundColor: `${activeGreen}10` }]}> 
+          <View style={[styles.breakOngoingRow, { backgroundColor: `${activeGreen}15`, borderWidth: 0 }]}> 
             <Text style={[styles.breakOngoingLabel, { color: isDark ? BREAK_ACCENT_DARK : BREAK_ACCENT_LIGHT }]}>
               Break ongoing
             </Text>
@@ -492,22 +579,24 @@ export default function SessionDetailScreen() {
           </View>
         )}
 
-        {/* Cancel Session button — active sessions only */}
+        {/* Cancel Session button — active sessions only (Filled, Borderless) */}
         {isActive && (
           <TouchableOpacity
-            style={[styles.cancelSessionBtn, { backgroundColor: theme.danger, borderColor: theme.danger }]}
+            style={[styles.cancelSessionBtn, { backgroundColor: theme.danger, borderWidth: 0 }]}
             onPress={handleCancelSession}
+            activeOpacity={0.8}
           >
             <Ionicons name="stop-circle-outline" size={16} color="#FFFFFF" />
             <Text style={[styles.cancelSessionBtnText, { color: '#FFFFFF' }]}>Cancel Session</Text>
           </TouchableOpacity>
         )}
 
-        {/* Skip this session button — upcoming or running sessions */}
+        {/* Skip this session button — upcoming or running sessions (Filled, Borderless) */}
         {(isActive || session.status === SessionStatus.SCHEDULED) && (
           <TouchableOpacity
-            style={[styles.skipSessionBtn, { borderColor: theme.border, backgroundColor: theme.surface }]}
+            style={[styles.skipSessionBtn, { backgroundColor: theme.card, borderWidth: 0 }]}
             onPress={handleSkipSession}
+            activeOpacity={0.8}
           >
             <Ionicons name="play-forward-outline" size={16} color={theme.text} />
             <Text style={[styles.skipSessionBtnText, { color: theme.text }]}>Skip this session</Text>
@@ -581,8 +670,8 @@ export default function SessionDetailScreen() {
           <View style={styles.scheduleRow}>
             {[
               { key: ScheduleType.TODAY, label: 'Today' },
-              { key: ScheduleType.SCHEDULED, label: 'Specific Days' },
               { key: ScheduleType.RECURRING, label: 'Recurring' },
+              { key: ScheduleType.SCHEDULED, label: 'Later' },
             ].map(opt => {
               const isSelected = editSchedule === opt.key;
               return (
@@ -611,7 +700,8 @@ export default function SessionDetailScreen() {
             })}
           </View>
 
-          {editSchedule !== ScheduleType.TODAY && (
+          {/* Recurring: weekday picker */}
+          {editSchedule === ScheduleType.RECURRING && (
             <View style={styles.daysRow}>
               {WEEKDAYS.map((day, index) => {
                 const isSelected = editScheduleDays.includes(day.key);
@@ -649,6 +739,31 @@ export default function SessionDetailScreen() {
                 );
               })}
             </View>
+          )}
+
+          {/* Later: calendar date picker */}
+          {editSchedule === ScheduleType.SCHEDULED && (
+            <>
+              <MiniCalendar
+                selectedDates={editScheduledDates}
+                onToggleDate={toggleEditScheduledDate}
+                theme={theme}
+              />
+              {editScheduledDates.length > 0 && (
+                <View style={styles.selectedDatesRow}>
+                  {editScheduledDates.sort().map(d => (
+                    <TouchableOpacity
+                      key={d}
+                      style={[styles.datePill, { backgroundColor: `${theme.accent}20`, borderColor: theme.accent }]}
+                      onPress={() => toggleEditScheduledDate(d)}
+                    >
+                      <Text style={[styles.datePillText, { color: theme.accent }]}>{d}</Text>
+                      <Ionicons name="close" size={12} color={theme.accent} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
           )}
 
           {/* Mobile Focus Container */}
@@ -816,10 +931,16 @@ const styles = StyleSheet.create({
   liveBannerCountdown: { fontSize: 42, fontWeight: '800', fontVariant: ['tabular-nums'], lineHeight: 48 },
   liveBannerMeta: { fontSize: 13, fontWeight: '300', marginTop: 4 },
   sessionName: { fontSize: 28, fontWeight: '300', letterSpacing: 0.5, marginBottom: 24 },
-  card: { borderRadius: 12, borderWidth: 1, padding: 4, marginBottom: 16 },
+  card: { borderRadius: 14, borderWidth: 0, padding: 6, marginBottom: 16 },
   detailRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 0 },
   detailLabel: { flex: 1, fontSize: 14, fontWeight: '300' },
-  detailValue: { fontSize: 14, fontWeight: '500' },
+  detailValue: { fontSize: 14, fontWeight: '600' },
+  detailDaysRow: { flexDirection: 'row', marginTop: 2, marginBottom: 10, marginHorizontal: 10, borderRadius: 10, overflow: 'hidden' },
+  detailDayBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+  detailDayBtnText: { fontSize: 12 },
+  detailDatesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4, marginBottom: 10, marginHorizontal: 12 },
+  detailDatePill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  detailDatePillText: { fontSize: 12, fontWeight: '600' },
   editHint: { textAlign: 'center', fontSize: 13, marginTop: 8 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitle: { fontSize: 22, fontWeight: '500' },
@@ -834,6 +955,9 @@ const styles = StyleSheet.create({
   daysRow: { flexDirection: 'row', gap: 0, marginTop: 14, borderRadius: 10, overflow: 'hidden' },
   dayBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0 },
   dayBtnText: { fontSize: 13 },
+  selectedDatesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  datePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  datePillText: { fontSize: 12, fontWeight: '500' },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, paddingHorizontal: 2, borderWidth: 0 },
   toggleLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   toggleLabel: { fontSize: 15, fontWeight: '500' },
@@ -856,17 +980,17 @@ const styles = StyleSheet.create({
   saveBtn: { height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 32 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   actionButtonsContainer: { flexDirection: 'row', marginTop: 24, gap: 12 },
-  editBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1, borderRadius: 12 },
-  editBtnText: { fontSize: 14, fontWeight: '500' },
-  deleteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12 },
+  editBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 0, borderRadius: 12 },
+  editBtnText: { fontSize: 14, fontWeight: '600' },
+  deleteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 0, borderRadius: 12 },
   deleteBtnText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
-  breakBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 14, borderWidth: 1.5, marginTop: 12 },
+  breakBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 14, borderWidth: 0, marginTop: 12 },
   breakBtnText: { fontSize: 15, fontWeight: '600' },
   breakBtnSub: { color: '#8A7A5C', fontSize: 12 },
-  breakOngoingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, marginTop: 12, marginBottom: 4 },
+  breakOngoingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 0, marginTop: 12, marginBottom: 4 },
   breakOngoingLabel: { fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
-  cancelSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, marginTop: 16 },
+  cancelSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 0, marginTop: 16 },
   cancelSessionBtnText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
-  skipSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 1.5, marginTop: 14 },
+  skipSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 0, marginTop: 14 },
   skipSessionBtnText: { fontSize: 14, fontWeight: '600' },
 });
