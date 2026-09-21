@@ -259,7 +259,7 @@ export default function DashboardScreen() {
 
             <TouchableOpacity
               style={[styles.viewAllButton, { backgroundColor: theme.card }]}
-              onPress={() => router.push('/session/all' as never)}
+              onPress={() => router.push({ pathname: '/(tabs)/app-groups', params: { tab: 'sessions' } } as never)}
               activeOpacity={0.7}
             >
               <Text style={[styles.viewAllButtonText, { color: theme.text }]}>View All</Text>
@@ -273,7 +273,7 @@ export default function DashboardScreen() {
           <View style={{ marginBottom: 24 }}>
             <TouchableOpacity
               style={[styles.viewAllButton, { backgroundColor: theme.card }]}
-              onPress={() => router.push('/session/all' as never)}
+              onPress={() => router.push({ pathname: '/(tabs)/app-groups', params: { tab: 'sessions' } } as never)}
               activeOpacity={0.7}
             >
               <Text style={[styles.viewAllButtonText, { color: theme.text }]}>View All Sessions</Text>

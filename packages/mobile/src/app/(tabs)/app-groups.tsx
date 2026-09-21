@@ -18,7 +18,7 @@ import {
   SectionList,
   RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { useSessions } from '@/context/SessionContext';
@@ -48,11 +48,19 @@ export default function RulesScreen() {
   const isDark = useIsDark();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const { isPremium, openPaywall } = useSubscription();
   const { allSessions, isLoading: sessionsLoading, refreshSessions } = useSessions();
 
   // Top tab: 'sessions' | 'groups'
   const [activeTab, setActiveTab] = useState<'sessions' | 'groups'>('sessions');
+
+  useEffect(() => {
+    if (params?.tab === 'sessions' || params?.tab === 'groups') {
+      setActiveTab(params.tab);
+    }
+  }, [params?.tab]);
+
   const [refreshing, setRefreshing] = useState(false);
 
   // App groups state
