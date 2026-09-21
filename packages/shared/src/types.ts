@@ -66,6 +66,8 @@ export interface User {
   monthly_skip_limit?: number;
   skips_used_this_month?: number;
   skips_remaining?: number;
+  active_archetype?: string | null;
+  earned_badges?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -184,6 +186,8 @@ export interface QRCode {
   created_at: string;
 }
 
+export type QualityTier = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+
 export interface SessionHistory {
   id: string;
   session_id: string;
@@ -197,6 +201,12 @@ export interface SessionHistory {
   violations_count: number;
   app_violations_count: number;
   web_violations_count: number;
+  quality_tier?: QualityTier;
+  breaks_count?: number;
+  emergency_breaks_count?: number;
+  is_on_schedule?: boolean;
+  blocked_apps?: string[];
+  apps_count?: number;
   cancellation_reason?: string;
   cancelled_at?: string;
   created_at: string;

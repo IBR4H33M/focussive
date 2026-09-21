@@ -22,7 +22,7 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, email, name, age, avatar_url, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, subscription_tier, subscription_status, trial_used, trial_ends_at, created_at, updated_at')
+    .select('id, email, name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, subscription_tier, subscription_status, trial_used, trial_ends_at, created_at, updated_at')
     .eq('id', userId)
     .single();
 
@@ -56,12 +56,24 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
 // PUT /user/profile
 export async function updateProfile(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
-  const { name, age, avatar_url, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit } = req.body;
+  const {
+    name,
+    age,
+    avatar_url,
+    active_archetype,
+    earned_badges,
+    overlay_quote_enabled,
+    overlay_gif_enabled,
+    overlay_gif_url,
+    monthly_skip_limit,
+  } = req.body;
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (age !== undefined) updates.age = age;
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+  if (active_archetype !== undefined) updates.active_archetype = active_archetype;
+  if (earned_badges !== undefined) updates.earned_badges = earned_badges;
   if (overlay_quote_enabled !== undefined) updates.overlay_quote_enabled = overlay_quote_enabled;
   if (overlay_gif_enabled !== undefined) updates.overlay_gif_enabled = overlay_gif_enabled;
   if (overlay_gif_url !== undefined) updates.overlay_gif_url = overlay_gif_url;
@@ -81,7 +93,7 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
     .from('users')
     .update(updates)
     .eq('id', userId)
-    .select('id, email, name, age, avatar_url, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, created_at, updated_at')
+    .select('id, email, name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, created_at, updated_at')
     .single();
 
   if (error || !user) {

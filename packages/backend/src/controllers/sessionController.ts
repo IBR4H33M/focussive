@@ -393,6 +393,39 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     })
     .eq('id', id);
 
+  // Get breaks count
+  const { count: breaksCount } = await supabase
+    .from('session_breaks')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', id);
+
+  const { count: emergencyBreaksCount } = await supabase
+    .from('session_breaks')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', id)
+    .eq('source', 'violation');
+
+  // Snapshot blocked apps
+  let blockedApps: string[] = [];
+  if (Array.isArray(session.blocked_app_groups) && session.blocked_app_groups.length > 0) {
+    const { data: groups } = await supabase
+      .from('app_groups')
+      .select('apps')
+      .in('id', session.blocked_app_groups);
+    if (groups && groups.length > 0) {
+      const appSet = new Set<string>();
+      for (const g of groups) {
+        if (Array.isArray(g.apps)) {
+          for (const app of g.apps) {
+            const pkg = typeof app === 'string' ? app : (app?.packageName || app?.name || app?.id);
+            if (pkg) appSet.add(pkg);
+          }
+        }
+      }
+      blockedApps = Array.from(appSet);
+    }
+  }
+
   // End any open breaks
   await supabase
     .from('session_breaks')
@@ -412,6 +445,12 @@ export async function cancelSession(req: AuthRequest, res: Response): Promise<vo
     violations_count: violationsCount || 0,
     app_violations_count: appViolationsCount || 0,
     web_violations_count: webViolationsCount || 0,
+    quality_tier: null,
+    breaks_count: breaksCount || 0,
+    emergency_breaks_count: emergencyBreaksCount || 0,
+    is_on_schedule: false,
+    blocked_apps: blockedApps,
+    apps_count: blockedApps.length,
     cancellation_reason: reason || null,
     cancelled_at: now,
   });

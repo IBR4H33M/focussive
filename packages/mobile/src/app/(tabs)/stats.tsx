@@ -160,9 +160,17 @@ export default function StatsScreen() {
   const [selectedTierDetail, setSelectedTierDetail] = useState<QualityTierInfo | null>(null);
 
   useEffect(() => {
-    userApi.getProfile().then(p => setProfile(p)).catch(() => {});
+    userApi.getProfile().then(p => {
+      setProfile(p);
+      if (p.active_archetype) {
+        setSelectedArchetypeState(p.active_archetype as string);
+        setSelectedArchetype(p.active_archetype as string).catch(() => {});
+      }
+    }).catch(() => {});
     appGroupApi.getAll().then(res => setAppGroups((res.data as AppGroup[]) || [])).catch(() => {});
-    getSelectedArchetype().then(a => setSelectedArchetypeState(a));
+    getSelectedArchetype().then(a => {
+      if (a) setSelectedArchetypeState(a);
+    });
   }, []);
 
   // Sync tier counts whenever history updates
@@ -184,6 +192,7 @@ export default function StatsScreen() {
   async function handleEquipArchetype(badgeTitle: string) {
     setSelectedArchetypeState(badgeTitle);
     await setSelectedArchetype(badgeTitle);
+    userApi.updateProfile({ active_archetype: badgeTitle }).catch(() => {});
     setArchetypeModalVisible(false);
   }
 

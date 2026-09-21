@@ -273,6 +273,8 @@ export const userApi = {
     name?: string;
     age?: number;
     avatar_url?: string;
+    active_archetype?: string | null;
+    earned_badges?: Record<string, any>;
     overlay_quote_enabled?: boolean;
     overlay_gif_enabled?: boolean;
     overlay_gif_url?: string;

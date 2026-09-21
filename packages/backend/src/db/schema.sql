@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   age INTEGER,
+  active_archetype VARCHAR(100) DEFAULT NULL,
+  earned_badges JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -126,6 +128,12 @@ CREATE TABLE IF NOT EXISTS session_history (
   violations_count INTEGER DEFAULT 0,
   app_violations_count INTEGER DEFAULT 0,
   web_violations_count INTEGER DEFAULT 0,
+  quality_tier VARCHAR(20) DEFAULT 'common',
+  breaks_count INTEGER DEFAULT 0,
+  emergency_breaks_count INTEGER DEFAULT 0,
+  is_on_schedule BOOLEAN DEFAULT true,
+  blocked_apps TEXT[] DEFAULT '{}',
+  apps_count INTEGER DEFAULT 0,
   cancellation_reason TEXT,
   cancelled_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -133,6 +141,7 @@ CREATE TABLE IF NOT EXISTS session_history (
 
 CREATE INDEX IF NOT EXISTS idx_session_history_user_id ON session_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_session_history_session_id ON session_history(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_history_quality_tier ON session_history(quality_tier);
 
 -- ============================================================
 -- SESSION ALLOWLIST TABLE (for "Mark as necessary" during session)

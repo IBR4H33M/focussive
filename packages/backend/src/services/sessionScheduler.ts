@@ -165,6 +165,58 @@ export async function completeExpiredSessions() {
           .eq('session_id', session.id)
           .not('website_name', 'is', null);
 
+        // Get breaks count
+        const { count: breaksCount } = await supabase
+          .from('session_breaks')
+          .select('*', { count: 'exact', head: true })
+          .eq('session_id', session.id);
+
+        const { count: emergencyBreaksCount } = await supabase
+          .from('session_breaks')
+          .select('*', { count: 'exact', head: true })
+          .eq('session_id', session.id)
+          .eq('source', 'violation');
+
+        // Snapshot blocked apps
+        let blockedApps: string[] = [];
+        if (Array.isArray(session.blocked_app_groups) && session.blocked_app_groups.length > 0) {
+          const { data: groups } = await supabase
+            .from('app_groups')
+            .select('apps')
+            .in('id', session.blocked_app_groups);
+          if (groups && groups.length > 0) {
+            const appSet = new Set<string>();
+            for (const g of groups) {
+              if (Array.isArray(g.apps)) {
+                for (const app of g.apps) {
+                  const pkg = typeof app === 'string' ? app : (app?.packageName || app?.name || app?.id);
+                  if (pkg) appSet.add(pkg);
+                }
+              }
+            }
+            blockedApps = Array.from(appSet);
+          }
+        }
+
+        const actualMins = Math.floor(elapsedMinutes);
+        const totalViolations = violationsCount || 0;
+        const totalEmergencyBreaks = emergencyBreaksCount || 0;
+        const isOnSchedule = true; // Activated by scheduled chron job
+
+        // Roll quality tier
+        let qualityTier: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' = 'common';
+        if (totalViolations === 0 && totalEmergencyBreaks === 0 && actualMins >= 60 && isOnSchedule) {
+          qualityTier = 'legendary';
+        } else if (totalViolations === 0 && totalEmergencyBreaks === 0) {
+          qualityTier = 'epic';
+        } else if (totalViolations === 0) {
+          qualityTier = 'rare';
+        } else if (totalViolations <= 1) {
+          qualityTier = 'uncommon';
+        } else {
+          qualityTier = 'common';
+        }
+
         const completedAt = now.toISOString();
 
         // Determine next status based on schedule type
@@ -191,12 +243,18 @@ export async function completeExpiredSessions() {
           user_id: session.user_id,
           session_name: session.name,
           scheduled_duration: session.duration,
-          actual_duration: Math.floor(elapsedMinutes),
+          actual_duration: actualMins,
           start_time: session.start_time,
           status: SessionStatus.COMPLETED,
-          violations_count: violationsCount || 0,
+          violations_count: totalViolations,
           app_violations_count: appViolationsCount || 0,
           web_violations_count: webViolationsCount || 0,
+          quality_tier: qualityTier,
+          breaks_count: breaksCount || 0,
+          emergency_breaks_count: totalEmergencyBreaks,
+          is_on_schedule: isOnSchedule,
+          blocked_apps: blockedApps,
+          apps_count: blockedApps.length,
         });
 
         if (insertError) {

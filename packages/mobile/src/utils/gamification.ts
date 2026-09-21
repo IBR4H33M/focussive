@@ -82,6 +82,7 @@ export function evaluateSessionQualityTier(params: {
   violationsCount: number;
   breaksUsedCount?: number;
   status?: string;
+  isOnSchedule?: boolean;
 }): QualityTierInfo {
   const {
     actualDuration,
@@ -89,6 +90,7 @@ export function evaluateSessionQualityTier(params: {
     violationsCount,
     breaksUsedCount = 0,
     status = 'completed',
+    isOnSchedule,
   } = params;
 
   if (status !== 'completed') {
@@ -98,7 +100,7 @@ export function evaluateSessionQualityTier(params: {
   const zeroViolations = violationsCount === 0;
   const noBreaks = breaksUsedCount === 0;
   const duration60Plus = actualDuration >= 60 || scheduledDuration >= 60;
-  const onSchedule = actualDuration >= scheduledDuration;
+  const onSchedule = isOnSchedule !== undefined ? isOnSchedule : actualDuration >= scheduledDuration;
 
   // Legendary: Epic + 60+ minutes + on schedule
   if (zeroViolations && noBreaks && duration60Plus && onSchedule) {
@@ -218,16 +220,21 @@ export function isSessionQualifiedForMilestones(
   // Collect all apps associated with this session's groups or available groups
   let sessionApps: string[] = [];
 
-  // Try finding group matching session
-  const matchedGroup = appGroups.find(
-    g => (historyItem as any).app_group_id === g.id || (historyItem as any).app_group_ids?.includes(g.id)
-  );
+  // If history row has snapshot of blocked_apps stored in DB, prioritize it!
+  if (Array.isArray(historyItem.blocked_apps) && historyItem.blocked_apps.length > 0) {
+    sessionApps = historyItem.blocked_apps;
+  } else {
+    // Fallback: try finding group matching session
+    const matchedGroup = appGroups.find(
+      g => (historyItem as any).app_group_id === g.id || (historyItem as any).app_group_ids?.includes(g.id)
+    );
 
-  if (matchedGroup && matchedGroup.apps) {
-    sessionApps = matchedGroup.apps.map(a => a.name || a.package_name || a.id);
-  } else if (appGroups.length > 0) {
-    // If no direct group relation on history row, aggregate from default/first app group
-    sessionApps = appGroups[0]?.apps?.map(a => a.name || a.package_name || a.id) || [];
+    if (matchedGroup && matchedGroup.apps) {
+      sessionApps = matchedGroup.apps.map(a => a.name || a.package_name || a.id);
+    } else if (appGroups.length > 0) {
+      // If no direct group relation on history row, aggregate from default/first app group
+      sessionApps = appGroups[0]?.apps?.map(a => a.name || a.package_name || a.id) || [];
+    }
   }
 
   // If top4 list wasn't passed, build a default one from apps in app groups
@@ -486,14 +493,21 @@ export async function getEarnedTierCounts(history: SessionHistory[]): Promise<Re
 
   history.forEach(item => {
     if (item.status === 'completed') {
-      const tier = evaluateSessionQualityTier({
-        actualDuration: item.actual_duration ?? item.scheduled_duration ?? 0,
-        scheduledDuration: item.scheduled_duration ?? 0,
-        violationsCount: item.violations_count ?? 0,
-        breaksUsedCount: (item as any).pause_count ?? 0,
-        status: item.status,
-      });
-      counts[tier.key] = (counts[tier.key] || 0) + 1;
+      let tierKey: QualityTierKey;
+      if (item.quality_tier && QUALITY_TIERS[item.quality_tier as QualityTierKey]) {
+        tierKey = item.quality_tier as QualityTierKey;
+      } else {
+        const tier = evaluateSessionQualityTier({
+          actualDuration: item.actual_duration ?? item.scheduled_duration ?? 0,
+          scheduledDuration: item.scheduled_duration ?? 0,
+          violationsCount: item.violations_count ?? 0,
+          breaksUsedCount: item.breaks_count ?? (item as any).pause_count ?? 0,
+          status: item.status,
+          isOnSchedule: item.is_on_schedule ?? true,
+        });
+        tierKey = tier.key;
+      }
+      counts[tierKey] = (counts[tierKey] || 0) + 1;
     }
   });
 
