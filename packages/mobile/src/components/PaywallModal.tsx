@@ -140,9 +140,6 @@ export default function PaywallModal() {
             {/* Features List */}
             <View style={[styles.featureList, { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)' }]}>
               <View style={styles.featureItem}>
-                <View style={[styles.featureIconContainer, { backgroundColor: 'rgba(52, 199, 89, 0.15)' }]}>
-                  <Ionicons name="apps" size={18} color="#34C759" />
-                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.featureTitle, { color: theme.text }]}>Unlimited App Groups</Text>
                   <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
@@ -154,9 +151,6 @@ export default function PaywallModal() {
               <View style={styles.featureDivider} />
 
               <View style={styles.featureItem}>
-                <View style={[styles.featureIconContainer, { backgroundColor: 'rgba(0, 122, 255, 0.15)' }]}>
-                  <Ionicons name="globe-outline" size={18} color="#007AFF" />
-                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.featureTitle, { color: theme.text }]}>Unlimited Website Blocking</Text>
                   <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
@@ -168,9 +162,6 @@ export default function PaywallModal() {
               <View style={styles.featureDivider} />
 
               <View style={styles.featureItem}>
-                <View style={[styles.featureIconContainer, { backgroundColor: 'rgba(255, 149, 0, 0.15)' }]}>
-                  <Ionicons name="infinite" size={18} color="#FF9500" />
-                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.featureTitle, { color: theme.text }]}>Lifetime Session History</Text>
                   <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>

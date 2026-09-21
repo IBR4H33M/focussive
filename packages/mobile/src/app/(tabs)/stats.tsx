@@ -116,14 +116,13 @@ function filterByPeriod(history: SessionHistory[], period: PeriodKey, customDays
 }
 
 // ─── Sections ───────────────────────────────────────────────
-const SECTIONS = ['Overview', 'History'];
+const SECTIONS = ['Overview', 'Milestones', 'History'];
 
 // ─── Main Component ──────────────────────────────────────────
 export default function StatsScreen() {
   const theme = useTheme();
   const isDark = useIsDark();
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
   const { isPremium, openPaywall } = useSubscription();
 
   const [activeSection, setActiveSection] = useState(0);
@@ -183,6 +182,21 @@ export default function StatsScreen() {
   // Milestone evaluations
   const milestones = useMemo(() => evaluateMilestones(history, appGroups), [history, appGroups]);
 
+  // Milestone nearest to completion
+  const nearestMilestone = useMemo(() => {
+    const list = Object.values(milestones);
+    const unearned = list.filter(m => !m.isUnlocked);
+    if (unearned.length > 0) {
+      unearned.sort((a, b) => {
+        const ratioA = a.target > 0 ? a.current / a.target : 0;
+        const ratioB = b.target > 0 ? b.current / b.target : 0;
+        return ratioB - ratioA;
+      });
+      return unearned[0];
+    }
+    return list[0] || null;
+  }, [milestones]);
+
   const totalBadgesEarned = useMemo(() => {
     const milestoneCount = Object.values(milestones).filter(m => m.isUnlocked).length;
     const tierCount = Object.values(tierCounts).reduce((acc, count) => acc + (count > 0 ? 1 : 0), 0);
@@ -211,14 +225,6 @@ export default function StatsScreen() {
 
   function goToSection(index: number) {
     setActiveSection(index);
-    scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
-  }
-
-  function onScrollEnd(e: any) {
-    const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    if (index !== activeSection) {
-      setActiveSection(index);
-    }
   }
 
   async function openDetail(item: SessionHistory) {
@@ -298,8 +304,7 @@ export default function StatsScreen() {
               style={[
                 styles.archetypePill,
                 {
-                  backgroundColor: selectedArchetype ? `${theme.accent}18` : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
-                  borderColor: selectedArchetype ? theme.accent : theme.border,
+                  backgroundColor: selectedArchetype ? `${theme.accent}20` : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
                 },
               ]}
               onPress={() => setArchetypeModalVisible(true)}
@@ -336,7 +341,7 @@ export default function StatsScreen() {
             </View>
           </View>
 
-          {/* Session Quality Tiers */}
+          {/* Session Quality Tiers with Fat Line Borders */}
           <Text style={[styles.badgeSubheading, { color: theme.textSecondary }]}>
             SESSION QUALITY TIERS
           </Text>
@@ -354,7 +359,7 @@ export default function StatsScreen() {
                     styles.tierCard,
                     {
                       backgroundColor: count > 0 ? tier.bgColor : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'),
-                      borderColor: count > 0 ? tier.borderColor : theme.border,
+                      borderColor: count > 0 ? tier.color : (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'),
                       opacity: count > 0 ? 1 : 0.65,
                     },
                   ]}
@@ -362,7 +367,7 @@ export default function StatsScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.tierIconBox, { backgroundColor: `${tier.color}25` }]}>
-                    <Ionicons name={tier.icon as any} size={18} color={tier.color} />
+                    <Ionicons name={tier.icon as any} size={20} color={tier.color} />
                   </View>
                   <Text style={[styles.tierCardTitle, { color: theme.text }]}>
                     {tier.name}
@@ -376,98 +381,125 @@ export default function StatsScreen() {
               );
             })}
           </ScrollView>
+        </View>
 
-          {/* Collectible Milestone Badges */}
-          <Text style={[styles.badgeSubheading, { color: theme.textSecondary, marginTop: 18 }]}>
-            COLLECTIBLE MILESTONES
-          </Text>
-          <View style={styles.milestonesList}>
-            {Object.entries(milestones).map(([key, item]) => {
-              const isEquipped = selectedArchetype === item.badge.title;
-              return (
+        {/* ── Milestone Progression Section (Nearest to completion) ── */}
+        {nearestMilestone && (
+          <View style={styles.progressionSection}>
+            <View style={styles.progressionHeaderRow}>
+              <Text style={[styles.badgeSubheading, { color: theme.textSecondary, marginBottom: 0 }]}>
+                MILESTONE PROGRESSION
+              </Text>
+              <TouchableOpacity
+                onPress={() => goToSection(1)}
+                style={styles.viewAllMilestonesBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.viewAllMilestonesText, { color: theme.accent }]}>
+                  View all
+                </Text>
+                <Ionicons name="arrow-forward" size={13} color={theme.accent} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.progressionCard, { backgroundColor: theme.card }]}
+              onPress={() => goToSection(1)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.progressionTopRow}>
                 <View
-                  key={key}
                   style={[
-                    styles.milestoneCard,
-                    {
-                      backgroundColor: theme.card,
-                      borderColor: item.isUnlocked ? `${item.badge.color}60` : theme.border,
-                    },
+                    styles.milestoneIconBox,
+                    { backgroundColor: `${nearestMilestone.badge.color}20` },
                   ]}
                 >
-                  <View style={styles.milestoneTopRow}>
-                    <View style={[styles.milestoneIconBox, { backgroundColor: `${item.badge.color}20` }]}>
-                      <Ionicons name={item.badge.icon as any} size={20} color={item.badge.color} />
-                    </View>
-                    <View style={styles.milestoneInfo}>
-                      <View style={styles.milestoneTitleRow}>
-                        <Text style={[styles.milestoneTitle, { color: theme.text }]}>
-                          {item.badge.title}
-                        </Text>
-                        {item.isUnlocked ? (
-                          <View style={[styles.unlockedBadge, { backgroundColor: '#10B98120' }]}>
-                            <Ionicons name="checkmark-circle" size={12} color="#10B981" />
-                            <Text style={styles.unlockedBadgeText}>Earned</Text>
-                          </View>
-                        ) : (
-                          <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-                            {item.current} / {item.target}
-                          </Text>
-                        )}
-                      </View>
-                      <Text style={[styles.milestoneQuote, { color: theme.textSecondary }]}>
-                        "{item.badge.quote}"
-                      </Text>
-                      <Text style={[styles.milestoneReq, { color: theme.textSecondary }]}>
-                        {item.badge.requirement}
+                  <Ionicons
+                    name={nearestMilestone.badge.icon as any}
+                    size={22}
+                    color={nearestMilestone.badge.color}
+                  />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={styles.progressionTitleRow}>
+                    <Text style={[styles.progressionTitle, { color: theme.text }]}>
+                      {nearestMilestone.badge.title}
+                    </Text>
+                    <View
+                      style={[
+                        styles.progressionPctBadge,
+                        { backgroundColor: `${nearestMilestone.badge.color}20` },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.progressionPctText,
+                          { color: nearestMilestone.badge.color },
+                        ]}
+                      >
+                        {nearestMilestone.isUnlocked
+                          ? 'Earned'
+                          : `${Math.round(
+                              Math.min(
+                                100,
+                                (nearestMilestone.current / nearestMilestone.target) * 100
+                              )
+                            )}%`}
                       </Text>
                     </View>
                   </View>
-
-                  {item.isUnlocked ? (
-                    <TouchableOpacity
-                      style={[
-                        styles.equipBtn,
-                        {
-                          backgroundColor: isEquipped ? theme.accent : `${theme.accent}18`,
-                          borderColor: theme.accent,
-                        },
-                      ]}
-                      onPress={() => handleEquipArchetype(item.badge.title)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons
-                        name={isEquipped ? 'checkmark' : 'sparkles-outline'}
-                        size={14}
-                        color={isEquipped ? '#FFFFFF' : theme.accent}
-                      />
-                      <Text
-                        style={[
-                          styles.equipBtnText,
-                          { color: isEquipped ? '#FFFFFF' : theme.accent },
-                        ]}
-                      >
-                        {isEquipped ? 'Active Archetype' : 'Select as Archetype'}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={[styles.progressBarBg, { backgroundColor: theme.surface }]}>
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          {
-                            width: `${Math.min(100, Math.round((item.current / item.target) * 100))}%`,
-                            backgroundColor: item.badge.color,
-                          },
-                        ]}
-                      />
-                    </View>
-                  )}
+                  <Text style={[styles.progressionQuote, { color: theme.textSecondary }]}>
+                    {nearestMilestone.badge.quote}
+                  </Text>
                 </View>
-              );
-            })}
+              </View>
+
+              <Text style={[styles.progressionRequirement, { color: theme.textSecondary }]}>
+                {nearestMilestone.badge.requirement}
+              </Text>
+
+              {/* Progress Bar */}
+              <View style={{ gap: 6, marginTop: 4 }}>
+                <View
+                  style={[
+                    styles.progressBarBg,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(255,255,255,0.08)'
+                        : 'rgba(0,0,0,0.06)',
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: `${Math.min(
+                          100,
+                          Math.max(
+                            nearestMilestone.isUnlocked ? 100 : 4,
+                            (nearestMilestone.current / nearestMilestone.target) * 100
+                          )
+                        )}%`,
+                        backgroundColor: nearestMilestone.badge.color,
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.progressionStatsRow}>
+                  <Text style={[styles.progressionDetailText, { color: theme.textSecondary }]}>
+                    {nearestMilestone.isUnlocked
+                      ? 'Completed & Ready to equip as Archetype'
+                      : `${nearestMilestone.target - nearestMilestone.current} needed to unlock`}
+                  </Text>
+                  <Text style={[styles.progressionRatioText, { color: theme.text }]}>
+                    {nearestMilestone.current} / {nearestMilestone.target}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
 
         {/* ── Period Stats Section ── */}
         <View style={styles.periodStatsSection}>
@@ -476,7 +508,7 @@ export default function StatsScreen() {
               {getPeriodSectionTitle(activePeriod)}
             </Text>
             <TouchableOpacity
-              style={[styles.periodBtnClean, { backgroundColor: theme.card, borderColor: theme.border }]}
+              style={[styles.periodBtnClean, { backgroundColor: theme.card }]}
               onPress={() => setPeriodDropdownVisible(true)}
               activeOpacity={0.7}
             >
@@ -485,9 +517,9 @@ export default function StatsScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* 4 Requested Metrics Grid */}
+          {/* 4 Requested Metrics Grid (Borderless) */}
           <View style={styles.metricsGrid}>
-            <View style={[styles.metricCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
               <View style={styles.metricIconRow}>
                 <Ionicons name="checkmark-done-circle-outline" size={17} color={theme.accent} />
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Sessions completed</Text>
@@ -495,7 +527,7 @@ export default function StatsScreen() {
               <Text style={[styles.metricValue, { color: theme.text }]}>{completedOnly.length}</Text>
             </View>
 
-            <View style={[styles.metricCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
               <View style={styles.metricIconRow}>
                 <Ionicons name="time-outline" size={17} color="#3B82F6" />
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Hours focused</Text>
@@ -503,7 +535,7 @@ export default function StatsScreen() {
               <Text style={[styles.metricValue, { color: theme.text }]}>{formattedFocusTime}</Text>
             </View>
 
-            <View style={[styles.metricCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
               <View style={styles.metricIconRow}>
                 <Ionicons name="shield-outline" size={17} color={totalViolations > 0 ? theme.danger : '#10B981'} />
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Distraction attempts</Text>
@@ -513,7 +545,7 @@ export default function StatsScreen() {
               </Text>
             </View>
 
-            <View style={[styles.metricCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
               <View style={styles.metricIconRow}>
                 <Ionicons name="flame-outline" size={17} color="#F59E0B" />
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Longest clean streak</Text>
@@ -588,6 +620,193 @@ export default function StatsScreen() {
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>Try selecting a wider range</Text>
             </View>
           )}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // ─── Milestones Tab ───────────────────────────────────────
+  function renderMilestones() {
+    const unlockedCount = Object.values(milestones).filter(m => m.isUnlocked).length;
+    const totalCount = Object.keys(milestones).length;
+
+    return (
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.sectionContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Summary */}
+        <View style={styles.milestonesHeaderBox}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.milestonesHeaderTitle, { color: theme.text }]}>
+              Collectible Milestones
+            </Text>
+            <Text style={[styles.milestonesHeaderSubtitle, { color: theme.textSecondary }]}>
+              Complete specific focus challenges to unlock and equip unique Archetypes.
+            </Text>
+          </View>
+          <View style={styles.milestonesCountBox}>
+            <Text style={[styles.milestonesCountNumber, { color: theme.accent }]}>
+              {unlockedCount}/{totalCount}
+            </Text>
+            <Text style={[styles.milestonesCountLabel, { color: theme.textSecondary }]}>
+              Earned
+            </Text>
+          </View>
+        </View>
+
+        {/* Milestone Qualification Notice */}
+        <View
+          style={[
+            styles.qualificationNotice,
+            { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' },
+          ]}
+        >
+          <Ionicons name="information-circle-outline" size={16} color={theme.accent} />
+          <Text style={[styles.qualificationNoticeText, { color: theme.textSecondary }]}>
+            Sessions qualify when blocking ≥3 apps total and ≥2 of your top 4 most used apps.
+          </Text>
+        </View>
+
+        {/* Milestone Cards List (Containers without borders) */}
+        <View style={styles.milestonesList}>
+          {Object.entries(milestones).map(([key, item]) => {
+            const isEquipped = selectedArchetype === item.badge.title;
+            return (
+              <View
+                key={key}
+                style={[
+                  styles.milestoneCard,
+                  {
+                    backgroundColor: theme.card,
+                    borderWidth: 0,
+                  },
+                ]}
+              >
+                <View style={styles.milestoneTopRow}>
+                  <View
+                    style={[
+                      styles.milestoneIconBox,
+                      { backgroundColor: `${item.badge.color}20` },
+                    ]}
+                  >
+                    <Ionicons
+                      name={item.badge.icon as any}
+                      size={20}
+                      color={item.badge.color}
+                    />
+                  </View>
+                  <View style={styles.milestoneInfo}>
+                    <View style={styles.milestoneTitleRow}>
+                      <Text style={[styles.milestoneTitle, { color: theme.text }]}>
+                        {item.badge.title}
+                      </Text>
+                      {item.isUnlocked ? (
+                        <View
+                          style={[
+                            styles.unlockedBadge,
+                            { backgroundColor: '#10B98120' },
+                          ]}
+                        >
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={12}
+                            color="#10B981"
+                          />
+                          <Text style={styles.unlockedBadgeText}>Earned</Text>
+                        </View>
+                      ) : (
+                        <Text
+                          style={[
+                            styles.progressText,
+                            { color: theme.textSecondary },
+                          ]}
+                        >
+                          {item.current} / {item.target}
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.milestoneQuote,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
+                      {item.badge.quote}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.milestoneReq,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
+                      {item.badge.requirement}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Progress bar */}
+                <View
+                  style={[
+                    styles.progressBarBg,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(255,255,255,0.08)'
+                        : 'rgba(0,0,0,0.06)',
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: `${Math.min(
+                          100,
+                          Math.max(
+                            item.isUnlocked ? 100 : 2,
+                            (item.current / item.target) * 100
+                          )
+                        )}%`,
+                        backgroundColor: item.badge.color,
+                      },
+                    ]}
+                  />
+                </View>
+
+                {/* Equip / status button if unlocked */}
+                {item.isUnlocked && (
+                  <TouchableOpacity
+                    style={[
+                      styles.equipBtn,
+                      {
+                        backgroundColor: isEquipped
+                          ? `${item.badge.color}25`
+                          : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                        borderWidth: 0,
+                      },
+                    ]}
+                    onPress={() => handleEquipArchetype(item.badge.title)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={isEquipped ? 'checkmark' : 'sparkles'}
+                      size={14}
+                      color={isEquipped ? item.badge.color : theme.text}
+                    />
+                    <Text
+                      style={[
+                        styles.equipBtnText,
+                        { color: isEquipped ? item.badge.color : theme.text },
+                      ]}
+                    >
+                      {isEquipped ? 'Active Archetype' : 'Set as Archetype'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
     );
@@ -689,7 +908,7 @@ export default function StatsScreen() {
   // ─── Render ──────────────────────────────────────────────
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Top Segmented Control: "Overview" and "History" in a single bordered container matching Rules */}
+      {/* Top Segmented Control: "Overview", "Milestones", and "History" */}
       <View style={[styles.topBarWrapper, { paddingTop: Math.max(insets.top + 16, 36) }]}>
         <View
           style={[
@@ -737,19 +956,12 @@ export default function StatsScreen() {
         </View>
       </View>
 
-      {/* Horizontal pager */}
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onScrollEnd}
-        scrollEventThrottle={16}
-        style={{ flex: 1 }}
-      >
-        <View style={{ width: SCREEN_WIDTH }}>{renderOverview()}</View>
-        <View style={{ width: SCREEN_WIDTH }}>{renderHistory()}</View>
-      </ScrollView>
+      {/* Tab Pages: No outer horizontal ScrollView gesture interference */}
+      <View style={{ flex: 1 }}>
+        {activeSection === 0 && renderOverview()}
+        {activeSection === 1 && renderMilestones()}
+        {activeSection === 2 && renderHistory()}
+      </View>
 
       {/* ── Period Dropdown Modal ── */}
       <Modal
@@ -1037,7 +1249,7 @@ export default function StatsScreen() {
                       )}
                     </View>
                     <Text style={[styles.milestoneQuote, { color: theme.textSecondary }]}>
-                      "{item.badge.quote}"
+                      {item.badge.quote}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1191,7 +1403,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 0,
     alignSelf: 'flex-start',
   },
   archetypePillText: {
@@ -1232,21 +1444,22 @@ const styles = StyleSheet.create({
   },
   tiersScrollRow: {
     flexDirection: 'row',
-    gap: 10,
-    paddingBottom: 4,
+    gap: 12,
+    paddingBottom: 6,
+    paddingHorizontal: 2,
   },
   tierCard: {
-    width: 96,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 10,
+    width: 104,
+    borderRadius: 16,
+    borderWidth: 3.5, // Prominent fat line border
+    padding: 12,
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   tierIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1264,14 +1477,130 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  // Milestone Badges
+  // Milestone Progression Section (Overview tab)
+  progressionSection: {
+    marginBottom: 24,
+  },
+  progressionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  viewAllMilestonesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllMilestonesText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  progressionCard: {
+    borderRadius: 16,
+    borderWidth: 0,
+    padding: 16,
+    gap: 12,
+  },
+  progressionTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  progressionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  progressionPctBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  progressionPctText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  progressionQuote: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  progressionRequirement: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  progressionStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressionDetailText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  progressionRatioText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  // Milestones Tab Styles
+  milestonesHeaderBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    gap: 12,
+  },
+  milestonesHeaderTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  milestonesHeaderSubtitle: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  milestonesCountBox: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  milestonesCountNumber: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  milestonesCountLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  qualificationNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  qualificationNoticeText: {
+    fontSize: 12,
+    lineHeight: 16,
+    flex: 1,
+  },
+
+  // Milestone Badges Cards (borderless containers)
   milestonesList: {
-    gap: 10,
+    gap: 12,
   },
   milestoneCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
+    borderRadius: 16,
+    borderWidth: 0, // Border removed!
+    padding: 16,
     gap: 12,
   },
   milestoneTopRow: {
@@ -1279,9 +1608,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   milestoneIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1295,7 +1624,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   milestoneTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
   },
   unlockedBadge: {
@@ -1329,9 +1658,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: 36,
+    height: 38,
     borderRadius: 10,
-    borderWidth: 1,
+    borderWidth: 0, // No thin border!
   },
   equipBtnText: {
     fontSize: 13,
@@ -1368,7 +1697,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 0, // No thin border!
   },
   periodBtnText: {
     fontSize: 13,
@@ -1385,7 +1714,7 @@ const styles = StyleSheet.create({
   metricCard: {
     width: (SCREEN_WIDTH - 32 - 10) / 2,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 0, // No thin border!
     padding: 14,
     gap: 6,
   },
