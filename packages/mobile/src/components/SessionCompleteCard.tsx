@@ -49,20 +49,20 @@ export default function SessionCompleteCard({
       animationType="fade"
       onRequestClose={onDismiss}
     >
-      <View style={styles.overlay}>
-        <View
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={onDismiss}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
           style={[
             styles.card,
             {
               backgroundColor: isDark ? '#1E2235' : '#FFFFFF',
-              borderColor: `${tier.color}40`,
-              shadowColor: tier.color,
             },
           ]}
         >
-          {/* Subtle Top Glow / Accent */}
-          <View style={[styles.topGlow, { backgroundColor: tier.color }]} />
-
           {/* Close button */}
           <TouchableOpacity
             style={[styles.closeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}
@@ -71,11 +71,6 @@ export default function SessionCompleteCard({
           >
             <Ionicons name="close" size={16} color={theme.textSecondary} />
           </TouchableOpacity>
-
-          {/* Subtitle / Eyebrow */}
-          <Text style={[styles.eyebrow, { color: theme.textSecondary }]}>
-            SESSION COMPLETED
-          </Text>
 
           {/* Tier Crest Emblem */}
           <View style={styles.emblemContainer}>
@@ -93,56 +88,20 @@ export default function SessionCompleteCard({
             </Text>
           </View>
 
-          <Text style={[styles.tagline, { color: theme.text }]}>
-            {tier.tagline}
+          {/* Congratulatory Message */}
+          <Text style={[styles.congratsMessage, { color: theme.text }]}>
+            Congratulations! You just earned the{' '}
+            <Text style={{ color: tier.color, fontWeight: '800' }}>
+              "{tier.tagline}"
+            </Text>{' '}
+            badge! You finished{' '}
+            <Text style={{ fontWeight: '700' }}>{sessionName}</Text>{' '}
+            with {violationsBlocked === 0 ? 'Zero distractions' : `${violationsBlocked} distractions`} and on schedule!
           </Text>
-
-          <Text style={[styles.sessionMeta, { color: theme.textSecondary }]}>
-            {sessionName} • {durationMinutes} mins
-          </Text>
-
-          {/* Performance Pill Row */}
-          <View style={[styles.perfBox, { backgroundColor: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.03)' }]}>
-            <View style={styles.perfItem}>
-              <Ionicons
-                name="shield-outline"
-                size={14}
-                color={violationsBlocked === 0 ? '#10B981' : theme.textSecondary}
-              />
-              <Text style={[styles.perfText, { color: theme.text }]}>
-                {violationsBlocked === 0 ? 'Zero Distractions' : `${violationsBlocked} blocked`}
-              </Text>
-            </View>
-
-            <View style={[styles.perfDivider, { backgroundColor: theme.border }]} />
-
-            <View style={styles.perfItem}>
-              <Ionicons name="checkmark-done" size={14} color="#10B981" />
-              <Text style={[styles.perfText, { color: theme.text }]}>
-                On Schedule
-              </Text>
-            </View>
-          </View>
-
-          {/* Badge added notice */}
-          <View style={styles.addedNotice}>
-            <Ionicons name="ribbon-outline" size={14} color={tier.color} />
-            <Text style={[styles.addedNoticeText, { color: tier.color }]}>
-              Automatically added to your profile badges
-            </Text>
-          </View>
 
           {/* Actions */}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: tier.color }]}
-              onPress={onDismiss}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryBtnText}>Collect Badge</Text>
-            </TouchableOpacity>
-
-            {onViewBadges && (
+          {onViewBadges && (
+            <View style={styles.actions}>
               <TouchableOpacity
                 style={[styles.secondaryBtn, { borderColor: theme.border }]}
                 onPress={() => {
@@ -155,10 +114,10 @@ export default function SessionCompleteCard({
                   View in Badges
                 </Text>
               </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
+            </View>
+          )}
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 }
@@ -174,8 +133,9 @@ const styles = StyleSheet.create({
   card: {
     width: Math.min(SCREEN_WIDTH - 48, 360),
     borderRadius: 24,
-    borderWidth: 1.5,
+    borderWidth: 0,
     padding: 24,
+    paddingTop: 28,
     alignItems: 'center',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.35,
@@ -183,13 +143,6 @@ const styles = StyleSheet.create({
     elevation: 12,
     position: 'relative',
     overflow: 'hidden',
-  },
-  topGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 4,
   },
   closeBtn: {
     position: 'absolute',
@@ -201,12 +154,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
-  },
-  eyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 2,
-    marginBottom: 16,
   },
   emblemContainer: {
     width: 96,
@@ -230,65 +177,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.2,
   },
-  tagline: {
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  sessionMeta: {
-    fontSize: 13,
+  congratsMessage: {
+    fontSize: 15,
+    lineHeight: 22,
     fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 6,
     marginBottom: 16,
-  },
-  perfBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginBottom: 14,
-    gap: 12,
-  },
-  perfItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  perfDivider: {
-    width: 1,
-    height: 14,
-  },
-  perfText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  addedNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 20,
-  },
-  addedNoticeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    paddingHorizontal: 6,
   },
   actions: {
     width: '100%',
-    gap: 10,
-  },
-  primaryBtn: {
-    width: '100%',
-    height: 46,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  primaryBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    marginTop: 4,
   },
   secondaryBtn: {
     width: '100%',
