@@ -30,6 +30,8 @@ import {
   QUALITY_TIERS,
   type QualityTierKey,
   type QualityTierInfo,
+  TIER_HERO_BADGES,
+  TIER_LIST_BADGES,
   MILESTONE_BADGES,
   type MilestoneKey,
   evaluateMilestones,
@@ -329,14 +331,9 @@ export default function StatsScreen() {
             <Text style={[styles.badgesSectionTitle, { color: theme.text }]}>
               Earned badges
             </Text>
-            <View style={[styles.badgesCountPill, { backgroundColor: `${theme.accent}20` }]}>
-              <Text style={[styles.badgesCountText, { color: theme.accent }]}>
-                {totalBadgesEarned} unlocked
-              </Text>
-            </View>
           </View>
 
-          {/* Session Quality Tiers with Fat Line Borders */}
+          {/* Session Quality Tiers */}
           <Text style={[styles.badgeSubheading, { color: theme.textSecondary }]}>
             SESSION QUALITY TIERS
           </Text>
@@ -353,25 +350,25 @@ export default function StatsScreen() {
                   style={[
                     styles.tierCard,
                     {
-                      backgroundColor: count > 0 ? tier.bgColor : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'),
-                      borderColor: count > 0 ? tier.color : (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'),
-                      opacity: count > 0 ? 1 : 0.65,
+                      opacity: count > 0 ? 1 : 0.45,
                     },
                   ]}
                   onPress={() => setSelectedTierDetail(tier)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.tierIconBox, { backgroundColor: `${tier.color}25` }]}>
-                    <Ionicons name={tier.icon as any} size={20} color={tier.color} />
+                  <View style={styles.tierIconBox}>
+                    <Image
+                      source={tier.heroImage || TIER_HERO_BADGES[tier.key]}
+                      style={styles.tierIconImage}
+                      resizeMode="contain"
+                    />
                   </View>
                   <Text style={[styles.tierCardTitle, { color: theme.text }]}>
                     {tier.name}
                   </Text>
-                  <View style={[styles.tierCountBadge, { backgroundColor: count > 0 ? tier.color : theme.surface }]}>
-                    <Text style={[styles.tierCountText, { color: count > 0 ? '#FFFFFF' : theme.textSecondary }]}>
-                      {count > 0 ? `×${count}` : '0'}
-                    </Text>
-                  </View>
+                  <Text style={[styles.tierCountText, { color: count > 0 ? theme.text : theme.textSecondary }]}>
+                    {count > 0 ? `×${count}` : '0'}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -1276,8 +1273,12 @@ export default function StatsScreen() {
                 },
               ]}
             >
-              <View style={[styles.tierIconBoxLarge, { backgroundColor: selectedTierDetail.bgColor }]}>
-                <Ionicons name={selectedTierDetail.icon as any} size={32} color={selectedTierDetail.color} />
+              <View style={styles.tierIconBoxLarge}>
+                <Image
+                  source={selectedTierDetail.heroImage || TIER_HERO_BADGES[selectedTierDetail.key]}
+                  style={styles.tierIconImageLarge}
+                  resizeMode="contain"
+                />
               </View>
               <Text style={[styles.tierDetailTitle, { color: selectedTierDetail.color }]}>
                 {selectedTierDetail.name.toUpperCase()} TIER
@@ -1439,37 +1440,36 @@ const styles = StyleSheet.create({
   },
   tiersScrollRow: {
     flexDirection: 'row',
-    gap: 12,
-    paddingBottom: 6,
+    gap: 16,
+    paddingBottom: 8,
     paddingHorizontal: 2,
   },
   tierCard: {
-    width: 104,
-    borderRadius: 16,
-    borderWidth: 3.5, // Prominent fat line border
-    padding: 12,
+    width: 86,
     alignItems: 'center',
-    gap: 8,
+    paddingVertical: 4,
+    gap: 4,
   },
   tierIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 72,
+    height: 72,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 2,
+  },
+  tierIconImage: {
+    width: 72,
+    height: 72,
   },
   tierCardTitle: {
     fontSize: 12,
-    fontWeight: '700',
-  },
-  tierCountBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   tierCountText: {
-    fontSize: 11,
+    fontSize: 18,
     fontWeight: '800',
+    marginTop: 1,
   },
 
   // Milestone Progression Section (Overview tab)
@@ -1779,12 +1779,15 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   tierIconBoxLarge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 76,
+    height: 76,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  tierIconImageLarge: {
+    width: 76,
+    height: 76,
   },
   tierDetailTitle: {
     fontSize: 13,

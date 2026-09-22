@@ -9,6 +9,24 @@ import type { SessionHistory, AppGroup } from '@focussive/shared';
 
 export type QualityTierKey = 'legendary' | 'epic' | 'rare' | 'uncommon' | 'common';
 
+// Hero Badges (256x256 px) for large celebration & detail modals
+export const TIER_HERO_BADGES: Record<QualityTierKey, any> = {
+  legendary: require('../../assets/images/badgeicons/hero/legendary.png'),
+  epic: require('../../assets/images/badgeicons/hero/epic.png'),
+  rare: require('../../assets/images/badgeicons/hero/rare.png'),
+  uncommon: require('../../assets/images/badgeicons/hero/uncommon.png'),
+  common: require('../../assets/images/badgeicons/hero/common.png'),
+};
+
+// List Badges (96x96 px) for compact horizontal rows and lists
+export const TIER_LIST_BADGES: Record<QualityTierKey, any> = {
+  legendary: require('../../assets/images/badgeicons/list/legendary.png'),
+  epic: require('../../assets/images/badgeicons/list/epic.png'),
+  rare: require('../../assets/images/badgeicons/list/rare.png'),
+  uncommon: require('../../assets/images/badgeicons/list/uncommon.png'),
+  common: require('../../assets/images/badgeicons/list/common.png'),
+};
+
 export interface QualityTierInfo {
   key: QualityTierKey;
   name: string;
@@ -16,6 +34,8 @@ export interface QualityTierInfo {
   bgColor: string;
   borderColor: string;
   icon: string;
+  heroImage: any;
+  listImage: any;
   tagline: string;
   description: string;
 }
@@ -28,6 +48,8 @@ export const QUALITY_TIERS: Record<QualityTierKey, QualityTierInfo> = {
     bgColor: 'rgba(245, 158, 11, 0.16)',
     borderColor: '#F59E0B',
     icon: 'trophy',
+    heroImage: TIER_HERO_BADGES.legendary,
+    listImage: TIER_LIST_BADGES.legendary,
     tagline: 'Flawless Masterclass',
     description: 'Zero distractions, no emergency breaks, 60+ minutes on schedule.',
   },
@@ -38,6 +60,8 @@ export const QUALITY_TIERS: Record<QualityTierKey, QualityTierInfo> = {
     bgColor: 'rgba(139, 92, 246, 0.16)',
     borderColor: '#8B5CF6',
     icon: 'shield-checkmark',
+    heroImage: TIER_HERO_BADGES.epic,
+    listImage: TIER_LIST_BADGES.epic,
     tagline: 'Iron Discipline',
     description: 'Zero distraction attempts and zero emergency breaks used.',
   },
@@ -48,6 +72,8 @@ export const QUALITY_TIERS: Record<QualityTierKey, QualityTierInfo> = {
     bgColor: 'rgba(59, 130, 246, 0.16)',
     borderColor: '#3B82F6',
     icon: 'diamond',
+    heroImage: TIER_HERO_BADGES.rare,
+    listImage: TIER_LIST_BADGES.rare,
     tagline: 'Clean Focus',
     description: 'Zero distraction attempts throughout the entire session.',
   },
@@ -58,6 +84,8 @@ export const QUALITY_TIERS: Record<QualityTierKey, QualityTierInfo> = {
     bgColor: 'rgba(16, 185, 129, 0.16)',
     borderColor: '#10B981',
     icon: 'ribbon',
+    heroImage: TIER_HERO_BADGES.uncommon,
+    listImage: TIER_LIST_BADGES.uncommon,
     tagline: 'Solid Resilience',
     description: 'Completed with at most 1 distraction attempt.',
   },
@@ -68,6 +96,8 @@ export const QUALITY_TIERS: Record<QualityTierKey, QualityTierInfo> = {
     bgColor: 'rgba(148, 163, 184, 0.16)',
     borderColor: '#94A3B8',
     icon: 'checkmark-circle',
+    heroImage: TIER_HERO_BADGES.common,
+    listImage: TIER_LIST_BADGES.common,
     tagline: 'Session Completed',
     description: 'Successfully reached the finish line.',
   },

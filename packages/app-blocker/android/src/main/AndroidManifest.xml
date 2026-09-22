@@ -30,5 +30,13 @@
         android:name=".SessionAlarmReceiver"
         android:enabled="true"
         android:exported="false" />
+
+    <receiver
+        android:name=".NotificationDismissReceiver"
+        android:exported="false">
+      <intent-filter>
+        <action android:name="ACTION_ACTIVE_NOTIFICATION_DISMISSED"/>
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>

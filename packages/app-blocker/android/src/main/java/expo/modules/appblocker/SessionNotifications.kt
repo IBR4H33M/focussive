@@ -26,12 +26,12 @@ object SessionNotifications {
     const val ACTIVE_NOTIFICATION_ID = 1001
     private const val CHANNEL_REMINDER = "session-reminder"
     private const val CHANNEL_ACTIVE = "session-active"
-    private val COLOR_REMINDER = Color.parseColor("#8B1E1E") // Dark red for upcoming reminder countdown
+    private val COLOR_REMINDER = Color.parseColor("#F87171") // Light red countdown matching active
     private val COLOR_ACTIVE = Color.parseColor("#F87171")   // Light red for running session countdown
 
     /** Notification surface colors matching custom layouts */
     private val COLOR_SURFACE_ACTIVE = Color.parseColor("#1E2235")
-    private val COLOR_SURFACE_REMINDER = Color.parseColor("#7C8CA6")
+    private val COLOR_SURFACE_REMINDER = Color.parseColor("#1E2235")
 
     @Volatile
     var latestActiveNotification: Notification? = null
@@ -39,15 +39,35 @@ object SessionNotifications {
     private fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
+
         if (manager.getNotificationChannel(CHANNEL_REMINDER) == null) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_REMINDER, "Session Reminders", NotificationManager.IMPORTANCE_DEFAULT)
-            )
+            val reminderChannel = NotificationChannel(
+                CHANNEL_REMINDER,
+                "Session Reminders",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                setShowBadge(false)
+                enableLights(false)
+                enableVibration(false)
+                setSound(null, null)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+            manager.createNotificationChannel(reminderChannel)
         }
+
         if (manager.getNotificationChannel(CHANNEL_ACTIVE) == null) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ACTIVE, "Session Running", NotificationManager.IMPORTANCE_HIGH)
-            )
+            val activeChannel = NotificationChannel(
+                CHANNEL_ACTIVE,
+                "Session Running",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                setShowBadge(false)
+                enableLights(false)
+                enableVibration(false)
+                setSound(null, null)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+            manager.createNotificationChannel(activeChannel)
         }
     }
 
@@ -223,6 +243,13 @@ object SessionNotifications {
             .setColorized(true)
             .setContentIntent(openSessionIntent(context, sessionId, id))
 
+        // Eliminate Android 12+ foreground notification appearance delay
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(
+                Notification.FOREGROUND_SERVICE_IMMEDIATE
+            )
+        }
+
         // For upcoming reminder notifications, add a quick Skip action
         if (!isActive) {
             val skipIntent = skipSessionPendingIntent(context, sessionId, id)
@@ -235,6 +262,23 @@ object SessionNotifications {
                     ).build()
                 )
             }
+        }
+
+        // Android 12+: OS can force-dismiss foreground service notifications.
+        // Attach a delete intent so we can immediately repost when this happens.
+        if (isActive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val dismissIntent = Intent(context, NotificationDismissReceiver::class.java).apply {
+                action = "ACTION_ACTIVE_NOTIFICATION_DISMISSED"
+                putExtra("sessionId", sessionId)
+                putExtra("notifId", id)
+            }
+            val dismissPendingIntent = PendingIntent.getBroadcast(
+                context,
+                id + 50000,
+                dismissIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.setDeleteIntent(dismissPendingIntent)
         }
 
         // Fully custom views so our custom surface fills the notification body edge-to-edge
@@ -254,7 +298,7 @@ object SessionNotifications {
         if (isActive) {
             notification.flags = notification.flags or Notification.FLAG_FOREGROUND_SERVICE or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
         } else {
-            notification.flags = notification.flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
+            notification.flags = notification.flags or Notification.FLAG_FOREGROUND_SERVICE or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
         }
         return notification
     }

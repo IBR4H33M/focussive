@@ -92,10 +92,33 @@ export default function RulesScreen() {
     });
   }, [allSessions]);
 
+const WEEKDAY_ITEMS = [
+  { key: 'monday', label: 'Mon' },
+  { key: 'tuesday', label: 'Tue' },
+  { key: 'wednesday', label: 'Wed' },
+  { key: 'thursday', label: 'Thu' },
+  { key: 'friday', label: 'Fri' },
+  { key: 'saturday', label: 'Sat' },
+  { key: 'sunday', label: 'Sun' },
+];
+
+function isDayActiveForSession(dayKey: string, session: Session): boolean {
+  if (session.schedule === 'today') {
+    const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return dayMap[new Date().getDay()] === dayKey;
+  }
+  const days = session.schedule_days;
+  if (!Array.isArray(days) || days.length === 0) {
+    return session.schedule === 'recurring';
+  }
+  const lowerDays = days.map(d => String(d).toLowerCase());
+  return lowerDays.some(d => d.startsWith(dayKey.slice(0, 3)));
+}
+
   function getStatusBadge(status: string) {
     switch (status) {
       case SessionStatus.ACTIVE:
-        return { label: 'Active', bg: `${theme.accent}25`, text: theme.accent, icon: 'radio-button-on' };
+        return { label: 'Active', bg: 'rgba(34, 197, 94, 0.16)', text: '#22C55E', icon: 'radio-button-on' };
       case SessionStatus.SCHEDULED:
         return { label: 'Scheduled', bg: `${theme.accent}15`, text: theme.textSecondary, icon: 'calendar-outline' };
       case SessionStatus.COMPLETED:
@@ -523,39 +546,99 @@ export default function RulesScreen() {
                       </Text>
                     </View>
 
-                    {/* Schedule Type */}
-                    <View style={styles.sessionMetaRow}>
-                      <Ionicons name="repeat-outline" size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
-                      <Text style={[styles.sessionMetaText, { color: theme.textSecondary }]}>
-                        {session.schedule === 'today'
-                          ? 'Runs Today'
-                          : session.schedule === 'recurring'
-                          ? `Recurring (${Array.isArray(session.schedule_days) ? session.schedule_days.join(', ') : 'Daily'})`
-                          : `Scheduled dates (${Array.isArray(session.schedule_days) ? session.schedule_days.length : 0})`}
-                      </Text>
+                    {/* Weekday strip (compact connected days, removing "recurring" wording) */}
+                    <View style={styles.cardDaysRow}>
+                      {WEEKDAY_ITEMS.map((day, idx) => {
+                        const isSelected = isDayActiveForSession(day.key, session);
+                        const prevSelected = idx > 0 && isDayActiveForSession(WEEKDAY_ITEMS[idx - 1].key, session);
+                        const nextSelected = idx < WEEKDAY_ITEMS.length - 1 && isDayActiveForSession(WEEKDAY_ITEMS[idx + 1].key, session);
+
+                        return (
+                          <View
+                            key={day.key}
+                            style={[
+                              styles.cardDayBtn,
+                              {
+                                backgroundColor: isSelected
+                                  ? theme.accent
+                                  : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                                borderTopLeftRadius: prevSelected ? 0 : 5,
+                                borderBottomLeftRadius: prevSelected ? 0 : 5,
+                                borderTopRightRadius: nextSelected ? 0 : 5,
+                                borderBottomRightRadius: nextSelected ? 0 : 5,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.cardDayBtnText,
+                                {
+                                  color: isSelected ? '#FFFFFF' : theme.textSecondary,
+                                  fontWeight: isSelected ? '700' : '400',
+                                },
+                              ]}
+                            >
+                              {day.label}
+                            </Text>
+                          </View>
+                        );
+                      })}
                     </View>
 
-                    {/* Footer: Focus pills & Created At */}
+                    {/* Footer: Focus pills (both Mobile & Browser, active filled dark, breaks removed) & Created At */}
                     <View style={styles.sessionCardFooter}>
                       <View style={styles.focusPills}>
-                        {session.mobile_focus && (
-                          <View style={[styles.focusPill, { backgroundColor: `${theme.accent}15` }]}>
-                            <Ionicons name="phone-portrait-outline" size={10} color={theme.accent} style={{ marginRight: 3 }} />
-                            <Text style={[styles.focusPillText, { color: theme.accent }]}>Mobile</Text>
-                          </View>
-                        )}
-                        {session.browser_focus && (
-                          <View style={[styles.focusPill, { backgroundColor: `${theme.accent}15` }]}>
-                            <Ionicons name="globe-outline" size={10} color={theme.accent} style={{ marginRight: 3 }} />
-                            <Text style={[styles.focusPillText, { color: theme.accent }]}>Web</Text>
-                          </View>
-                        )}
-                        {session.allow_breaks && (
-                          <View style={[styles.focusPill, { backgroundColor: `${theme.textSecondary}15` }]}>
-                            <Ionicons name="cafe-outline" size={10} color={theme.textSecondary} style={{ marginRight: 3 }} />
-                            <Text style={[styles.focusPillText, { color: theme.textSecondary }]}>Breaks</Text>
-                          </View>
-                        )}
+                        <View
+                          style={[
+                            styles.focusPill,
+                            {
+                              backgroundColor: session.mobile_focus
+                                ? (isDark ? '#2D324D' : '#1E2235')
+                                : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="phone-portrait-outline"
+                            size={10}
+                            color={session.mobile_focus ? '#FFFFFF' : theme.textSecondary}
+                            style={{ marginRight: 3 }}
+                          />
+                          <Text
+                            style={[
+                              styles.focusPillText,
+                              { color: session.mobile_focus ? '#FFFFFF' : theme.textSecondary },
+                            ]}
+                          >
+                            Mobile
+                          </Text>
+                        </View>
+
+                        <View
+                          style={[
+                            styles.focusPill,
+                            {
+                              backgroundColor: session.browser_focus
+                                ? (isDark ? '#2D324D' : '#1E2235')
+                                : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="globe-outline"
+                            size={10}
+                            color={session.browser_focus ? '#FFFFFF' : theme.textSecondary}
+                            style={{ marginRight: 3 }}
+                          />
+                          <Text
+                            style={[
+                              styles.focusPillText,
+                              { color: session.browser_focus ? '#FFFFFF' : theme.textSecondary },
+                            ]}
+                          >
+                            Browser
+                          </Text>
+                        </View>
                       </View>
                       <Text style={[styles.sessionDateText, { color: theme.textSecondary }]}>
                         Created {formatDate(session.created_at)}
@@ -1026,6 +1109,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '400',
   },
+  cardDaysRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  cardDayBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardDayBtnText: {
+    fontSize: 10,
+    letterSpacing: 0.2,
+  },
   sessionCardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1040,12 +1139,12 @@ const styles = StyleSheet.create({
   focusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   focusPillText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
   sessionDateText: {

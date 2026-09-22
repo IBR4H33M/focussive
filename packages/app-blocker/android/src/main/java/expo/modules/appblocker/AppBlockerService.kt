@@ -243,4 +243,8 @@ class AppBlockerService : Service() {
             violationsText = "Monitoring active"
         )
     }
+
+    fun isSessionActive(): Boolean {
+        return isMonitoring && currentSessionId != null
+    }
 }

@@ -10,10 +10,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
-import type { QualityTierInfo } from '@/utils/gamification';
+import { TIER_HERO_BADGES, type QualityTierInfo } from '@/utils/gamification';
 
 interface SessionCompleteCardProps {
   visible: boolean;
@@ -77,19 +78,11 @@ export default function SessionCompleteCard({
           </Text>
 
           {/* Tier Crest Emblem */}
-          <View
-            style={[
-              styles.emblemContainer,
-              {
-                backgroundColor: tier.bgColor,
-                borderColor: tier.borderColor,
-              },
-            ]}
-          >
-            <Ionicons
-              name={tier.icon as any}
-              size={42}
-              color={tier.color}
+          <View style={styles.emblemContainer}>
+            <Image
+              source={tier.heroImage || TIER_HERO_BADGES[tier.key]}
+              style={styles.emblemImage}
+              resizeMode="contain"
             />
           </View>
 
@@ -216,13 +209,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emblemContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 2,
+    width: 96,
+    height: 96,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
+  },
+  emblemImage: {
+    width: 92,
+    height: 92,
   },
   tierBadge: {
     paddingHorizontal: 12,
