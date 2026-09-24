@@ -106,7 +106,7 @@ export default function ManageHistoryScreen() {
         <TouchableOpacity
           onPress={() => confirmDeleteOne(item)}
           disabled={isDeleting}
-          style={[styles.deleteBtn, { backgroundColor: theme.danger, opacity: isDeleting ? 0.4 : 1 }]}
+          style={[styles.deleteBtn, { backgroundColor: theme.danger, borderWidth: 2, borderColor: theme.dangerBorder, opacity: isDeleting ? 0.4 : 1 }]}
         >
           <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
         </TouchableOpacity>
@@ -126,7 +126,7 @@ export default function ManageHistoryScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {history.length > 0 && (
         <TouchableOpacity
-          style={[styles.deleteAllBtn, { backgroundColor: theme.danger, borderColor: theme.danger }]}
+          style={[styles.deleteAllBtn, { backgroundColor: theme.danger, borderWidth: 2, borderColor: theme.dangerBorder }]}
           onPress={confirmDeleteAll}
         >
           <Ionicons name="trash-outline" size={16} color="#FFFFFF" />

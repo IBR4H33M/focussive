@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { MOTIVATIONAL_QUOTES } from '@focussive/shared';
 import { userApi } from '@/utils/api';
+import { resolveBlockImageSource } from '@/utils/blockImages';
 
 type OverlayScreen = 'idle' | 'selectBreak' | 'selectAllow';
 
@@ -66,8 +67,9 @@ export default function ViolationOverlay({
           if (typeof data.overlay_quote_enabled === 'boolean') {
             setQuoteEnabled(data.overlay_quote_enabled);
           }
+          const isUserPremium = data.subscription_tier === 'premium' && (data.subscription_status === 'active' || data.subscription_status === 'trial');
           if (typeof data.overlay_gif_enabled === 'boolean') {
-            setGifEnabled(data.overlay_gif_enabled);
+            setGifEnabled(data.overlay_gif_enabled && isUserPremium);
           }
           if (data.overlay_gif_url) {
             setGifUrl(data.overlay_gif_url);
@@ -100,10 +102,10 @@ export default function ViolationOverlay({
                 You're using {name} during a focus session
               </Text>
 
-              {/* Custom GIF if enabled */}
-              {gifEnabled && gifUrl ? (
+              {/* Block screen image if enabled */}
+              {gifEnabled && resolveBlockImageSource(gifUrl) ? (
                 <Image
-                  source={{ uri: gifUrl }}
+                  source={resolveBlockImageSource(gifUrl)!}
                   style={styles.overlayGif}
                   resizeMode="contain"
                 />

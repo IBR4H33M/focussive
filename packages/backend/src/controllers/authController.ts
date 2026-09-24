@@ -384,10 +384,12 @@ export async function qrLogin(req: Request, res: Response): Promise<void> {
     throw new AppError('QR code is required', 400, 'VALIDATION_ERROR');
   }
 
+  const cleanCode = String(code).trim().toUpperCase();
+
   const { data: qrCode, error } = await supabase
     .from('qr_codes')
     .select('*')
-    .eq('code', code)
+    .ilike('code', cleanCode)
     .eq('used', false)
     .single();
 

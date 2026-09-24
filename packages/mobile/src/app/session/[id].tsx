@@ -537,7 +537,7 @@ export default function SessionDetailScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.deleteBtn, { backgroundColor: theme.danger, borderWidth: 0 }]}
+              style={[styles.deleteBtn, { backgroundColor: theme.danger, borderWidth: 2, borderColor: theme.dangerBorder }]}
               onPress={handleDelete}
               activeOpacity={0.8}
             >

@@ -14,6 +14,7 @@ export interface ThemeColors {
   accentDark: string;
   border: string;
   danger: string;
+  dangerBorder: string;
   dangerBg: string;
   white: string;
   card: string;
@@ -36,8 +37,9 @@ export const lightTheme: ThemeColors = {
   accent: '#587042',
   accentDark: '#3D5730',
   border: '#C9D0B6',
-  danger: '#DC2626',
-  dangerBg: 'rgba(220, 38, 38, 0.12)',
+  danger: '#8B1E1E',
+  dangerBorder: '#5B1212',
+  dangerBg: 'rgba(139, 30, 30, 0.14)',
   white: '#FFFFFF',
   card: '#FFFFFF',
   island: '#425432',
@@ -59,8 +61,9 @@ export const darkTheme: ThemeColors = {
   accent: '#8BA794',
   accentDark: '#5D6E75',
   border: '#5D6E75',
-  danger: '#EF4444',
-  dangerBg: 'rgba(239, 68, 68, 0.18)',
+  danger: '#8B1E1E',
+  dangerBorder: '#5B1212',
+  dangerBg: 'rgba(139, 30, 30, 0.22)',
   white: '#FFFFFF',
   card: '#5d6e75',
   island: '#6C8273',

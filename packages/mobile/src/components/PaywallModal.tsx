@@ -169,6 +169,17 @@ export default function PaywallModal() {
                   </Text>
                 </View>
               </View>
+
+              <View style={styles.featureDivider} />
+
+              <View style={styles.featureItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.featureTitle, { color: theme.text }]}>Block Screen Images & GIFs</Text>
+                  <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
+                    Personalize your block screen with curated presets or custom images.
+                  </Text>
+                </View>
+              </View>
             </View>
 
             {/* Plan Cards */}

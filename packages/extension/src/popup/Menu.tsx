@@ -74,18 +74,22 @@ const styles: Record<string, React.CSSProperties> = {
   footer: {
     padding: '16px 20px',
     borderTop: '1px solid #333',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoutBtn: {
-    width: '100%',
-    padding: '12px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: '10px 16px',
     background: 'none',
-    border: '1px solid #DC3545',
-    borderRadius: 8,
-    color: '#DC3545',
-    fontSize: 14,
-    fontWeight: 500,
+    border: 'none',
+    color: '#8B1E1E',
+    fontSize: 16,
+    fontWeight: 600,
     cursor: 'pointer',
-    textAlign: 'center' as const,
   },
 };
 
@@ -131,7 +135,21 @@ export default function Menu({ onClose, onLogout }: MenuProps) {
 
         <div style={styles.footer}>
           <button style={styles.logoutBtn} onClick={handleLogout}>
-            Log Out
+            <span>Log Out</span>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#8B1E1E"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
           </button>
         </div>
       </div>

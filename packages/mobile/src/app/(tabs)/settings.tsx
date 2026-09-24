@@ -26,6 +26,11 @@ import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { userApi, sessionApi, deviceApi } from '@/utils/api';
 import { uploadImageToCloudinary } from '@/utils/cloudinary';
+import {
+  DEFAULT_BLOCK_IMAGES,
+  resolveBlockImageSource,
+  isDefaultBlockImage,
+} from '@/utils/blockImages';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -489,23 +494,55 @@ export default function SettingsScreen() {
   }
 
   async function handleToggleGif(val: boolean) {
+    if (!isPremium) {
+      openPaywall('block_screen_image');
+      return;
+    }
     if (val && !gifUrl) {
-      handlePickGif();
+      const defaultId = DEFAULT_BLOCK_IMAGES[0].id;
+      setGifUrl(defaultId);
+      setGifEnabled(true);
+      try {
+        await userApi.updateProfile({ overlay_gif_enabled: true, overlay_gif_url: defaultId });
+      } catch (error) {
+        Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update image preference');
+      }
       return;
     }
     setGifEnabled(val);
     try {
       await userApi.updateProfile({ overlay_gif_enabled: val });
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update GIF preference');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update image preference');
+    }
+  }
+
+  async function handleSelectBlockImage(selectedId: string) {
+    if (!isPremium) {
+      openPaywall('block_screen_image');
+      return;
+    }
+    setGifUrl(selectedId);
+    setGifEnabled(true);
+    try {
+      await userApi.updateProfile({
+        overlay_gif_url: selectedId,
+        overlay_gif_enabled: true,
+      });
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update block screen image');
     }
   }
 
   async function handlePickGif() {
+    if (!isPremium) {
+      openPaywall('block_screen_image');
+      return;
+    }
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Please grant photo library access to upload a custom GIF.');
+        Alert.alert('Permission Denied', 'Please grant photo library access to upload a custom image.');
         return;
       }
 
@@ -525,10 +562,10 @@ export default function SettingsScreen() {
           overlay_gif_enabled: true,
         });
         fetchProfile();
-        Alert.alert('Success', 'Custom overlay GIF updated successfully!');
+        Alert.alert('Success', 'Custom overlay image updated successfully!');
       }
     } catch (error) {
-      Alert.alert('Upload Error', error instanceof Error ? error.message : 'Failed to upload GIF');
+      Alert.alert('Upload Error', error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setUploadingGif(false);
     }
@@ -832,13 +869,18 @@ export default function SettingsScreen() {
 
           <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 
-          {/* Block Screen GIF */}
-          <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+          {/* Block Screen Image */}
+          <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 12 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={[styles.menuText, { color: theme.text }]}>Block screen gif</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={[styles.menuText, { color: theme.text }]}>Block screen image</Text>
+                  <View style={[styles.proBadge, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.proBadgeText}>PRO</Text>
+                  </View>
+                </View>
                 <Text style={[styles.reminderSubtext, { color: theme.textSecondary, marginTop: 2 }]}>
-                  Show animated GIF on blocker overlay
+                  Show preset or custom image on blocker overlay
                 </Text>
               </View>
               <Switch
@@ -849,29 +891,133 @@ export default function SettingsScreen() {
               />
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
-              {gifUrl ? (
-                <Image
-                  source={{ uri: gifUrl }}
-                  style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: theme.card }}
-                />
-              ) : null}
-              <TouchableOpacity
-                style={[styles.uploadGifBtn, { backgroundColor: `${theme.accent}20` }]}
-                onPress={handlePickGif}
-                disabled={uploadingGif}
+            {/* Presets and Custom selector */}
+            <View style={{ marginTop: 2 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
               >
-                {uploadingGif ? (
-                  <ActivityIndicator size="small" color={theme.accent} />
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="cloud-upload-outline" size={16} color={theme.accent} />
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: theme.accent }}>
-                      {gifUrl ? 'Change GIF' : 'Upload GIF'}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                {/* 3 Default images */}
+                {DEFAULT_BLOCK_IMAGES.map((img) => {
+                  const isSelected =
+                    gifEnabled &&
+                    (gifUrl === img.id || (gifUrl != null && gifUrl.includes(img.id.replace('default:', ''))));
+                  return (
+                    <TouchableOpacity
+                      key={img.id}
+                      activeOpacity={0.7}
+                      onPress={() => handleSelectBlockImage(img.id)}
+                      style={[
+                        styles.blockImageCard,
+                        {
+                          borderColor: isSelected ? theme.accent : theme.border,
+                          backgroundColor: theme.card,
+                          borderWidth: isSelected ? 2 : 1,
+                        },
+                      ]}
+                    >
+                      <Image
+                        source={img.source}
+                        style={styles.blockImageThumbnail}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.blockImageLabelContainer}>
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.blockImageCardText,
+                            {
+                              color: isSelected ? theme.accent : theme.text,
+                              fontWeight: isSelected ? '700' : '500',
+                            },
+                          ]}
+                        >
+                          {img.title}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={[styles.blockImageCheckmark, { backgroundColor: theme.accent }]}>
+                          <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* Custom Image Card if user uploaded one */}
+                {gifUrl && !isDefaultBlockImage(gifUrl) ? (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => handleSelectBlockImage(gifUrl)}
+                    style={[
+                      styles.blockImageCard,
+                      {
+                        borderColor: gifEnabled ? theme.accent : theme.border,
+                        backgroundColor: theme.card,
+                        borderWidth: gifEnabled ? 2 : 1,
+                      },
+                    ]}
+                  >
+                    <Image
+                      source={{ uri: gifUrl }}
+                      style={styles.blockImageThumbnail}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.blockImageLabelContainer}>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.blockImageCardText,
+                          {
+                            color: gifEnabled ? theme.accent : theme.text,
+                            fontWeight: gifEnabled ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        Custom
+                      </Text>
+                    </View>
+                    {gifEnabled && (
+                      <View style={[styles.blockImageCheckmark, { backgroundColor: theme.accent }]}>
+                        <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ) : null}
+
+                {/* Upload Custom Card / Button */}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={handlePickGif}
+                  disabled={uploadingGif}
+                  style={[
+                    styles.blockImageCard,
+                    styles.blockImageUploadCard,
+                    {
+                      borderColor: theme.border,
+                      borderStyle: 'dashed',
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                    },
+                  ]}
+                >
+                  {uploadingGif ? (
+                    <ActivityIndicator size="small" color={theme.accent} />
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload-outline" size={20} color={theme.accent} />
+                      <Text
+                        style={[
+                          styles.blockImageCardText,
+                          { color: theme.accent, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+                        ]}
+                      >
+                        {gifUrl && !isDefaultBlockImage(gifUrl) ? 'Replace' : 'Upload'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
             </View>
           </View>
         </View>
@@ -1140,26 +1286,24 @@ export default function SettingsScreen() {
             <Text style={[styles.menuText, { color: theme.text }]}>Manage History</Text>
             <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
           </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Actions */}
-      <View style={styles.section}>
-        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
-          <TouchableOpacity style={styles.cardItem} onPress={handleLogout} activeOpacity={0.7}>
-            <Text style={[styles.logoutText, { color: theme.danger }]}>Log Out</Text>
-            <Ionicons name="log-out-outline" size={18} color={theme.danger} />
-          </TouchableOpacity>
 
           <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 
           <View style={{ padding: 12 }}>
-            <TouchableOpacity style={[styles.deleteAccountBtn, { backgroundColor: theme.danger }]} onPress={handleDeleteAccount} activeOpacity={0.8}>
+            <TouchableOpacity style={[styles.deleteAccountBtn, { backgroundColor: theme.danger, borderWidth: 2, borderColor: theme.dangerBorder }]} onPress={handleDeleteAccount} activeOpacity={0.8}>
               <Ionicons name="trash-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
               <Text style={styles.deleteAccountText}>Delete Account</Text>
             </TouchableOpacity>
           </View>
         </View>
+      </View>
+
+      {/* Standalone Logout */}
+      <View style={styles.standaloneLogoutContainer}>
+        <TouchableOpacity style={styles.standaloneLogoutBtn} onPress={handleLogout} activeOpacity={0.7}>
+          <Text style={[styles.logoutText, { color: theme.danger }]}>Log Out</Text>
+          <Ionicons name="log-out-outline" size={18} color={theme.danger} />
+        </TouchableOpacity>
       </View>
 
       <Text style={[styles.version, { color: theme.textSecondary }]}>Focussive v1.0.0</Text>
@@ -1479,7 +1623,21 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   menuText: { fontSize: 16, fontWeight: '300' },
-  logoutText: { fontSize: 16, fontWeight: '500' },
+  logoutText: { fontSize: 16, fontWeight: '600' },
+  standaloneLogoutContainer: {
+    marginTop: 20,
+    marginBottom: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  standaloneLogoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
   deleteAccountBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1571,6 +1729,46 @@ const styles = StyleSheet.create({
   drivingForcesBtnText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  blockImageCard: {
+    width: 86,
+    height: 94,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blockImageThumbnail: {
+    width: '100%',
+    height: 64,
+  },
+  blockImageLabelContainer: {
+    height: 28,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  blockImageCardText: {
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  blockImageCheckmark: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  blockImageUploadCard: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
   },
 });
 

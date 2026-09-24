@@ -18,7 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/utils/theme';
 import { authApi, deviceApi } from '@/utils/api';
-import QRCode from 'react-native-qrcode-svg';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 interface ExtensionDevice {
   id: string;
@@ -43,15 +43,18 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
   const [connected, setConnected] = useState(false);
   const [device, setDevice] = useState<ExtensionDevice | null>(null);
 
-  // Tab: 'scan' (camera/PIN to approve extension) | 'code' (mobile code to type in extension) | 'qr' (show QR on mobile)
-  const [tab, setTab] = useState<'scan' | 'code' | 'qr'>('scan');
+  // Tab: 'scan' (Scan QR Code from Extension) | 'code' (6-char One-Time Code)
+  const [tab, setTab] = useState<'scan' | 'code'>('scan');
 
-  // Scanner / PIN approval state
+  // Within 'scan' tab: 'camera' | 'pin'
+  const [scanMode, setScanMode] = useState<'camera' | 'pin'>('camera');
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [pinInput, setPinInput] = useState('');
   const [approving, setApproving] = useState(false);
   const [approvalError, setApprovalError] = useState('');
+  const isProcessingScanRef = useRef(false);
 
-  // Mobile code generation state
+  // Mobile 6-character code state
   const [mobileCode, setMobileCode] = useState<string | null>(null);
   const [codeTimeLeft, setCodeTimeLeft] = useState(0);
   const [generatingCode, setGeneratingCode] = useState(false);
@@ -59,7 +62,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
   // Unpairing state
   const [unpairing, setUnpairing] = useState(false);
 
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch extension connection status
   const fetchStatus = useCallback(async () => {
@@ -82,20 +85,23 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
     if (visible) {
       setLoading(true);
       fetchStatus();
-      // Poll every 5s while modal is open
-      pollIntervalRef.current = setInterval(fetchStatus, 5000);
+      // Poll every 4 seconds while modal is open
+      pollIntervalRef.current = setInterval(fetchStatus, 4000);
     } else {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
+      isProcessingScanRef.current = false;
+      setApprovalError('');
+      setPinInput('');
     }
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, [visible, fetchStatus]);
 
-  // Generate mobile code
+  // Generate 6-character mobile code
   const generateMobileCode = useCallback(async () => {
     setGeneratingCode(true);
     try {
@@ -110,12 +116,12 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
   }, []);
 
   useEffect(() => {
-    if (visible && !paired && (tab === 'code' || tab === 'qr') && !mobileCode) {
+    if (visible && !paired && tab === 'code' && !mobileCode) {
       generateMobileCode();
     }
   }, [visible, paired, tab, mobileCode, generateMobileCode]);
 
-  // Mobile code countdown timer
+  // Code countdown timer
   useEffect(() => {
     if (codeTimeLeft <= 0) return;
     const t = setInterval(() => {
@@ -130,7 +136,32 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
     return () => clearInterval(t);
   }, [codeTimeLeft]);
 
-  // Handle PIN / Code approval
+  // Handle Camera Barcode Scanned
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    if (isProcessingScanRef.current || approving) return;
+    isProcessingScanRef.current = true;
+
+    try {
+      let pin = data.trim();
+      if (pin.startsWith('focussive:pair:')) {
+        pin = pin.replace('focussive:pair:', '').trim();
+      }
+      setApproving(true);
+      setApprovalError('');
+      await authApi.pairingApprove({ code: data, pin });
+      await fetchStatus();
+      Alert.alert('Success', 'Browser extension connected successfully!');
+    } catch (err: any) {
+      setApprovalError(err?.message || 'Invalid or expired QR code');
+      setTimeout(() => {
+        isProcessingScanRef.current = false;
+      }, 2500);
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  // Handle PIN Approval
   async function handleApprovePin() {
     const trimmed = pinInput.trim();
     if (!trimmed) {
@@ -229,36 +260,33 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                CONNECTED VIEW (Extension is Paired)
             ═════════════════════════════════════════════════════════ */
             <ScrollView contentContainerStyle={styles.contentScroll} showsVerticalScrollIndicator={false}>
-              {/* Status Header Badge */}
-              <View style={[
-                styles.statusBanner,
-                { backgroundColor: connected ? '#10B98115' : '#F59E0B15', borderColor: connected ? '#10B98140' : '#F59E0B40' }
-              ]}>
-                <View style={[styles.statusDot, { backgroundColor: connected ? '#10B981' : '#F59E0B' }]} />
-                <View style={{ flex: 1 }}>
+              {/* Status Header (No container) */}
+              <View style={styles.statusSection}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <View style={[styles.statusDot, { backgroundColor: connected ? '#10B981' : '#F59E0B' }]} />
                   <Text style={[styles.statusTitle, { color: connected ? '#10B981' : '#F59E0B' }]}>
                     {connected ? 'Connected & Actively Monitoring' : 'Paired (Browser Offline or Inactive)'}
                   </Text>
-                  <Text style={[styles.statusSubtitle, { color: theme.textSecondary }]}>
-                    {connected
-                      ? 'The extension is actively pinging and enforcing session limits.'
-                      : 'Extension background ping has not been received in the last 60 seconds.'}
-                  </Text>
                 </View>
+                <Text style={[styles.statusSubtitle, { color: theme.textSecondary }]}>
+                  {connected
+                    ? 'The extension is actively pinging and ready to block distracting sites.'
+                    : 'Extension background ping has not been received in the last 60 seconds.'}
+                </Text>
               </View>
 
-              {/* Device Details Card */}
-              <View style={[styles.detailsCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+              {/* Device Details (No container) */}
+              <View style={styles.detailsSection}>
                 <Text style={[styles.detailsSectionTitle, { color: theme.textSecondary }]}>DEVICE DETAILS</Text>
 
-                <View style={styles.detailRow}>
+                <View style={[styles.detailRow, { borderBottomColor: theme.border }]}>
                   <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Device Name</Text>
                   <Text style={[styles.detailValue, { color: theme.text }]}>
                     {device?.device_name || 'Browser Extension'}
                   </Text>
                 </View>
 
-                <View style={styles.detailRow}>
+                <View style={[styles.detailRow, { borderBottomColor: theme.border }]}>
                   <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Browser & OS</Text>
                   <Text style={[styles.detailValue, { color: theme.text }]}>
                     {device?.device_info?.browser || 'Browser'} on {device?.device_info?.os || 'Desktop'}
@@ -266,7 +294,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                 </View>
 
                 {device?.device_info?.ip && (
-                  <View style={styles.detailRow}>
+                  <View style={[styles.detailRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>IP Address</Text>
                     <Text style={[styles.detailValue, { color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }]}>
                       {device.device_info.ip}
@@ -274,7 +302,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                   </View>
                 )}
 
-                <View style={styles.detailRow}>
+                <View style={[styles.detailRow, { borderBottomColor: theme.border }]}>
                   <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Last Active</Text>
                   <Text style={[styles.detailValue, { color: theme.text }]}>
                     {formatLastSeen(device?.last_seen_at)}
@@ -299,135 +327,213 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                 activeOpacity={0.8}
               >
                 {unpairing ? (
-                  <ActivityIndicator size="small" color="#EF4444" />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <>
-                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                    <Text style={styles.unpairBtnText}>Unpair Extension</Text>
-                  </>
+                  <Text style={styles.unpairBtnText}>Unpair Extension</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
           ) : (
             /* ═════════════════════════════════════════════════════════
-               NOT CONNECTED VIEW (Pairing Options)
+               NOT CONNECTED VIEW (2 Tabs: Scan QR Code & One-Time Code)
             ═════════════════════════════════════════════════════════ */
             <ScrollView contentContainerStyle={styles.contentScroll} showsVerticalScrollIndicator={false}>
-              {/* Segmented Tabs */}
+              {/* Segmented Tabs (2 Equal Buttons, Never Overlapping) */}
               <View style={[styles.tabBar, { backgroundColor: theme.background }]}>
                 <TouchableOpacity
                   style={[styles.tabItem, tab === 'scan' && [styles.tabItemActive, { backgroundColor: theme.card }]]}
-                  onPress={() => setTab('scan')}
+                  onPress={() => { setTab('scan'); setApprovalError(''); }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="qr-code" size={16} color={tab === 'scan' ? theme.accent : theme.textSecondary} />
+                  <Ionicons name="qr-code-outline" size={16} color={tab === 'scan' ? theme.accent : theme.textSecondary} />
                   <Text style={[styles.tabText, { color: tab === 'scan' ? theme.text : theme.textSecondary }]}>
-                    Approve PIN / QR
+                    Scan QR Code
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[styles.tabItem, tab === 'code' && [styles.tabItemActive, { backgroundColor: theme.card }]]}
-                  onPress={() => setTab('code')}
+                  onPress={() => { setTab('code'); setApprovalError(''); }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="keypad" size={16} color={tab === 'code' ? theme.accent : theme.textSecondary} />
+                  <Ionicons name="keypad-outline" size={16} color={tab === 'code' ? theme.accent : theme.textSecondary} />
                   <Text style={[styles.tabText, { color: tab === 'code' ? theme.text : theme.textSecondary }]}>
                     One-Time Code
                   </Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.tabItem, tab === 'qr' && [styles.tabItemActive, { backgroundColor: theme.card }]]}
-                  onPress={() => setTab('qr')}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="barcode-outline" size={16} color={tab === 'qr' ? theme.accent : theme.textSecondary} />
-                  <Text style={[styles.tabText, { color: tab === 'qr' ? theme.text : theme.textSecondary }]}>
-                    Show QR
-                  </Text>
-                </TouchableOpacity>
               </View>
 
-              {/* TAB 1: Approve Extension by entering PIN or Scanning */}
+              {/* TAB 1: Scan QR Code from Desktop Extension */}
               {tab === 'scan' && (
                 <View style={styles.tabContent}>
-                  <Text style={[styles.instructionTitle, { color: theme.text }]}>
-                    Connect via Extension QR / PIN
-                  </Text>
-                  <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
-                    Open the Focussive extension on your browser and click &ldquo;Scan QR Code&rdquo;. Enter the 6-digit PIN displayed on your computer screen below:
-                  </Text>
+                  {scanMode === 'camera' ? (
+                    /* CAMERA SCANNER VIEW */
+                    <View style={styles.cameraSection}>
+                      <Text style={[styles.instructionTitle, { color: theme.text }]}>
+                        Scan Extension QR Code
+                      </Text>
+                      <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
+                        Open the Focussive extension on your browser and point your phone camera at the QR code on your computer screen.
+                      </Text>
 
-                  <View style={styles.pinInputContainer}>
-                    <TextInput
-                      style={[
-                        styles.pinInput,
-                        {
-                          backgroundColor: theme.background,
-                          borderColor: approvalError ? '#EF4444' : theme.border,
-                          color: theme.text,
-                        },
-                      ]}
-                      placeholder="6-DIGIT PIN"
-                      placeholderTextColor={theme.textSecondary}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      value={pinInput}
-                      onChangeText={(t) => {
-                        setPinInput(t);
-                        setApprovalError('');
-                      }}
-                    />
-                  </View>
+                      {!cameraPermission?.granted ? (
+                        <View style={[styles.cameraFallbackBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                          <Ionicons name="camera-outline" size={44} color={theme.textSecondary} />
+                          <Text style={[styles.cameraFallbackTitle, { color: theme.text }]}>
+                            Camera Access Needed
+                          </Text>
+                          <Text style={[styles.cameraFallbackDesc, { color: theme.textSecondary }]}>
+                            Grant camera permission to scan the QR code directly from your computer screen.
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.grantBtn}
+                            onPress={requestCameraPermission}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.grantBtnText}>Grant Camera Permission</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View style={styles.cameraWrapper}>
+                          <CameraView
+                            style={styles.cameraView}
+                            facing="back"
+                            barcodeScannerSettings={{
+                              barcodeTypes: ['qr'],
+                            }}
+                            onBarcodeScanned={handleBarcodeScanned}
+                          />
+                          {/* Viewfinder Target Overlay */}
+                          <View style={styles.viewfinderOverlay}>
+                            <View style={styles.targetFrame}>
+                              <View style={[styles.corner, styles.cornerTL]} />
+                              <View style={[styles.corner, styles.cornerTR]} />
+                              <View style={[styles.corner, styles.cornerBL]} />
+                              <View style={[styles.corner, styles.cornerBR]} />
+                              {approving && (
+                                <ActivityIndicator size="large" color="#FFFFFF" />
+                              )}
+                            </View>
+                          </View>
+                        </View>
+                      )}
 
-                  {approvalError ? (
-                    <Text style={styles.errorText}>{approvalError}</Text>
-                  ) : null}
+                      {approvalError ? (
+                        <Text style={styles.errorText}>{approvalError}</Text>
+                      ) : null}
 
-                  <TouchableOpacity
-                    style={[styles.primaryBtn, { backgroundColor: '#435432', opacity: approving ? 0.6 : 1 }]}
-                    onPress={handleApprovePin}
-                    disabled={approving}
-                    activeOpacity={0.8}
-                  >
-                    {approving ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <>
-                        <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" />
-                        <Text style={styles.primaryBtnText}>Approve & Connect</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                      {/* Button to Switch to PIN Input */}
+                      <TouchableOpacity
+                        style={[styles.switchModeBtn, { borderColor: theme.border }]}
+                        onPress={() => { setScanMode('pin'); setApprovalError(''); }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="keypad-outline" size={16} color={theme.accent} />
+                        <Text style={[styles.switchModeBtnText, { color: theme.accent }]}>
+                          Input QR PIN Instead of Scan
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    /* PIN INPUT VIEW */
+                    <View style={styles.pinSection}>
+                      <Text style={[styles.instructionTitle, { color: theme.text }]}>
+                        Enter Extension QR PIN
+                      </Text>
+                      <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
+                        Look at the Focussive extension on your browser and type the 6-digit PIN displayed right below the QR code:
+                      </Text>
+
+                      <View style={styles.pinInputContainer}>
+                        <TextInput
+                          style={[
+                            styles.pinInput,
+                            {
+                              backgroundColor: theme.background,
+                              borderColor: approvalError ? '#EF4444' : theme.border,
+                              color: theme.text,
+                            },
+                          ]}
+                          placeholder="6-DIGIT PIN"
+                          placeholderTextColor={theme.textSecondary}
+                          keyboardType="number-pad"
+                          maxLength={6}
+                          value={pinInput}
+                          onChangeText={(t) => {
+                            setPinInput(t);
+                            setApprovalError('');
+                          }}
+                          autoFocus
+                        />
+                      </View>
+
+                      {approvalError ? (
+                        <Text style={styles.errorText}>{approvalError}</Text>
+                      ) : null}
+
+                      <TouchableOpacity
+                        style={[styles.primaryBtn, { backgroundColor: '#435432', opacity: approving ? 0.6 : 1 }]}
+                        onPress={handleApprovePin}
+                        disabled={approving}
+                        activeOpacity={0.8}
+                      >
+                        {approving ? (
+                          <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                          <>
+                            <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" />
+                            <Text style={styles.primaryBtnText}>Approve & Connect</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* Button to Switch Back to Camera */}
+                      <TouchableOpacity
+                        style={[styles.switchModeBtn, { borderColor: theme.border }]}
+                        onPress={() => { setScanMode('camera'); setApprovalError(''); }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="camera-outline" size={16} color={theme.accent} />
+                        <Text style={[styles.switchModeBtnText, { color: theme.accent }]}>
+                          Switch to Camera Scanner
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
 
-              {/* TAB 2: Generate One-Time Code from Mobile to Type in Extension */}
+              {/* TAB 2: Generate 6-Character One-Time Code */}
               {tab === 'code' && (
                 <View style={styles.tabContent}>
                   <Text style={[styles.instructionTitle, { color: theme.text }]}>
                     Connect via One-Time Code
                   </Text>
                   <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
-                    Enter this code in the Focussive extension on your browser (under &ldquo;Enter Code&rdquo;):
+                    Open the Focussive extension on your browser, select &ldquo;Enter Code&rdquo;, and type this 6-character code:
                   </Text>
 
                   {generatingCode ? (
-                    <View style={{ padding: 24, alignItems: 'center' }}>
+                    <View style={styles.codeLoadingBox}>
                       <ActivityIndicator size="small" color={theme.accent} />
                     </View>
                   ) : mobileCode && codeTimeLeft > 0 ? (
                     <View style={[styles.codeDisplayCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                      <Text style={[styles.codeString, { color: theme.accent }]}>{mobileCode}</Text>
-                      <Text style={[styles.codeTimer, { color: theme.textSecondary }]}>
-                        Expires in {formatSeconds(codeTimeLeft)}
+                      <Text style={[styles.codeString, { color: theme.accent }]}>
+                        {mobileCode.split('').join(' ')}
                       </Text>
+                      <View style={styles.timerBadge}>
+                        <Ionicons name="time-outline" size={13} color={theme.textSecondary} />
+                        <Text style={[styles.codeTimer, { color: theme.textSecondary }]}>
+                          Expires in {formatSeconds(codeTimeLeft)}
+                        </Text>
+                      </View>
                     </View>
                   ) : (
                     <TouchableOpacity
                       style={[styles.secondaryBtn, { borderColor: theme.border }]}
                       onPress={generateMobileCode}
+                      activeOpacity={0.7}
                     >
                       <Ionicons name="refresh" size={16} color={theme.accent} />
                       <Text style={[styles.secondaryBtnText, { color: theme.accent }]}>Generate New Code</Text>
@@ -435,46 +541,8 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                   )}
 
                   <Text style={[styles.helperNote, { color: theme.textSecondary }]}>
-                    The mobile app is listening. Once you enter this code in the extension, pairing will complete automatically.
+                    Waiting for extension... As soon as you enter this code in your browser, pairing will complete automatically.
                   </Text>
-                </View>
-              )}
-
-              {/* TAB 3: Render Real QR Code on Mobile */}
-              {tab === 'qr' && (
-                <View style={[styles.tabContent, { alignItems: 'center' }]}>
-                  <Text style={[styles.instructionTitle, { color: theme.text }]}>
-                    Mobile Pairing QR Code
-                  </Text>
-                  <Text style={[styles.instructionDesc, { color: theme.textSecondary, textAlign: 'center' }]}>
-                    Scan this code or enter the pairing code in the extension:
-                  </Text>
-
-                  {generatingCode ? (
-                    <View style={{ padding: 40 }}>
-                      <ActivityIndicator size="large" color={theme.accent} />
-                    </View>
-                  ) : mobileCode && codeTimeLeft > 0 ? (
-                    <View style={styles.qrWrapper}>
-                      <QRCode
-                        value={mobileCode}
-                        size={170}
-                        color="#000000"
-                        backgroundColor="#FFFFFF"
-                      />
-                      <Text style={[styles.codeTimer, { color: theme.textSecondary, marginTop: 12 }]}>
-                        Expires in {formatSeconds(codeTimeLeft)}
-                      </Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.secondaryBtn, { borderColor: theme.border, marginTop: 16 }]}
-                      onPress={generateMobileCode}
-                    >
-                      <Ionicons name="refresh" size={16} color={theme.accent} />
-                      <Text style={[styles.secondaryBtnText, { color: theme.accent }]}>Generate QR Code</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               )}
             </ScrollView>
@@ -497,7 +565,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    maxHeight: '85%',
+    maxHeight: '90%',
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   header: {
@@ -505,7 +573,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 18,
     paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(128,128,128,0.2)',
@@ -536,48 +604,39 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
+  statusSection: {
+    paddingVertical: 4,
+    gap: 4,
   },
   statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginTop: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
   },
   statusTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontWeight: '700',
   },
   statusSubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
   },
-  detailsCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    gap: 10,
+  detailsSection: {
+    gap: 2,
+    marginTop: 4,
   },
   detailsSectionTitle: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1,
-    marginBottom: 4,
+    marginBottom: 8,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(128,128,128,0.15)',
   },
   detailLabel: {
     fontSize: 13,
@@ -587,27 +646,27 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   unpairBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    marginTop: 4,
+    backgroundColor: '#8B1E1E',
+    borderWidth: 2.5,
+    borderColor: '#5B1212',
+    marginTop: 12,
   },
   unpairBtnText: {
-    color: '#EF4444',
+    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   tabBar: {
     flexDirection: 'row',
     borderRadius: 10,
     padding: 4,
-    gap: 4,
+    gap: 6,
+    width: '100%',
   },
   tabItem: {
     flex: 1,
@@ -615,7 +674,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 8,
   },
   tabItemActive: {
@@ -625,12 +684,12 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   tabContent: {
     gap: 12,
-    paddingTop: 6,
+    paddingTop: 4,
   },
   instructionTitle: {
     fontSize: 16,
@@ -640,17 +699,121 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  cameraSection: {
+    gap: 14,
+  },
+  cameraFallbackBox: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  cameraFallbackTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  cameraFallbackDesc: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 12,
+  },
+  grantBtn: {
+    marginTop: 6,
+    backgroundColor: '#1C853D',
+    borderWidth: 2,
+    borderColor: '#115926',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  grantBtnText: {
+    color: '#E0F2E9',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  cameraWrapper: {
+    height: 240,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#000',
+  },
+  cameraView: {
+    flex: 1,
+  },
+  viewfinderOverlay: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  targetFrame: {
+    width: 170,
+    height: 170,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  corner: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderColor: '#90EE90',
+  },
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+  },
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+  },
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+  },
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+  },
+  switchModeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  switchModeBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  pinSection: {
+    gap: 12,
+  },
   pinInputContainer: {
     marginTop: 4,
   },
   pinInput: {
-    height: 50,
+    height: 52,
     borderWidth: 1,
     borderRadius: 12,
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     textAlign: 'center',
-    letterSpacing: 6,
+    letterSpacing: 8,
   },
   primaryBtn: {
     height: 48,
@@ -671,20 +834,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
+  codeLoadingBox: {
+    padding: 30,
+    alignItems: 'center',
+  },
   codeDisplayCard: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
-    borderRadius: 14,
+    paddingVertical: 22,
+    paddingHorizontal: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    gap: 6,
+    gap: 8,
     marginVertical: 4,
   },
   codeString: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '800',
-    letterSpacing: 6,
+    letterSpacing: 4,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  timerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
   },
   codeTimer: {
     fontSize: 12,
@@ -707,13 +881,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
     fontStyle: 'italic',
-  },
-  qrWrapper: {
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
   },
 });

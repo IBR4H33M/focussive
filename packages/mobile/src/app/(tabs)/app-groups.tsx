@@ -701,7 +701,7 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                     <TouchableOpacity onPress={() => openEditAppGroup(group)} style={[styles.actionBtn, { backgroundColor: theme.surface }]}>
                       <Ionicons name="create-outline" size={16} color={theme.textSecondary} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => deleteAppGroup(group.id)} style={[styles.actionBtn, { backgroundColor: theme.danger }]}>
+                    <TouchableOpacity onPress={() => deleteAppGroup(group.id)} style={[styles.actionBtn, { backgroundColor: theme.danger, borderWidth: 1.5, borderColor: theme.dangerBorder }]}>
                       <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
@@ -760,7 +760,7 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                     <TouchableOpacity onPress={() => openEditWebsiteGroup(group)} style={[styles.actionBtn, { backgroundColor: theme.surface }]}>
                       <Ionicons name="create-outline" size={16} color={theme.textSecondary} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => deleteWebsiteGroup(group.id)} style={[styles.actionBtn, { backgroundColor: theme.danger }]}>
+                    <TouchableOpacity onPress={() => deleteWebsiteGroup(group.id)} style={[styles.actionBtn, { backgroundColor: theme.danger, borderWidth: 1.5, borderColor: theme.dangerBorder }]}>
                       <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
