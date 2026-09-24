@@ -59,3 +59,17 @@ export async function clearBlockedTimer(url: string): Promise<void> {
   delete timers[url];
   await chrome.storage.local.set({ blocked_timers: timers });
 }
+
+// ─── Device ID ─────────────────────────────────────────────────
+export async function getDeviceId(): Promise<string | null> {
+  const result = await chrome.storage.local.get('focussive_device_id');
+  return result.focussive_device_id || null;
+}
+
+export async function setDeviceId(deviceId: string): Promise<void> {
+  await chrome.storage.local.set({ focussive_device_id: deviceId });
+}
+
+export async function clearDeviceId(): Promise<void> {
+  await chrome.storage.local.remove('focussive_device_id');
+}

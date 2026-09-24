@@ -2,7 +2,7 @@
 // Focussive Extension — Background Service Worker
 // ============================================================
 
-import { sessionApi, violationApi, isAuthenticated } from './utils/api';
+import { sessionApi, violationApi, deviceApi, isAuthenticated } from './utils/api';
 import {
   getActiveSession,
   setActiveSession,
@@ -10,6 +10,7 @@ import {
   setBlockedTimer,
   clearBlockedTimer,
   getBlockedTimers,
+  getDeviceId,
   type StoredSession,
 } from './utils/storage';
 import { isBlockedWebsite } from '@focussive/shared';
@@ -274,16 +275,48 @@ async function handleViolationResponse(msg: ViolationResponseMessage) {
   }
 }
 
+// --- Heartbeat (every 30s) ---
+
+const HEARTBEAT_INTERVAL_MS = 30_000;
+let heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
+
+async function sendHeartbeat() {
+  try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) return;
+    const deviceId = await getDeviceId();
+    await deviceApi.heartbeat(deviceId);
+  } catch (error) {
+    console.error('[Focussive BG] Heartbeat error:', error);
+  }
+}
+
+function startHeartbeat() {
+  if (heartbeatIntervalId) return;
+  sendHeartbeat(); // Immediate first heartbeat
+  heartbeatIntervalId = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+}
+
+function stopHeartbeat() {
+  if (heartbeatIntervalId) {
+    clearInterval(heartbeatIntervalId);
+    heartbeatIntervalId = null;
+  }
+}
+
 // --- Lifecycle ---
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[Focussive] Extension installed');
   startPolling();
+  startHeartbeat();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   startPolling();
+  startHeartbeat();
 });
 
-// Start polling on load
+// Start on load
 startPolling();
+startHeartbeat();

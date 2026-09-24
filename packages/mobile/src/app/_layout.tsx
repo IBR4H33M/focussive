@@ -82,8 +82,9 @@ function RootLayoutContent() {
     if (isLoading) return; // wait until auth state is known
 
     const inAuthGroup = segments[0] === '(auth)';
+    const isExtensionScreen = (segments as string[]).includes('extension-qr');
 
-    if (isAuthenticated && inAuthGroup) {
+    if (isAuthenticated && inAuthGroup && !isExtensionScreen) {
       // User just logged in — send them to the main app
       router.replace('/(tabs)' as never);
     } else if (!isAuthenticated && !inAuthGroup) {
@@ -193,11 +194,7 @@ function RootLayoutContent() {
         <Stack.Screen
           name="session/create"
           options={{
-            headerShown: true,
-            title: '',
-            headerStyle: { backgroundColor: theme.background },
-            headerTintColor: theme.text,
-            headerShadowVisible: false,
+            headerShown: false,
             presentation: 'modal',
           }}
         />

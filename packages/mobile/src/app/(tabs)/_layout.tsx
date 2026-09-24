@@ -68,7 +68,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
         // Active vs inactive colors
         const activeColor = isDark ? '#2F3456' : '#FFFFFF';
-        const inactiveColor = isDark ? 'rgba(47, 52, 86, 0.60)' : 'rgba(255, 255, 255, 0.60)';
+        const inactiveColor = isDark
+          ? 'rgba(255, 255, 255, 0.78)'
+          : 'rgba(255, 255, 255, 0.85)';
         const color = isFocused ? activeColor : inactiveColor;
 
         return (
@@ -84,9 +86,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 style={[
                   styles.activeIndicator,
                   {
-                    backgroundColor: isDark
-                      ? 'rgba(0, 0, 0, 0.22)'
-                      : 'rgba(0, 0, 0, 0.25)',
+                    backgroundColor: isDark ? '#8BA794' : '#587042',
                     borderRadius: ISLAND_RADIUS,
                   },
                 ]}
@@ -105,7 +105,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                   styles.tabLabel,
                   {
                     color,
-                    fontWeight: isFocused ? '700' : '500',
+                    fontWeight: isFocused ? '700' : '600',
                   },
                 ]}
                 numberOfLines={1}
@@ -237,7 +237,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
+    letterSpacing: 0.2,
   },
 });

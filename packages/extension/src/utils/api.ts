@@ -128,16 +128,26 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
 // ─── Auth ──────────────────────────────────────────────────────
 export const authApi = {
   login: (email: string, password: string) =>
-    apiRequest<{ user: unknown; token: string; refresh_token: string }>('/auth/login', {
+    apiRequest<{ user: unknown; token: string; refresh_token: string; device_id: string | null }>('/auth/login', {
       method: 'POST',
-      body: { email, password },
+      body: { email, password, device_type: 'extension' },
     }),
 
   qrLogin: (code: string) =>
-    apiRequest<{ user: unknown; token: string; refresh_token: string }>('/auth/qr-login', {
+    apiRequest<{ user: unknown; token: string; refresh_token: string; device_id: string | null }>('/auth/qr-login', {
       method: 'POST',
       body: { code, device_type: 'extension' },
     }),
+
+  pairingStart: () =>
+    apiRequest<{ pin: string; code: string; expires_in_seconds: number }>('/auth/pairing/start', {
+      method: 'POST',
+    }),
+
+  pairingCheck: (pin: string) =>
+    apiRequest<{ approved: boolean; token?: string; refresh_token?: string; device_id?: string; user?: unknown }>(
+      `/auth/pairing/check?pin=${encodeURIComponent(pin)}`
+    ),
 
   verify: () => apiRequest<{ user: unknown }>('/auth/verify'),
 };
@@ -165,3 +175,25 @@ export const violationApi = {
   create: (body: unknown) =>
     apiRequest('/violations', { method: 'POST', body }),
 };
+
+// ─── Devices ───────────────────────────────────────────────────
+export const deviceApi = {
+  heartbeat: (device_id?: string | null) =>
+    apiRequest('/devices/heartbeat', {
+      method: 'POST',
+      body: {
+        device_id: device_id || undefined,
+        device_info: {
+          browser: navigator.userAgent.includes('Chrome') ? 'Chrome'
+            : navigator.userAgent.includes('Firefox') ? 'Firefox'
+            : navigator.userAgent.includes('Edge') ? 'Edge'
+            : 'Unknown',
+          os: navigator.userAgent.includes('Windows') ? 'Windows'
+            : navigator.userAgent.includes('Mac') ? 'macOS'
+            : navigator.userAgent.includes('Linux') ? 'Linux'
+            : 'Unknown',
+        },
+      },
+    }),
+};
+

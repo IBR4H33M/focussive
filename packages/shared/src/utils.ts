@@ -178,39 +178,62 @@ export const isBlockedWebsite = (url: string, blockedList: string[]): boolean =>
 
 /**
  * Calculates the next upcoming Date when this session will start, or null if it has no future runs.
+ * Fully respects skipped_until and checks all time_slots if present.
  */
 export const getNextSessionOccurrence = (
-  session: { schedule: string; schedule_days?: string[]; start_time: string },
+  session: {
+    schedule: string;
+    schedule_days?: string[];
+    start_time: string;
+    skipped_until?: string | null;
+    time_slots?: Array<{ start_time: string; end_time: string }>;
+  },
   now: Date = new Date()
 ): Date | null => {
-  if (!session.start_time) return null;
-  const [hStr, mStr] = session.start_time.split(":");
-  const h = parseInt(hStr ?? "0", 10);
-  const m = parseInt(mStr ?? "0", 10);
-  if (isNaN(h) || isNaN(m)) return null;
-
-  const schedule = session.schedule;
+  const schedule = (session.schedule || '').toLowerCase();
   const scheduleDays = Array.isArray(session.schedule_days) ? session.schedule_days : [];
+  const skippedUntilTime = session.skipped_until ? new Date(session.skipped_until).getTime() : 0;
+  const effectiveMinTime = Math.max(now.getTime(), skippedUntilTime);
 
-  const makeDate = (baseDate: Date): Date => {
-    const d = new Date(baseDate);
-    d.setHours(h, m, 0, 0);
-    return d;
+  // Collect all slot start times
+  const slotStartTimes: string[] = [];
+  if (Array.isArray(session.time_slots) && session.time_slots.length > 0) {
+    for (const slot of session.time_slots) {
+      if (slot.start_time) slotStartTimes.push(slot.start_time);
+    }
+  }
+  if (slotStartTimes.length === 0 && session.start_time) {
+    slotStartTimes.push(session.start_time);
+  }
+  if (slotStartTimes.length === 0) return null;
+
+  const getSlotOccurrencesOnDate = (baseDate: Date): Date[] => {
+    const dates: Date[] = [];
+    for (const timeStr of slotStartTimes) {
+      const [hStr, mStr] = timeStr.split(':');
+      const h = parseInt(hStr ?? '0', 10);
+      const m = parseInt(mStr ?? '0', 10);
+      if (isNaN(h) || isNaN(m)) continue;
+      const d = new Date(baseDate);
+      d.setHours(h, m, 0, 0);
+      if (d.getTime() > effectiveMinTime) {
+        dates.push(d);
+      }
+    }
+    dates.sort((a, b) => a.getTime() - b.getTime());
+    return dates;
   };
 
-  if (schedule === "today") {
-    const todayOccurrence = makeDate(now);
-    if (todayOccurrence.getTime() > now.getTime()) {
-      return todayOccurrence;
-    }
-    return null;
+  if (schedule === 'today') {
+    const occurrences = getSlotOccurrencesOnDate(now);
+    return occurrences.length > 0 ? occurrences[0] : null;
   }
 
-  if (schedule === "recurring") {
-    const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-    const normalizedDays = scheduleDays.map((d) => d.toLowerCase());
+  if (schedule === 'recurring') {
+    const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const normalizedDays = scheduleDays.map((d) => String(d).toLowerCase());
 
-    for (let offset = 0; offset <= 7; offset++) {
+    for (let offset = 0; offset <= 14; offset++) {
       const candidateDate = new Date(now);
       candidateDate.setDate(now.getDate() + offset);
       const dayName = weekdays[candidateDate.getDay()];
@@ -218,28 +241,31 @@ export const getNextSessionOccurrence = (
       const isScheduledDay = normalizedDays.length === 0 || (dayName ? normalizedDays.includes(dayName) : false);
 
       if (isScheduledDay) {
-        const occurrence = makeDate(candidateDate);
-        if (occurrence.getTime() > now.getTime()) {
-          return occurrence;
+        const occurrences = getSlotOccurrencesOnDate(candidateDate);
+        if (occurrences.length > 0) {
+          return occurrences[0];
         }
       }
     }
     return null;
   }
 
-  if (schedule === "scheduled") {
+  if (schedule === 'scheduled' || schedule === 'later') {
     let earliest: Date | null = null;
     for (const dateStr of scheduleDays) {
-      const [yearStr, monthStr, dayStr] = dateStr.split("-");
-      const y = parseInt(yearStr ?? "0", 10);
-      const mo = parseInt(monthStr ?? "0", 10) - 1;
-      const day = parseInt(dayStr ?? "0", 10);
+      const datePart = String(dateStr).split('T')[0];
+      const [yearStr, monthStr, dayStr] = datePart.split('-');
+      const y = parseInt(yearStr ?? '0', 10);
+      const mo = parseInt(monthStr ?? '0', 10) - 1;
+      const day = parseInt(dayStr ?? '0', 10);
       if (isNaN(y) || isNaN(mo) || isNaN(day)) continue;
 
-      const d = new Date(y, mo, day, h, m, 0, 0);
-      if (d.getTime() > now.getTime()) {
-        if (!earliest || d.getTime() < earliest.getTime()) {
-          earliest = d;
+      const baseDate = new Date(y, mo, day);
+      const occurrences = getSlotOccurrencesOnDate(baseDate);
+      if (occurrences.length > 0) {
+        const first = occurrences[0];
+        if (!earliest || first.getTime() < earliest.getTime()) {
+          earliest = first;
         }
       }
     }
@@ -252,7 +278,13 @@ export const getNextSessionOccurrence = (
 /**
  * Sorts sessions by their next upcoming occurrence in ascending order (closest upcoming first).
  */
-export const sortByNextOccurrence = <T extends { schedule: string; schedule_days?: string[]; start_time: string }>(
+export const sortByNextOccurrence = <T extends {
+  schedule: string;
+  schedule_days?: string[];
+  start_time: string;
+  skipped_until?: string | null;
+  time_slots?: Array<{ start_time: string; end_time: string }>;
+}>(
   sessions: T[],
   now: Date = new Date()
 ): T[] => {

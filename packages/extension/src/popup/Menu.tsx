@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { clearTokens } from '../utils/api';
+import { clearDeviceId } from '../utils/storage';
 
 interface MenuProps {
   onClose: () => void;
@@ -91,6 +92,7 @@ const styles: Record<string, React.CSSProperties> = {
 export default function Menu({ onClose, onLogout }: MenuProps) {
   async function handleLogout() {
     await clearTokens();
+    await clearDeviceId();
     onLogout();
   }
 

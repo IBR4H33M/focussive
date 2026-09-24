@@ -24,7 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/utils/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { userApi, sessionApi } from '@/utils/api';
+import { userApi, sessionApi, deviceApi } from '@/utils/api';
 import { uploadImageToCloudinary } from '@/utils/cloudinary';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +41,7 @@ import { useThemeContext, type ThemePreference } from '@/utils/theme';
 import { getReminderMinutes, setReminderMinutes, scheduleSessionReminders } from '@/utils/sessionReminders';
 import { useSessions } from '@/context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ExtensionModal from '@/components/ExtensionModal';
 
 // ─── TimeFormatToggle ─────────────────────────────────────────────────────────
 function TimeFormatToggle({
@@ -226,6 +227,11 @@ export default function SettingsScreen() {
   const [spinnerChar, setSpinnerChar] = useState('/');
   const spinnerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Extension status
+  const [extensionPaired, setExtensionPaired] = useState(false);
+  const [extensionConnected, setExtensionConnected] = useState(false);
+  const [showExtensionModal, setShowExtensionModal] = useState(false);
+
   const allPermsGranted =
     hasUsageStats === true && hasOverlay === true && hasExactAlarm === true && hasNotifications === true;
   const permsMissing =
@@ -236,6 +242,7 @@ export default function SettingsScreen() {
     loadTimeFormat();
     checkPermissionStatuses();
     loadReminderMinutes();
+    fetchExtensionStatus();
   }, []);
 
   // Scroll to permissions section if coming from permission modal
@@ -253,6 +260,7 @@ export default function SettingsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       checkPermissionStatuses();
+      fetchExtensionStatus();
     }, [])
   );
 
@@ -261,6 +269,7 @@ export default function SettingsScreen() {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
         checkPermissionStatuses();
+        fetchExtensionStatus();
       }
     });
     return () => {
@@ -316,6 +325,16 @@ export default function SettingsScreen() {
     const mins = await getReminderMinutes();
     setReminderMinutesState(mins);
     setReminderInputValue(String(mins));
+  }
+
+  async function fetchExtensionStatus() {
+    try {
+      const result = await deviceApi.extensionStatus();
+      setExtensionPaired(result.paired);
+      setExtensionConnected(result.connected);
+    } catch {
+      // Silently fail — don't block settings
+    }
   }
 
   async function saveReminderMinutes() {
@@ -1037,10 +1056,24 @@ export default function SettingsScreen() {
 
           <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 
-          <TouchableOpacity style={styles.cardItem} onPress={() => router.push('/(auth)/extension-qr' as never)} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.cardItem} onPress={() => setShowExtensionModal(true)} activeOpacity={0.7}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={[styles.menuText, { color: theme.text }]}>Extension</Text>
-              <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
+              {extensionPaired ? (
+                extensionConnected ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
+                    <Text style={{ fontSize: 12, color: theme.accent, fontWeight: '500' }}>Connected</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="ellipse" size={8} color="#F59E0B" />
+                    <Text style={{ fontSize: 12, color: '#F59E0B', fontWeight: '500' }}>Offline</Text>
+                  </View>
+                )
+              ) : (
+                <Text style={{ fontSize: 12, color: theme.textSecondary }}>Not Connected</Text>
+              )}
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
           </TouchableOpacity>
@@ -1393,6 +1426,16 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Extension Management Popup Modal */}
+      <ExtensionModal
+        visible={showExtensionModal}
+        onClose={() => setShowExtensionModal(false)}
+        onStatusChange={(paired, connected) => {
+          setExtensionPaired(paired);
+          setExtensionConnected(connected);
+        }}
+      />
     </ScrollView>
   );
 }

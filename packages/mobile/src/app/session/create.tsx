@@ -19,6 +19,7 @@ import { hasRequiredPermissions, requestUsageStatsPermission, requestOverlayPerm
 import InstalledApps from '@focussive/installed-apps';
 import TimeSlotPicker from '@/components/TimeSlotPicker';
 import MiniCalendar from '@/components/MiniCalendar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ── Weekday picker ────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ const WEEKDAYS: { key: Weekday; label: string }[] = [
 export default function CreateSessionScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { refreshSessions } = useSessions();
 
   const [name, setName] = useState('');
@@ -217,11 +219,35 @@ export default function CreateSessionScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Top Header with Close Button on Top Right */}
+      <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)');
+            }
+          }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={styles.closeBtn}
+          accessibilityLabel="Close"
+          accessibilityRole="button"
+        >
+          <Ionicons name="close" size={24} color={theme.text} />
+        </TouchableOpacity>
+      </View>
 
-      {/* Session Name */}
-      <Text style={[styles.label, { color: theme.textSecondary }]}>SESSION NAME</Text>
-      <TextInput
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Session Name */}
+        <Text style={[styles.label, { color: theme.textSecondary, marginTop: 4 }]}>SESSION NAME</Text>
+        <TextInput
         style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
         placeholder="e.g. Deep Work, Study, Writing..."
         placeholderTextColor={theme.textSecondary}
@@ -590,13 +616,26 @@ export default function CreateSessionScreen() {
       </TouchableOpacity>
 
       <View style={{ height: 40 }} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 20, paddingBottom: 40 },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingBottom: 4,
+  },
+  closeBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 40 },
   label: { fontSize: 12, fontWeight: '600', letterSpacing: 2, marginBottom: 8, marginTop: 20 },
   subLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginBottom: 8, marginTop: 12 },
   input: { height: 48, borderWidth: 2.5, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300' },

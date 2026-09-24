@@ -40,7 +40,7 @@ export const lightTheme: ThemeColors = {
   dangerBg: 'rgba(220, 38, 38, 0.12)',
   white: '#FFFFFF',
   card: '#FFFFFF',
-  island: '#587042',
+  island: '#425432',
 };
 
 // Dark mode. Palette: Space cadet #2F3456, Paynes gray #5D6E75,
@@ -63,7 +63,7 @@ export const darkTheme: ThemeColors = {
   dangerBg: 'rgba(239, 68, 68, 0.18)',
   white: '#FFFFFF',
   card: '#5d6e75',
-  island: '#8BA794',
+  island: '#6C8273',
 };
 
 // 'system' | 'dark' | 'light'

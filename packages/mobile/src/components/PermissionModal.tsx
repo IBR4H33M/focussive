@@ -102,23 +102,22 @@ export default function PermissionModal({
 
           <View style={styles.buttonRow}>
             <TouchableOpacity
-              style={[
-                styles.buttonLater,
-                { backgroundColor: isDark ? '#1E1E1E' : '#757575' },
-              ]}
-              onPress={onDismiss}
+              style={styles.buttonGrant}
+              onPress={handleGrantPermissions}
+              activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>
-                Later
+              <Text style={styles.buttonTextGrant}>
+                Grant Permissions
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.buttonGrant}
-              onPress={handleGrantPermissions}
+              style={styles.buttonLater}
+              onPress={onDismiss}
+              activeOpacity={0.8}
             >
-              <Text style={styles.buttonTextGrant}>
-                Grant Permissions
+              <Text style={styles.buttonTextLater}>
+                Later
               </Text>
             </TouchableOpacity>
           </View>
@@ -208,32 +207,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  buttonLater: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#757575',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   buttonGrant: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    height: 48,
     borderRadius: 10,
-    backgroundColor: '#3D5730',
+    backgroundColor: '#115926',
+    borderWidth: 2.5,
+    borderColor: '#115926',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  buttonLater: {
+    flex: 1,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: '#DCFCE7',
+    borderWidth: 2.5,
+    borderColor: '#115926',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonTextGrant: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFFFFF',
+  },
+  buttonTextLater: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#115926',
   },
 });

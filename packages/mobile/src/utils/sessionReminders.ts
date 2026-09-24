@@ -30,6 +30,16 @@ type ActiveSessionWithViolations = Session & { violations_count?: number };
 
 // ─── Permissions ──────────────────────────────────────────────
 
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  try {
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    return existing === 'granted';
+  } catch {
+    return false;
+  }
+}
+
 export async function requestNotificationPermission(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
@@ -403,7 +413,7 @@ export async function scheduleSessionReminders(
   activeSessions: ActiveSessionWithViolations[] = [],
 ): Promise<void> {
   try {
-    const granted = await requestNotificationPermission();
+    const granted = await hasNotificationPermission();
     if (!granted) return;
 
     if (Platform.OS === 'android') {

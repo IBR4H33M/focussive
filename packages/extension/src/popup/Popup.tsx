@@ -149,7 +149,10 @@ export default function Popup() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <span style={styles.logo}>Focussive</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src="/icons/icon-48.png" alt="Focussive" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+          <span style={styles.logo}>Focussive</span>
+        </div>
         <button style={styles.menuBtn} onClick={() => setMenuOpen(!menuOpen)}>
           ☰
         </button>

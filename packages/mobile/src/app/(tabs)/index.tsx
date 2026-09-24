@@ -52,21 +52,31 @@ export default function DashboardScreen() {
   const effectiveActiveSessions = [...activeSessions, ...windowActiveSessions];
   const effectiveActiveIds = new Set(effectiveActiveSessions.map((s) => s.id));
 
-  // Candidates for upcoming/scheduled: non-active, non-paused, non-current-window sessions
-  const candidates = (upcomingSessions.length > 0 ? upcomingSessions : allSessions.filter((s) => s.status === 'scheduled'))
-    .filter((s) => !effectiveActiveIds.has(s.id) && !pausedIds.has(s.id) && !isSessionInActiveWindow(s, now));
+  // Candidates for upcoming/scheduled: all non-active, non-paused, non-completed sessions
+  const candidates = allSessions.filter(
+    (s) =>
+      s.status !== 'completed' &&
+      s.status !== 'cancelled' &&
+      !effectiveActiveIds.has(s.id) &&
+      !pausedIds.has(s.id) &&
+      !isSessionInActiveWindow(s, now)
+  );
 
-  // Sort by true next occurrence relative to now (e.g. 1:45 PM today comes before tomorrow 5:00 AM)
-  const sortedCandidates = sortByNextOccurrence(candidates);
+  // Evaluate the next future occurrence for each candidate.
+  // Sessions that have already finished today or whose single run was skipped return null and are excluded.
+  const validUpcomingSessions = candidates
+    .map((s) => ({ session: s, nextOccurrence: getNextSessionOccurrence(s, now) }))
+    .filter((item): item is { session: Session; nextOccurrence: Date } => item.nextOccurrence !== null)
+    .sort((a, b) => a.nextOccurrence.getTime() - b.nextOccurrence.getTime());
 
-  // Pick the closest upcoming session that hasn't already passed
-  const nextUpcomingSession = sortedCandidates.find((s) => getNextSessionOccurrence(s) !== null) ?? sortedCandidates[0] ?? null;
+  // Pick the single closest upcoming session
+  const nextUpcomingSession = validUpcomingSessions.length > 0 ? validUpcomingSessions[0].session : null;
   const nextUpcomingId = nextUpcomingSession?.id ?? null;
 
-  // Remaining sessions after active and the single next upcoming session
-  const scheduledSessions = sortedCandidates.filter(
-    (s) => s.id !== nextUpcomingId,
-  );
+  // Remaining sessions scheduled later (closest first)
+  const scheduledSessions = validUpcomingSessions
+    .filter((item) => item.session.id !== nextUpcomingId)
+    .map((item) => item.session);
 
   function handleCancel(sessionId: string) {
     const session = [...effectiveActiveSessions, ...pausedSessions].find((s) => s.id === sessionId);

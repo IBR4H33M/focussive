@@ -120,17 +120,21 @@ export default function ThemedAlert() {
     combined.includes('welcome') ||
     combined.includes('awesome');
 
-  const isWarning =
-    combined.includes('warning') ||
+  const isDelete =
     combined.includes('delete') ||
     combined.includes('remove') ||
     combined.includes('cannot be undone');
+
+  const isWarning =
+    !isDelete && combined.includes('warning');
+
+  const isNoContainerIcon = isSuccess || isDelete || isWarning;
 
   const iconName = isError
     ? 'alert-circle'
     : isSuccess
     ? 'checkmark'
-    : isWarning
+    : (isDelete || isWarning)
     ? 'warning-outline'
     : 'information-circle';
 
@@ -138,16 +142,14 @@ export default function ThemedAlert() {
     ? theme.danger
     : isSuccess
     ? '#34C759'
-    : isWarning
-    ? '#FF9500'
+    : (isDelete || isWarning)
+    ? theme.danger
     : theme.accent;
 
   const iconBg = isError
     ? theme.dangerBg
-    : isSuccess
+    : isNoContainerIcon
     ? 'transparent'
-    : isWarning
-    ? 'rgba(255, 149, 0, 0.15)'
     : isDark
     ? 'rgba(139, 167, 148, 0.18)'
     : 'rgba(88, 112, 66, 0.15)';
@@ -202,15 +204,15 @@ export default function ThemedAlert() {
                     styles.iconContainer,
                     {
                       backgroundColor: iconBg,
-                      width: isSuccess ? 38 : 44,
-                      height: isSuccess ? 38 : 44,
-                      borderRadius: isSuccess ? 0 : 22,
+                      width: isNoContainerIcon ? 32 : 44,
+                      height: isNoContainerIcon ? 32 : 44,
+                      borderRadius: isNoContainerIcon ? 0 : 22,
                     },
                   ]}
                 >
                   <Ionicons
                     name={iconName}
-                    size={isSuccess ? 36 : 24}
+                    size={isSuccess ? 36 : (isDelete || isWarning ? 28 : 24)}
                     color={iconColor}
                   />
                 </View>

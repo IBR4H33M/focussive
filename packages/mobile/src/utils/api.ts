@@ -156,6 +156,12 @@ export const authApi = {
   qrLogin: (body: { code: string; device_type: string }) =>
     apiRequest('/auth/qr-login', { method: 'POST', body }),
 
+  pairingApprove: (body: { pin?: string; code?: string }) =>
+    apiRequest<{ success: boolean; message: string; device_id: string }>('/auth/pairing/approve', {
+      method: 'POST',
+      body,
+    }),
+
   verify: () => apiRequest<{ user: Record<string, unknown> }>('/auth/verify'),
 };
 
@@ -292,12 +298,33 @@ export const userApi = {
 
 // --- Device API ---
 
+export interface ExtensionStatusResponse {
+  paired: boolean;
+  connected: boolean;
+  device: {
+    id: string;
+    device_name: string;
+    device_info: Record<string, any>;
+    last_seen_at: string;
+    created_at: string;
+  } | null;
+}
+
 export const deviceApi = {
   register: (body: { device_type: string; device_token?: string; device_name?: string }) =>
     apiRequest('/devices/register', { method: 'POST', body }),
 
   remove: (id: string) =>
     apiRequest(`/devices/${id}`, { method: 'DELETE' }),
+
+  unpair: (deviceId: string) =>
+    apiRequest(`/devices/${deviceId}`, { method: 'DELETE' }),
+
+  extensionStatus: () =>
+    apiRequest<ExtensionStatusResponse>('/devices/extension/status'),
+
+  list: () =>
+    apiRequest<{ data: unknown[] }>('/devices'),
 };
 
 // --- Website Group API ---
@@ -327,5 +354,3 @@ export const subscriptionApi = {
   sync: (body: { revenuecat_customer_id?: string; tier?: 'free' | 'premium'; status?: string }) =>
     apiRequest<SubscriptionStatusResponse>('/user/subscription/sync', { method: 'POST', body }),
 };
-
-

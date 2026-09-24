@@ -157,7 +157,7 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
 // Active-session card is filled green; all foreground colors below are dark
 // shades chosen for solid contrast against that fill (no reliance on borders).
 const GREEN = '#90EE90';
-const GREEN_DARK = '#154D27';
+const GREEN_DARK = '#435432';
 const GREEN_DARK_MUTED = '#2B5E3C';
 const AMBER_DARK = '#7A4A00';
 const RED_DARK = '#A32020';

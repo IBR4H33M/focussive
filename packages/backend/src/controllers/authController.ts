@@ -11,11 +11,47 @@ import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
 import { isValidEmail, isValidPassword, generateQRCode } from '@focussive/shared';
+import { getClientIp, parseUserAgent } from './deviceController';
 
 const SALT_ROUNDS = 12;
 const JWT_EXPIRY = '7d';
 const REFRESH_EXPIRY = '30d';
 const QR_EXPIRY_MINUTES = 5;
+
+export async function registerExtensionDevice(userId: string, req: Request): Promise<string> {
+  await supabase
+    .from('devices')
+    .delete()
+    .eq('user_id', userId)
+    .eq('device_type', 'extension');
+
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  const parsedUa = parseUserAgent(userAgent);
+  const ip = getClientIp(req);
+
+  const fullDeviceInfo = {
+    ip,
+    browser: parsedUa.browser,
+    os: parsedUa.os,
+    user_agent: userAgent,
+    last_seen_at: new Date().toISOString(),
+    paired_at: new Date().toISOString(),
+  };
+
+  const deviceId = uuidv4();
+  const deviceName = `${fullDeviceInfo.browser} on ${fullDeviceInfo.os}`;
+  const tokenPayload = JSON.stringify(fullDeviceInfo);
+
+  await supabase.from('devices').insert({
+    id: deviceId,
+    user_id: userId,
+    device_type: 'extension',
+    device_name: deviceName,
+    device_token: tokenPayload,
+  });
+
+  return deviceId;
+}
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -264,7 +300,7 @@ export async function resendVerificationCode(req: Request, res: Response): Promi
 
 // POST /auth/login
 export async function login(req: Request, res: Response): Promise<void> {
-  const { email, password } = req.body;
+  const { email, password, device_type } = req.body;
 
   if (!email || !password) {
     throw new AppError('Email and password are required', 400, 'VALIDATION_ERROR');
@@ -292,11 +328,17 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   const tokens = generateTokens(user.id);
 
+  let deviceId: string | null = null;
+  if (device_type === 'extension') {
+    deviceId = await registerExtensionDevice(user.id, req);
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password_hash, verification_code, verification_expires_at, ...safeUser } = user;
 
   res.json({
     user: safeUser,
+    device_id: deviceId,
     ...tokens,
   });
 }
@@ -363,9 +405,13 @@ export async function qrLogin(req: Request, res: Response): Promise<void> {
   await supabase.from('qr_codes').update({ used: true }).eq('id', qrCode.id);
 
   // Register device if device_type provided
-  if (device_type) {
+  let deviceId: string | null = null;
+  if (device_type === 'extension') {
+    deviceId = await registerExtensionDevice(qrCode.user_id, req);
+  } else if (device_type) {
+    deviceId = uuidv4();
     await supabase.from('devices').insert({
-      id: uuidv4(),
+      id: deviceId,
       user_id: qrCode.user_id,
       device_type,
     });
@@ -386,6 +432,7 @@ export async function qrLogin(req: Request, res: Response): Promise<void> {
 
   res.json({
     user,
+    device_id: deviceId,
     ...tokens,
   });
 }
@@ -430,3 +477,110 @@ export async function refreshToken(req: Request, res: Response): Promise<void> {
   const tokens = generateTokens(payload.userId);
   res.json(tokens);
 }
+
+// ─── Direct Extension QR Pairing Sessions ─────────────────────
+
+interface PairingSession {
+  pin: string;
+  code: string;
+  createdAt: number;
+  approvedUserId: string | null;
+  tokens: { token: string; refresh_token: string; device_id: string } | null;
+}
+
+const pairingSessions = new Map<string, PairingSession>();
+
+// Periodic cleanup of stale sessions older than 5 minutes
+setInterval(() => {
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  for (const [pin, session] of pairingSessions.entries()) {
+    if (session.createdAt < cutoff) {
+      pairingSessions.delete(pin);
+    }
+  }
+}, 60 * 1000);
+
+// POST /auth/pairing/start — called by extension to display QR + PIN
+export async function startPairing(req: Request, res: Response): Promise<void> {
+  const pin = Math.floor(100000 + Math.random() * 900000).toString();
+  const code = `focussive:pair:${pin}`;
+
+  pairingSessions.set(pin, {
+    pin,
+    code,
+    createdAt: Date.now(),
+    approvedUserId: null,
+    tokens: null,
+  });
+
+  res.json({
+    pin,
+    code,
+    expires_in_seconds: 300,
+  });
+}
+
+// GET /auth/pairing/check?pin=... — polled by extension
+export async function checkPairing(req: Request, res: Response): Promise<void> {
+  const pin = req.query.pin as string;
+
+  if (!pin) {
+    throw new AppError('pin is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const session = pairingSessions.get(pin);
+  if (!session) {
+    throw new AppError('Pairing session expired or not found', 404, 'NOT_FOUND');
+  }
+
+  if (session.tokens) {
+    pairingSessions.delete(pin);
+    res.json({
+      approved: true,
+      ...session.tokens,
+    });
+    return;
+  }
+
+  res.json({ approved: false });
+}
+
+// POST /auth/pairing/approve — called by mobile when QR is scanned or PIN is entered
+export async function approvePairing(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  let { pin, code } = req.body;
+
+  if (!pin && code) {
+    if (typeof code === 'string' && code.startsWith('focussive:pair:')) {
+      pin = code.replace('focussive:pair:', '').trim();
+    } else {
+      pin = String(code).trim();
+    }
+  }
+
+  if (!pin) {
+    throw new AppError('Pairing PIN or code is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const session = pairingSessions.get(String(pin));
+  if (!session) {
+    throw new AppError('Invalid or expired pairing code', 400, 'INVALID_PAIRING_CODE');
+  }
+
+  // Register extension device for this user
+  const deviceId = await registerExtensionDevice(userId, req);
+  const tokens = generateTokens(userId);
+
+  session.approvedUserId = userId;
+  session.tokens = {
+    ...tokens,
+    device_id: deviceId,
+  };
+
+  res.json({
+    success: true,
+    message: 'Extension paired successfully',
+    device_id: deviceId,
+  });
+}
+
