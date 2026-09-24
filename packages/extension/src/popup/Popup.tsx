@@ -158,7 +158,14 @@ export default function Popup() {
         </button>
       </div>
 
-      {menuOpen && <Menu onClose={() => setMenuOpen(false)} onLogout={handleLogout} />}
+      {menuOpen && (
+        <Menu
+          onClose={() => setMenuOpen(false)}
+          onLogout={handleLogout}
+          activeSession={activeSession}
+          onRefreshData={loadData}
+        />
+      )}
 
       <div style={styles.body}>
         {activeSession ? (
@@ -168,7 +175,7 @@ export default function Popup() {
             {upcomingSessions.length > 0 && (
               <>
                 <div style={styles.sectionTitle}>UPCOMING</div>
-                {upcomingSessions.slice(0, 2).map((s) => (
+                {upcomingSessions.slice(0, 1).map((s) => (
                   <UpcomingCard key={s.id} session={s} />
                 ))}
               </>
@@ -186,7 +193,7 @@ export default function Popup() {
             {upcomingSessions.length > 0 && (
               <>
                 <div style={styles.sectionTitle}>UPCOMING</div>
-                {upcomingSessions.map((s) => (
+                {upcomingSessions.slice(0, 1).map((s) => (
                   <UpcomingCard key={s.id} session={s} />
                 ))}
               </>

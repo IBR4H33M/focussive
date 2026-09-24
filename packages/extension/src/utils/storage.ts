@@ -73,3 +73,37 @@ export async function setDeviceId(deviceId: string): Promise<void> {
 export async function clearDeviceId(): Promise<void> {
   await chrome.storage.local.remove('focussive_device_id');
 }
+
+// ─── Extension Preferences & Settings ──────────────────────────
+export interface ExtensionSettings {
+  overlay_quote_enabled: boolean;
+  overlay_gif_enabled: boolean;
+  overlay_gif_url: string;
+  auto_close_tab: boolean;
+  auto_close_seconds: number;
+  desktop_notifications: boolean;
+  sound_enabled: boolean;
+  last_synced_at?: string;
+}
+
+export const DEFAULT_EXTENSION_SETTINGS: ExtensionSettings = {
+  overlay_quote_enabled: true,
+  overlay_gif_enabled: true,
+  overlay_gif_url: 'cat-no.gif',
+  auto_close_tab: true,
+  auto_close_seconds: 5,
+  desktop_notifications: true,
+  sound_enabled: true,
+};
+
+export async function getExtensionSettings(): Promise<ExtensionSettings> {
+  const result = await chrome.storage.local.get('extension_settings');
+  return { ...DEFAULT_EXTENSION_SETTINGS, ...(result.extension_settings || {}) };
+}
+
+export async function setExtensionSettings(settings: Partial<ExtensionSettings>): Promise<ExtensionSettings> {
+  const current = await getExtensionSettings();
+  const updated = { ...current, ...settings };
+  await chrome.storage.local.set({ extension_settings: updated });
+  return updated;
+}

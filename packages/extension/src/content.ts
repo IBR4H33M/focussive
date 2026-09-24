@@ -2,11 +2,16 @@
 // Focussive Extension — Content Script (Violation Overlay)
 // ============================================================
 
+import { MOTIVATIONAL_QUOTES } from '@focussive/shared';
+import { getExtensionSettings, type ExtensionSettings, DEFAULT_EXTENSION_SETTINGS } from './utils/storage';
+
 // ─── Element refs ─────────────────────────────────────────────
 
 let overlayElement: HTMLDivElement | null = null;
 let currentSessionId = '';
 let currentWebsiteName = '';
+let countdownInterval: ReturnType<typeof setInterval> | null = null;
+let countdownRemaining = 5;
 
 // Listen for messages from background
 chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
@@ -16,6 +21,7 @@ chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
       message.websiteName,
       message.allowBreaks ?? false,
       message.remainingBreakSeconds ?? 0,
+      message.settings
     );
   }
 
@@ -32,10 +38,18 @@ let breakMinutes = 1;
 let allowMinutes = 1;
 let breakAvailable = false;
 let breakMaxMinutes = 0;
+let currentSettings: ExtensionSettings = DEFAULT_EXTENSION_SETTINGS;
+let selectedQuote = '';
 
 // ─── Show / Hide ─────────────────────────────────────────────
 
-function showOverlay(sessionId: string, websiteName: string, allowBreaks: boolean, remainingBreakSeconds: number) {
+async function showOverlay(
+  sessionId: string,
+  websiteName: string,
+  allowBreaks: boolean,
+  remainingBreakSeconds: number,
+  initialSettings?: ExtensionSettings
+) {
   if (overlayElement) return; // don't duplicate
 
   currentSessionId = sessionId;
@@ -46,20 +60,86 @@ function showOverlay(sessionId: string, websiteName: string, allowBreaks: boolea
   breakMinutes = 1;
   allowMinutes = 1;
 
+  // Load latest settings
+  if (initialSettings) {
+    currentSettings = initialSettings;
+  } else {
+    try {
+      currentSettings = await getExtensionSettings();
+    } catch {
+      currentSettings = DEFAULT_EXTENSION_SETTINGS;
+    }
+  }
+
+  // Pick random quote
+  if (currentSettings.overlay_quote_enabled && MOTIVATIONAL_QUOTES.length > 0) {
+    const qIdx = Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length);
+    selectedQuote = MOTIVATIONAL_QUOTES[qIdx];
+  } else {
+    selectedQuote = '';
+  }
+
+  countdownRemaining = currentSettings.auto_close_seconds || 5;
+
   overlayElement = document.createElement('div');
   overlayElement.id = 'focussive-violation-overlay';
   applyBaseStyles(overlayElement);
 
   document.body.appendChild(overlayElement);
   renderScreen();
-  playAlert();
+
+  if (currentSettings.sound_enabled) {
+    playAlert();
+  }
+
+  // Start auto-close countdown if enabled
+  if (currentSettings.auto_close_tab) {
+    startCountdown();
+  }
+}
+
+function stopCountdown() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+}
+
+function startCountdown() {
+  stopCountdown();
+  countdownInterval = setInterval(() => {
+    countdownRemaining -= 1;
+    const numEl = document.getElementById('foc-countdown-number');
+    if (numEl) {
+      numEl.textContent = String(countdownRemaining);
+    }
+    if (countdownRemaining <= 0) {
+      stopCountdown();
+      chrome.runtime.sendMessage({ type: 'CLOSE_TAB' });
+    }
+  }, 1000);
 }
 
 function hideOverlay() {
+  stopCountdown();
   if (overlayElement) {
     overlayElement.remove();
     overlayElement = null;
   }
+}
+
+function resolveImageSrc(urlOrId?: string | null): string | null {
+  if (!urlOrId) return chrome.runtime.getURL('blockimages/cat-no.gif');
+  if (urlOrId.startsWith('http://') || urlOrId.startsWith('https://')) {
+    return urlOrId;
+  }
+  if (urlOrId.includes('dog-really')) {
+    return chrome.runtime.getURL('blockimages/dog-really.gif');
+  }
+  if (urlOrId.includes('dont-answer')) {
+    return chrome.runtime.getURL('blockimages/dont-answer.gif');
+  }
+  return chrome.runtime.getURL('blockimages/cat-no.gif');
 }
 
 // ─── Rendering ───────────────────────────────────────────────
@@ -75,33 +155,64 @@ function renderScreen() {
 function renderIdle() {
   if (!overlayElement) return;
 
+  const imageSrc = currentSettings.overlay_gif_enabled
+    ? resolveImageSrc(currentSettings.overlay_gif_url)
+    : null;
+
   overlayElement.innerHTML = `
-    <div style="text-align:center; padding:36px 28px; max-width:380px; margin:0 auto; width:100%;">
-      <h2 style="color:white; font-size:26px; font-weight:700; margin:0 0 10px; letter-spacing:0.3px;">
+    <div style="text-align:center; padding:32px 24px; max-width:400px; margin:0 auto; width:100%; box-sizing:border-box;">
+      <h2 style="color:#FFFFFF; font-size:24px; font-weight:700; margin:0 0 8px; letter-spacing:0.3px;">
         Distraction Detected
       </h2>
-      <p style="color:rgba(255,255,255,0.8); font-size:14px; font-weight:300; margin:0 0 36px; line-height:1.5;">
-        You're visiting <strong style="font-weight:600;">${currentWebsiteName}</strong> during a focus session
+      <p style="color:rgba(255,255,255,0.7); font-size:14px; font-weight:400; margin:0 0 16px; line-height:1.4;">
+        You're visiting <strong style="color:#FFFFFF; font-weight:600;">${currentWebsiteName}</strong> during a focus session
       </p>
+
+      ${imageSrc ? `
+        <div style="margin:0 auto 16px auto; width:130px; height:130px; border-radius:14px; overflow:hidden; border:2px solid rgba(255,255,255,0.15); box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+          <img src="${imageSrc}" alt="Block" style="width:100%; height:100%; object-fit:cover; display:block;" />
+        </div>
+      ` : ''}
+
+      ${currentSettings.overlay_quote_enabled && selectedQuote ? `
+        <p style="font-style:italic; color:rgba(255,255,255,0.85); font-size:13px; margin:0 0 18px; line-height:1.5; padding:0 8px;">
+          "${selectedQuote}"
+        </p>
+      ` : ''}
+
+      ${currentSettings.auto_close_tab ? `
+        <!-- Large countdown container -->
+        <div id="foc-countdown-box" style="margin: 0 0 20px; background:rgba(0,0,0,0.45); border:1.5px solid rgba(255,107,107,0.35); border-radius:14px; padding:12px 16px; text-align:center;">
+          <div style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,0.6); margin-bottom:2px;">
+            CLOSING TAB IN
+          </div>
+          <div id="foc-countdown-number" style="font-size:54px; font-weight:800; color:#FF6B6B; font-family:-apple-system, BlinkMacSystemFont, monospace; line-height:1.1;">
+            ${countdownRemaining}
+          </div>
+          <div style="font-size:11px; color:rgba(255,255,255,0.45); margin-top:2px;">
+            seconds · Select an option below to stay
+          </div>
+        </div>
+      ` : ''}
 
       <div style="display:flex; flex-direction:column; gap:10px;">
 
-        <!-- Exit -->
-        <button id="foc-exit" style="${BTN_BASE} background:rgba(0,0,0,0.55); border:1.5px solid rgba(255,255,255,0.25); color:white;">
-          Exit page
+        <!-- Exit / Close Tab -->
+        <button id="foc-exit" style="${BTN_BASE} background:rgba(255,255,255,0.08); border:1.5px solid rgba(255,255,255,0.22); color:#FFFFFF;">
+          Close tab now
         </button>
 
         <!-- Take a break — only if break time available -->
         ${breakAvailable
           ? `<button id="foc-break" style="${BTN_BASE} background:rgba(30,80,30,0.75); border:1.5px solid #90EE90; color:#90EE90;">
                Take a break
-               <span style="display:block; font-size:11px; margin-top:3px; color:rgba(144,238,144,0.75);">${breakMaxMinutes} min remaining</span>
+               <span style="display:block; font-size:11px; margin-top:2px; color:rgba(144,238,144,0.75);">${breakMaxMinutes} min remaining</span>
              </button>`
           : ''
         }
 
         <!-- Allow anyway -->
-        <button id="foc-allow" style="${BTN_BASE} background:rgba(60,20,20,0.7); border:1.5px solid rgba(255,100,100,0.5); color:rgba(255,180,180,0.9);">
+        <button id="foc-allow" style="${BTN_BASE} background:rgba(80,20,20,0.65); border:1.5px solid rgba(255,100,100,0.4); color:rgba(255,180,180,0.9);">
           Allow anyway
         </button>
 
@@ -111,11 +222,13 @@ function renderIdle() {
 
   // Attach events
   document.getElementById('foc-exit')?.addEventListener('click', () => {
+    stopCountdown();
     chrome.runtime.sendMessage({ type: 'CLOSE_TAB' });
   });
 
   if (breakAvailable) {
     document.getElementById('foc-break')?.addEventListener('click', () => {
+      stopCountdown();
       overlayScreen = 'selectBreak';
       breakMinutes = 1;
       renderScreen();
@@ -123,6 +236,7 @@ function renderIdle() {
   }
 
   document.getElementById('foc-allow')?.addEventListener('click', () => {
+    stopCountdown();
     overlayScreen = 'selectAllow';
     allowMinutes = 1;
     renderScreen();
@@ -244,15 +358,15 @@ function confirmAllow() {
 
   // Re-show overlay after the allow window expires
   setTimeout(() => {
-    showOverlay(currentSessionId, currentWebsiteName, breakAvailable, breakMaxMinutes * 60);
+    showOverlay(currentSessionId, currentWebsiteName, breakAvailable, breakMaxMinutes * 60, currentSettings);
   }, durationSeconds * 1000);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
 
 const BTN_BASE = `
-  width:100%; padding:14px 24px; border-radius:12px;
-  font-size:15px; font-weight:500; cursor:pointer;
+  width:100%; padding:13px 20px; border-radius:12px;
+  font-size:14px; font-weight:600; cursor:pointer;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   box-sizing:border-box; text-align:center;
   transition: transform 0.12s, opacity 0.12s;
@@ -263,15 +377,15 @@ function applyBaseStyles(el: HTMLDivElement) {
     position: fixed;
     top: 0; left: 0;
     width: 100vw; height: 100vh;
-    background: rgba(160, 30, 40, 0.82);
-    z-index: 999999;
+    background: rgba(14, 14, 18, 0.94);
+    z-index: 2147483647;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   `;
 }
 
@@ -281,7 +395,7 @@ function attachHoverEffects(ids: string[]) {
     if (!btn) return;
     btn.addEventListener('mouseenter', () => {
       btn.style.transform = 'translateY(-1px) scale(1.02)';
-      btn.style.opacity = '0.88';
+      btn.style.opacity = '0.9';
     });
     btn.addEventListener('mouseleave', () => {
       btn.style.transform = 'translateY(0) scale(1)';
@@ -303,13 +417,16 @@ function playAlert() {
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.frequency.value = 800;
+    osc.frequency.value = 650;
     osc.type = 'sine';
-    gain.gain.value = 0.3;
+    gain.gain.value = 0.25;
     osc.start();
-    setTimeout(() => { osc.stop(); ctx.close(); }, 1500);
+    setTimeout(() => {
+      osc.stop();
+      ctx.close();
+    }, 400);
   } catch {
-    // Audio not available
+    // Audio context not allowed or unavailable
   }
 }
 

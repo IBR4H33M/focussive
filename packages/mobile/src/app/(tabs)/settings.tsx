@@ -690,7 +690,7 @@ export default function SettingsScreen() {
     <ScrollView
       ref={scrollViewRef}
       style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={{ paddingTop: Math.max(insets.top, 16) }}
+      contentContainerStyle={{ paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 24) + 120 }}
     >
 
       {/* Profile Section */}
@@ -922,20 +922,6 @@ export default function SettingsScreen() {
                         style={styles.blockImageThumbnail}
                         resizeMode="cover"
                       />
-                      <View style={styles.blockImageLabelContainer}>
-                        <Text
-                          numberOfLines={1}
-                          style={[
-                            styles.blockImageCardText,
-                            {
-                              color: isSelected ? theme.accent : theme.text,
-                              fontWeight: isSelected ? '700' : '500',
-                            },
-                          ]}
-                        >
-                          {img.title}
-                        </Text>
-                      </View>
                       {isSelected && (
                         <View style={[styles.blockImageCheckmark, { backgroundColor: theme.accent }]}>
                           <Ionicons name="checkmark" size={10} color="#FFFFFF" />
@@ -964,20 +950,6 @@ export default function SettingsScreen() {
                       style={styles.blockImageThumbnail}
                       resizeMode="cover"
                     />
-                    <View style={styles.blockImageLabelContainer}>
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.blockImageCardText,
-                          {
-                            color: gifEnabled ? theme.accent : theme.text,
-                            fontWeight: gifEnabled ? '700' : '500',
-                          },
-                        ]}
-                      >
-                        Custom
-                      </Text>
-                    </View>
                     {gifEnabled && (
                       <View style={[styles.blockImageCheckmark, { backgroundColor: theme.accent }]}>
                         <Ionicons name="checkmark" size={10} color="#FFFFFF" />
@@ -1004,17 +976,7 @@ export default function SettingsScreen() {
                   {uploadingGif ? (
                     <ActivityIndicator size="small" color={theme.accent} />
                   ) : (
-                    <>
-                      <Ionicons name="cloud-upload-outline" size={20} color={theme.accent} />
-                      <Text
-                        style={[
-                          styles.blockImageCardText,
-                          { color: theme.accent, fontWeight: '600', marginTop: 4, textAlign: 'center' },
-                        ]}
-                      >
-                        {gifUrl && !isDefaultBlockImage(gifUrl) ? 'Replace' : 'Upload'}
-                      </Text>
-                    </>
+                    <Ionicons name="cloud-upload-outline" size={24} color={theme.accent} />
                   )}
                 </TouchableOpacity>
               </ScrollView>
@@ -1278,7 +1240,7 @@ export default function SettingsScreen() {
       </View>
 
       {/* Data */}
-      <View style={styles.section}>
+      <View style={[styles.section, { marginBottom: 12 }]}>
         <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>DATA</Text>
 
         <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
@@ -1625,7 +1587,7 @@ const styles = StyleSheet.create({
   menuText: { fontSize: 16, fontWeight: '300' },
   logoutText: { fontSize: 16, fontWeight: '600' },
   standaloneLogoutContainer: {
-    marginTop: 20,
+    marginTop: 6,
     marginBottom: 4,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1635,7 +1597,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 24,
   },
   deleteAccountBtn: {
@@ -1647,7 +1609,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   deleteAccountText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
-  version: { textAlign: 'center', fontSize: 12, marginTop: 16, marginBottom: 32 },
+  version: { textAlign: 'center', fontSize: 12, marginTop: 10, marginBottom: 16 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
   modalContent: { borderRadius: 16, padding: 24 },
   modalTitle: { fontSize: 20, fontWeight: '500', marginBottom: 20 },
@@ -1731,8 +1693,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   blockImageCard: {
-    width: 86,
-    height: 94,
+    width: 76,
+    height: 76,
     borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
@@ -1742,18 +1704,7 @@ const styles = StyleSheet.create({
   },
   blockImageThumbnail: {
     width: '100%',
-    height: 64,
-  },
-  blockImageLabelContainer: {
-    height: 28,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  blockImageCardText: {
-    fontSize: 11,
-    textAlign: 'center',
+    height: '100%',
   },
   blockImageCheckmark: {
     position: 'absolute',

@@ -11,6 +11,8 @@ import {
   clearBlockedTimer,
   getBlockedTimers,
   getDeviceId,
+  getExtensionSettings,
+  setExtensionSettings,
   type StoredSession,
 } from './utils/storage';
 import { isBlockedWebsite } from '@focussive/shared';
@@ -20,6 +22,7 @@ import type { ViolationResponseMessage } from './utils/messaging';
 
 const POLL_INTERVAL_MS = 5000;
 let pollIntervalId: ReturnType<typeof setInterval> | null = null;
+let lastSessionId: string | null = null;
 
 // Active break timer: { sessionId, breakId, endsAt }
 let activeBreakTimer: { sessionId: string; breakId: string; timeoutId: ReturnType<typeof setTimeout> } | null = null;
@@ -59,6 +62,33 @@ async function pollSessions() {
     } else if (!activeBreakTimer) {
       // Only clear if we don't have a locally-managed timer
       breakActive = false;
+    }
+
+    // Notify on new active session
+    if (storedSession && storedSession.id !== lastSessionId) {
+      lastSessionId = storedSession.id;
+      const settings = await getExtensionSettings();
+      if (settings.desktop_notifications) {
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon-48.png'),
+          title: 'Focus Session Active',
+          message: `Focus session "${storedSession.name}" is now running. Distracting websites are blocked.`,
+          priority: 2,
+        });
+      }
+    } else if (!storedSession && lastSessionId) {
+      const settings = await getExtensionSettings();
+      if (settings.desktop_notifications) {
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon-48.png'),
+          title: 'Session Completed',
+          message: 'Your focus session has finished. Great job!',
+          priority: 2,
+        });
+      }
+      lastSessionId = null;
     }
 
     await setActiveSession(storedSession);
@@ -174,13 +204,15 @@ async function checkTab(tabId: number, url: string) {
           const currentSession = await getActiveSession();
           const tab = await chrome.tabs.get(tabId);
           if (tab.url && isBlockedWebsite(tab.url, blockedList)) {
-            // Pass break info to overlay
+            const settings = await getExtensionSettings();
+            // Pass break info and settings to overlay
             await chrome.tabs.sendMessage(tabId, {
               type: 'SHOW_OVERLAY',
               sessionId: session.id,
               websiteName: hostname,
               allowBreaks: currentSession?.allow_breaks || false,
               remainingBreakSeconds: currentSession?.remaining_break_seconds ?? 0,
+              settings,
             });
           }
           await clearBlockedTimer(hostname);
@@ -232,6 +264,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     })();
     return true; // Will respond asynchronously
+  }
+
+  if (message.type === 'SYNC_NOW') {
+    (async () => {
+      await pollSessions();
+      const session = await getActiveSession();
+      const { upcoming_sessions } = await chrome.storage.local.get('upcoming_sessions');
+      const updatedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      await setExtensionSettings({ last_synced_at: updatedTime });
+      sendResponse({
+        success: true,
+        timestamp: updatedTime,
+        activeSession: session,
+        upcomingSessions: upcoming_sessions || [],
+      });
+    })();
+    return true;
   }
 
   if (message.type === 'VIOLATION_RESPONSE') {
