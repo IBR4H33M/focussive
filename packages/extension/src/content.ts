@@ -79,7 +79,7 @@ async function showOverlay(
     selectedQuote = '';
   }
 
-  countdownRemaining = currentSettings.auto_close_seconds || 5;
+  countdownRemaining = currentSettings.auto_close_seconds || 15;
 
   overlayElement = document.createElement('div');
   overlayElement.id = 'focussive-violation-overlay';
@@ -159,30 +159,54 @@ function renderIdle() {
     ? resolveImageSrc(currentSettings.overlay_gif_url)
     : null;
 
+  let quoteWords = selectedQuote;
+  let quotePerson = '';
+
+  if (selectedQuote.includes(' — ')) {
+    const parts = selectedQuote.split(' — ');
+    quoteWords = parts[0];
+    quotePerson = parts.slice(1).join(' — ');
+  } else if (selectedQuote.includes(' – ')) {
+    const parts = selectedQuote.split(' – ');
+    quoteWords = parts[0];
+    quotePerson = parts.slice(1).join(' – ');
+  } else if (selectedQuote.includes(' - ')) {
+    const parts = selectedQuote.split(' - ');
+    quoteWords = parts[0];
+    quotePerson = parts.slice(1).join(' - ');
+  }
+
   overlayElement.innerHTML = `
-    <div style="text-align:center; padding:32px 24px; max-width:400px; margin:0 auto; width:100%; box-sizing:border-box;">
-      <h2 style="color:#FFFFFF; font-size:24px; font-weight:700; margin:0 0 8px; letter-spacing:0.3px;">
-        Distraction Detected
+    <div style="text-align:center; padding:32px 24px; max-width:440px; margin:0 auto; width:100%; box-sizing:border-box;">
+      <h2 style="color:#FFFFFF; font-size:26px; font-weight:700; margin:0 0 8px; letter-spacing:0.3px;">
+        You are getting distracted
       </h2>
-      <p style="color:rgba(255,255,255,0.7); font-size:14px; font-weight:400; margin:0 0 16px; line-height:1.4;">
+      <p style="color:rgba(255,255,255,0.7); font-size:14px; font-weight:400; margin:0 0 18px; line-height:1.4;">
         You're visiting <strong style="color:#FFFFFF; font-weight:600;">${currentWebsiteName}</strong> during a focus session
       </p>
 
       ${imageSrc ? `
-        <div style="margin:0 auto 16px auto; width:130px; height:130px; border-radius:14px; overflow:hidden; border:2px solid rgba(255,255,255,0.15); box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+        <div style="margin:0 auto 20px auto; width:200px; height:200px; max-width:85vw; border-radius:16px; overflow:hidden; border:none; box-shadow:0 10px 30px rgba(0,0,0,0.6);">
           <img src="${imageSrc}" alt="Block" style="width:100%; height:100%; object-fit:cover; display:block;" />
         </div>
       ` : ''}
 
       ${currentSettings.overlay_quote_enabled && selectedQuote ? `
-        <p style="font-style:italic; color:rgba(255,255,255,0.85); font-size:13px; margin:0 0 18px; line-height:1.5; padding:0 8px;">
-          "${selectedQuote}"
-        </p>
+        <div style="margin:0 0 22px; padding:0 8px; text-align:center;">
+          <p style="font-style:italic; color:#FFFFFF; font-size:24px; font-weight:700; margin:0; line-height:1.35; letter-spacing:-0.2px; text-shadow:0 2px 8px rgba(0,0,0,0.6);">
+            "${quoteWords}"
+          </p>
+          ${quotePerson ? `
+            <div style="color:rgba(255,255,255,0.7); font-size:14px; font-weight:400; margin-top:8px; font-style:normal; letter-spacing:0.3px;">
+              — ${quotePerson}
+            </div>
+          ` : ''}
+        </div>
       ` : ''}
 
       ${currentSettings.auto_close_tab ? `
         <!-- Large countdown container -->
-        <div id="foc-countdown-box" style="margin: 0 0 20px; background:rgba(0,0,0,0.45); border:1.5px solid rgba(255,107,107,0.35); border-radius:14px; padding:12px 16px; text-align:center;">
+        <div id="foc-countdown-box" style="margin: 0 0 20px; background:rgba(0,0,0,0.5); border:none; border-radius:14px; padding:12px 16px; text-align:center;">
           <div style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,0.6); margin-bottom:2px;">
             CLOSING TAB IN
           </div>
@@ -198,21 +222,21 @@ function renderIdle() {
       <div style="display:flex; flex-direction:column; gap:10px;">
 
         <!-- Exit / Close Tab -->
-        <button id="foc-exit" style="${BTN_BASE} background:rgba(255,255,255,0.08); border:1.5px solid rgba(255,255,255,0.22); color:#FFFFFF;">
+        <button id="foc-exit" style="${BTN_BASE} background:rgba(255,255,255,0.12); border:none; color:#FFFFFF;">
           Close tab now
         </button>
 
         <!-- Take a break — only if break time available -->
         ${breakAvailable
-          ? `<button id="foc-break" style="${BTN_BASE} background:rgba(30,80,30,0.75); border:1.5px solid #90EE90; color:#90EE90;">
-               Take a break
-               <span style="display:block; font-size:11px; margin-top:2px; color:rgba(144,238,144,0.75);">${breakMaxMinutes} min remaining</span>
+          ? `<button id="foc-break" style="${BTN_BASE} background:#16652D; border:none; color:#FFFFFF; display:flex; justify-content:space-between; align-items:center; padding:14px 20px;">
+               <span style="font-size:15px; font-weight:600; color:#FFFFFF;">Take a break?</span>
+               <span style="font-size:17px; font-weight:700; color:#FFFFFF;">${breakMaxMinutes} min</span>
              </button>`
           : ''
         }
 
         <!-- Allow anyway -->
-        <button id="foc-allow" style="${BTN_BASE} background:rgba(80,20,20,0.65); border:1.5px solid rgba(255,100,100,0.4); color:rgba(255,180,180,0.9);">
+        <button id="foc-allow" style="${BTN_BASE} background:#8B1E1E; border:none; color:#FFFFFF;">
           Allow anyway
         </button>
 
@@ -264,8 +288,8 @@ function renderPicker(mode: 'break' | 'allow') {
   const subtitleColor = isBreak ? 'rgba(255,255,255,0.7)' : 'rgba(255,180,180,0.85)';
   const confirmLabel = isBreak ? `Start ${current} min break` : `Allow ${current} min`;
   const confirmStyle = isBreak
-    ? `background:rgba(30,80,30,0.8); border:1.5px solid #90EE90; color:#90EE90;`
-    : `background:rgba(80,20,20,0.8); border:1.5px solid #FF6B6B; color:#FF6B6B;`;
+    ? `background:#16652D; border:none; color:#FFFFFF;`
+    : `background:#8B1E1E; border:none; color:#FFFFFF;`;
 
   overlayElement.innerHTML = `
     <div style="text-align:center; padding:36px 28px; max-width:380px; margin:0 auto; width:100%;">
@@ -365,7 +389,7 @@ function confirmAllow() {
 // ─── Helpers ─────────────────────────────────────────────────
 
 const BTN_BASE = `
-  width:100%; padding:13px 20px; border-radius:12px;
+  width:100%; padding:13px 20px; border-radius:12px; border:none; outline:none;
   font-size:14px; font-weight:600; cursor:pointer;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   box-sizing:border-box; text-align:center;

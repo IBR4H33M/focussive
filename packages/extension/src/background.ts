@@ -15,7 +15,7 @@ import {
   setExtensionSettings,
   type StoredSession,
 } from './utils/storage';
-import { isBlockedWebsite } from '@focussive/shared';
+import { isBlockedWebsite, getNextSessionOccurrence, isSessionInActiveWindow } from '@focussive/shared';
 import type { ViolationResponseMessage } from './utils/messaging';
 
 // --- Session Polling (every 5 seconds) ---
@@ -32,16 +32,17 @@ async function pollSessions() {
     const authenticated = await isAuthenticated();
     if (!authenticated) return;
 
-    const [activeRes, upcomingRes] = await Promise.all([
+    const [activeRes, allRes] = await Promise.all([
       sessionApi.getActive(),
-      sessionApi.getUpcoming(),
+      sessionApi.getAll(),
     ]);
 
-    const activeSessions = activeRes.data as (StoredSession & {
+    const activeSessions = (activeRes.data as (StoredSession & {
       remaining_break_seconds?: number;
       is_on_break?: boolean;
       break_ends_at?: string | null;
-    })[];
+    })[]) || [];
+    const allSessions = (allRes.data as StoredSession[]) || [];
     const active = activeSessions.length > 0 ? activeSessions[0] : null;
 
     const storedSession: StoredSession | null = active ? {
@@ -93,16 +94,36 @@ async function pollSessions() {
 
     await setActiveSession(storedSession);
 
-    await setUpcomingSessions(
-      (upcomingRes.data as StoredSession[]).map((s) => ({
-        ...s,
-        blocked_websites: s.blocked_websites || [],
-        violations_count: s.violations_count || 0,
-        allowlist: s.allowlist || [],
-        allow_breaks: s.allow_breaks || false,
-        remaining_break_seconds: s.remaining_break_seconds ?? 0,
-      }))
+    const now = new Date();
+    const activeIds = new Set(activeSessions.map((s) => s.id));
+    const pausedIds = new Set(
+      allSessions.filter((s) => (s as any).status === 'paused').map((s) => s.id)
     );
+
+    // Candidates for upcoming: all non-active, non-paused, non-completed, non-cancelled sessions
+    const candidates = allSessions.filter(
+      (s) =>
+        (s as any).status !== 'completed' &&
+        (s as any).status !== 'cancelled' &&
+        !activeIds.has(s.id) &&
+        !pausedIds.has(s.id) &&
+        !isSessionInActiveWindow(s as any, now)
+    );
+
+    const validUpcomingSessions = candidates
+      .map((s) => ({ session: s, nextOccurrence: getNextSessionOccurrence(s as any, now) }))
+      .filter((item): item is { session: StoredSession; nextOccurrence: Date } => item.nextOccurrence !== null)
+      .sort((a, b) => a.nextOccurrence.getTime() - b.nextOccurrence.getTime())
+      .map((item) => ({
+        ...item.session,
+        blocked_websites: item.session.blocked_websites || [],
+        violations_count: item.session.violations_count || 0,
+        allowlist: item.session.allowlist || [],
+        allow_breaks: item.session.allow_breaks || false,
+        remaining_break_seconds: item.session.remaining_break_seconds ?? 0,
+      }));
+
+    await setUpcomingSessions(validUpcomingSessions);
   } catch (error) {
     console.error('[Focussive BG] Poll error:', error);
   }

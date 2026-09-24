@@ -8,13 +8,14 @@ import LoginView from './LoginView';
 import SessionCard from './SessionCard';
 import UpcomingCard from './UpcomingCard';
 import Menu from './Menu';
+import { getNextSessionOccurrence, isSessionInActiveWindow } from '@focussive/shared';
 import type { StoredSession } from '../utils/storage';
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
     width: 400,
     minHeight: 300,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#18181B',
     color: '#E0E0E0',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
@@ -23,7 +24,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '16px 20px',
-    borderBottom: '1px solid #333',
+    borderBottom: '1px solid #27272A',
   },
   logo: {
     fontSize: 18,
@@ -41,6 +42,48 @@ const styles: Record<string, React.CSSProperties> = {
   },
   body: {
     padding: '16px 20px',
+  },
+  dropdownContainer: {
+    marginTop: 10,
+    marginBottom: 12,
+    backgroundColor: '#202024',
+    border: '1px solid #2E2E34',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  dropdownBtn: {
+    width: '100%',
+    padding: '11px 14px',
+    backgroundColor: 'transparent',
+    border: 'none',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    cursor: 'pointer',
+    color: '#E0E0E0',
+  },
+  dropdownTitle: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: '#E0E0E0',
+  },
+  dropdownContent: {
+    padding: '4px 14px 10px',
+    borderTop: '1px solid #27272A',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    maxHeight: 180,
+    overflowY: 'auto' as const,
+  },
+  siteRow: {
+    padding: '7px 0',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+  },
+  siteText: {
+    fontSize: 13,
+    fontWeight: 400,
+    color: '#D4D4D8',
+    letterSpacing: 0.2,
   },
   noSession: {
     textAlign: 'center' as const,
@@ -77,6 +120,7 @@ export default function Popup() {
   const [activeSession, setActiveSession] = useState<StoredSession | null>(null);
   const [upcomingSessions, setUpcomingSessions] = useState<StoredSession[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [blockedSitesOpen, setBlockedSitesOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     const isAuth = await checkAuth();
@@ -85,26 +129,43 @@ export default function Popup() {
     if (isAuth) {
       // Ask background for cached data first
       chrome.runtime.sendMessage({ type: 'GET_SESSION' }, async (response) => {
-        const cached = response?.activeSession || null;
-        const upcoming = response?.upcomingSessions || [];
-
-        if (cached) {
-          setActiveSession(cached);
-          setUpcomingSessions(upcoming);
+        if (response && (response.activeSession !== undefined || response.upcomingSessions !== undefined)) {
+          setActiveSession(response.activeSession || null);
+          setUpcomingSessions(response.upcomingSessions || []);
         } else {
-          // Background cache empty — fetch directly from API as fallback
+          // Background cache not ready yet — fetch directly from API as fallback
           try {
-            const [activeRes, upcomingRes] = await Promise.all([
+            const [activeRes, allRes] = await Promise.all([
               sessionApi.getActive(),
-              sessionApi.getUpcoming(),
+              sessionApi.getAll(),
             ]);
-            const activeSessions = (activeRes as any).data as StoredSession[];
-            const upcomingSess = (upcomingRes as any).data as StoredSession[];
+            const activeSessions = ((activeRes as any).data as StoredSession[]) || [];
+            const allSessions = ((allRes as any).data as StoredSession[]) || [];
             setActiveSession(activeSessions.length > 0 ? activeSessions[0] : null);
-            setUpcomingSessions(upcomingSess || []);
+
+            const now = new Date();
+            const activeIds = new Set(activeSessions.map((s) => s.id));
+            const pausedIds = new Set(
+              allSessions.filter((s) => (s as any).status === 'paused').map((s) => s.id)
+            );
+            const candidates = allSessions.filter(
+              (s) =>
+                (s as any).status !== 'completed' &&
+                (s as any).status !== 'cancelled' &&
+                !activeIds.has(s.id) &&
+                !pausedIds.has(s.id) &&
+                !isSessionInActiveWindow(s as any, now)
+            );
+            const validUpcoming = candidates
+              .map((s) => ({ session: s, nextOccurrence: getNextSessionOccurrence(s as any, now) }))
+              .filter((item): item is { session: StoredSession; nextOccurrence: Date } => item.nextOccurrence !== null)
+              .sort((a, b) => a.nextOccurrence.getTime() - b.nextOccurrence.getTime())
+              .map((item) => item.session);
+
+            setUpcomingSessions(validUpcoming);
           } catch {
             setActiveSession(null);
-            setUpcomingSessions(upcoming);
+            setUpcomingSessions([]);
           }
         }
       });
@@ -146,6 +207,8 @@ export default function Popup() {
     );
   }
 
+  const blockedList = activeSession?.blocked_websites || [];
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -162,7 +225,6 @@ export default function Popup() {
         <Menu
           onClose={() => setMenuOpen(false)}
           onLogout={handleLogout}
-          activeSession={activeSession}
           onRefreshData={loadData}
         />
       )}
@@ -171,6 +233,39 @@ export default function Popup() {
         {activeSession ? (
           <>
             <SessionCard session={activeSession} />
+
+            {/* Blocked Websites Dropdown under running session card */}
+            {blockedList.length > 0 && (
+              <div style={styles.dropdownContainer}>
+                <button
+                  style={styles.dropdownBtn}
+                  onClick={() => setBlockedSitesOpen(!blockedSitesOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                    </svg>
+                    <span style={styles.dropdownTitle}>
+                      Blocked Websites ({blockedList.length})
+                    </span>
+                  </div>
+                  <span style={{ transform: blockedSitesOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', fontSize: 11, color: '#888' }}>
+                    ▼
+                  </span>
+                </button>
+
+                {blockedSitesOpen && (
+                  <div style={styles.dropdownContent}>
+                    {blockedList.map((site, idx) => (
+                      <div key={idx} style={{ ...styles.siteRow, ...(idx === blockedList.length - 1 ? { borderBottom: 'none' } : {}) }}>
+                        <span style={styles.siteText}>{site}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {upcomingSessions.length > 0 && (
               <>

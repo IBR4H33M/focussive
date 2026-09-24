@@ -10,17 +10,15 @@ import {
   getExtensionSettings,
   setExtensionSettings,
   type ExtensionSettings,
-  type StoredSession,
 } from '../utils/storage';
 
 interface MenuProps {
   onClose: () => void;
   onLogout: () => void;
-  activeSession: StoredSession | null;
   onRefreshData?: () => void;
 }
 
-type MenuView = 'menu' | 'blocked_sites' | 'settings' | 'device_sync';
+type MenuView = 'menu' | 'settings' | 'device_sync';
 
 const DEFAULT_IMAGES = [
   { id: 'cat-no.gif', title: 'Cat (No!)', file: 'blockimages/cat-no.gif' },
@@ -28,7 +26,7 @@ const DEFAULT_IMAGES = [
   { id: 'dont-answer.gif', title: "Don't Answer", file: 'blockimages/dont-answer.gif' },
 ];
 
-export default function Menu({ onClose, onLogout, activeSession, onRefreshData }: MenuProps) {
+export default function Menu({ onClose, onLogout, onRefreshData }: MenuProps) {
   const [currentView, setCurrentView] = useState<MenuView>('menu');
   const [settings, setSettings] = useState<ExtensionSettings | null>(null);
   const [deviceId, setDeviceIdState] = useState<string>('');
@@ -86,10 +84,9 @@ export default function Menu({ onClose, onLogout, activeSession, onRefreshData }
                 style={styles.backBtn}
                 onClick={() => setCurrentView('menu')}
               >
-                ← Back
+                &lt; Back
               </button>
               <span style={styles.subViewTitle}>
-                {currentView === 'blocked_sites' && 'Blocked Sites'}
                 {currentView === 'settings' && 'Settings'}
                 {currentView === 'device_sync' && 'Device & Sync'}
               </span>
@@ -104,22 +101,6 @@ export default function Menu({ onClose, onLogout, activeSession, onRefreshData }
         <div style={styles.content}>
           {currentView === 'menu' && (
             <div style={styles.menuList}>
-              <button style={styles.menuItem} onClick={() => setCurrentView('blocked_sites')}>
-                <div style={styles.menuItemLeft}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#90EE90" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                  </svg>
-                  <span>Active Blocked Sites</span>
-                </div>
-                <div style={styles.menuItemRight}>
-                  {activeSession && activeSession.blocked_websites?.length > 0 && (
-                    <span style={styles.badge}>{activeSession.blocked_websites.length}</span>
-                  )}
-                  <span style={styles.chevron}>›</span>
-                </div>
-              </button>
-
               <button style={styles.menuItem} onClick={() => setCurrentView('settings')}>
                 <div style={styles.menuItemLeft}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#90EE90" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -141,41 +122,6 @@ export default function Menu({ onClose, onLogout, activeSession, onRefreshData }
                 </div>
                 <span style={styles.chevron}>›</span>
               </button>
-            </div>
-          )}
-
-          {/* SubView: Blocked Sites */}
-          {currentView === 'blocked_sites' && (
-            <div style={styles.subViewContainer}>
-              {activeSession ? (
-                <>
-                  <div style={styles.sectionHeader}>
-                    <span style={styles.sectionTitle}>SESSION: {activeSession.name.toUpperCase()}</span>
-                  </div>
-                  {activeSession.blocked_websites && activeSession.blocked_websites.length > 0 ? (
-                    <div style={styles.listContainer}>
-                      {activeSession.blocked_websites.map((domain, i) => (
-                        <div key={i} style={styles.blockedRow}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={styles.siteDot} />
-                            <span style={styles.domainText}>{domain}</span>
-                          </div>
-                          <span style={styles.blockedTag}>Blocked</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={styles.emptyState}>No websites assigned to this session</div>
-                  )}
-                </>
-              ) : (
-                <div style={styles.emptyState}>
-                  <p style={{ margin: 0, fontWeight: 500, color: '#E0E0E0' }}>No Active Session</p>
-                  <p style={{ margin: '6px 0 0', fontSize: 12, color: '#888' }}>
-                    Start a focus session with Browser Focus enabled on your phone to block websites.
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
@@ -266,12 +212,12 @@ export default function Menu({ onClose, onLogout, activeSession, onRefreshData }
                 />
               </div>
 
-              {/* Auto-close seconds selector */}
+              {/* Auto-close seconds selector: 10, 15 (Default), 20, 25 */}
               {settings.auto_close_tab && (
                 <div style={styles.secondsSelectorRow}>
                   <span style={{ fontSize: 12, color: '#AAA' }}>Countdown Time:</span>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    {[3, 5, 8, 10].map((sec) => (
+                    {[10, 15, 20, 25].map((sec) => (
                       <button
                         key={sec}
                         onClick={() => updateSetting('auto_close_seconds', sec)}
@@ -282,7 +228,7 @@ export default function Menu({ onClose, onLogout, activeSession, onRefreshData }
                           fontWeight: settings.auto_close_seconds === sec ? 700 : 400,
                         }}
                       >
-                        {sec}s{sec === 5 ? ' (Default)' : ''}
+                        {sec}s{sec === 15 ? ' (Default)' : ''}
                       </button>
                     ))}
                   </div>
@@ -460,7 +406,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'none',
     border: 'none',
     color: '#90EE90',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 600,
     cursor: 'pointer',
     padding: '4px 0',
@@ -481,7 +427,7 @@ const styles: Record<string, React.CSSProperties> = {
   menuList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
+    gap: 8,
     paddingTop: 8,
   },
   menuItem: {
@@ -503,19 +449,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
-  },
-  menuItemRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-  },
-  badge: {
-    backgroundColor: '#90EE90',
-    color: '#111',
-    fontSize: 11,
-    fontWeight: 700,
-    padding: '2px 7px',
-    borderRadius: 10,
   },
   chevron: {
     fontSize: 18,
@@ -619,39 +552,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     cursor: 'pointer',
   },
-  listContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-  },
-  blockedRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px 14px',
-    backgroundColor: '#202024',
-    border: '1px solid #2A2A30',
-    borderRadius: 8,
-  },
-  siteDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FF6B6B',
-  },
-  domainText: {
-    fontSize: 13,
-    fontWeight: 500,
-    color: '#FFFFFF',
-  },
-  blockedTag: {
-    fontSize: 10,
-    fontWeight: 600,
-    color: '#FF6B6B',
-    backgroundColor: 'rgba(255, 107, 107, 0.12)',
-    padding: '2px 8px',
-    borderRadius: 6,
-  },
   infoCard: {
     padding: '14px',
     backgroundColor: '#202024',
@@ -680,15 +580,16 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: 8,
     padding: '12px 16px',
-    backgroundColor: 'rgba(144, 238, 144, 0.12)',
-    border: '1.5px solid #90EE90',
+    backgroundColor: '#16652D',
+    border: 'none',
     borderRadius: 10,
-    color: '#90EE90',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: 600,
     width: '100%',
     boxSizing: 'border-box',
     marginTop: 6,
+    cursor: 'pointer',
   },
   syncSuccessToast: {
     padding: '8px 12px',
@@ -698,15 +599,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     textAlign: 'center',
     fontWeight: 500,
-  },
-  emptyState: {
-    padding: '24px 16px',
-    textAlign: 'center',
-    backgroundColor: '#202024',
-    border: '1px solid #2A2A30',
-    borderRadius: 10,
-    color: '#8E8E93',
-    fontSize: 13,
   },
   footer: {
     padding: '14px 18px',

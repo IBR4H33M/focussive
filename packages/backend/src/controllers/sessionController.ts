@@ -823,17 +823,22 @@ export async function getUpcomingSessions(req: AuthRequest, res: Response): Prom
     console.error('[SessionController] Error completing expired sessions:', err);
   }
 
+  const clientNow = req.query.client_time
+    ? new Date(String(req.query.client_time))
+    : new Date();
+
   const { data: sessions, error } = await supabase
     .from('sessions')
     .select('*')
     .eq('user_id', userId)
-    .eq('status', SessionStatus.SCHEDULED)
+    .neq('status', 'cancelled')
+    .neq('status', 'completed')
     .order('start_time', { ascending: true });
 
   if (error) {
     throw new AppError('Failed to fetch upcoming sessions', 500, 'FETCH_ERROR');
   }
 
-  const sorted = sortByNextOccurrence(sessions || []);
+  const sorted = sortByNextOccurrence(sessions || [], clientNow);
   res.json({ data: sorted });
 }

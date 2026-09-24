@@ -598,18 +598,6 @@ export default function SessionDetailScreen() {
             <Text style={[styles.cancelSessionBtnText, { color: '#FFFFFF' }]}>Cancel Session</Text>
           </TouchableOpacity>
         )}
-
-        {/* Skip this session button — upcoming or running sessions (Filled, Borderless) */}
-        {(isActive || session.status === SessionStatus.SCHEDULED) && (
-          <TouchableOpacity
-            style={[styles.skipSessionBtn, { backgroundColor: '#D97706', borderWidth: 0 }]}
-            onPress={handleSkipSession}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="play-forward-outline" size={16} color="#FFFFFF" />
-            <Text style={[styles.skipSessionBtnText, { color: '#FFFFFF' }]}>Skip this session</Text>
-          </TouchableOpacity>
-        )}
       </ScrollView>
 
       {/* Break Picker Modal */}
@@ -999,6 +987,4 @@ const styles = StyleSheet.create({
   breakOngoingLabel: { fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
   cancelSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 0, marginTop: 16 },
   cancelSessionBtnText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
-  skipSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 0, marginTop: 14 },
-  skipSessionBtnText: { fontSize: 14, fontWeight: '600' },
 });

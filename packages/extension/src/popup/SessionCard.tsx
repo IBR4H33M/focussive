@@ -67,8 +67,8 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
     setCardScreen('main');
   }, [session.id, breakMinutes]);
 
-  // Main timer reads amber during break, dark green otherwise (both sit on the green card fill)
-  const timerColor = isOnBreak ? AMBER_DARK : GREEN_DARK;
+  // Main timer reads amber during break, crisp white otherwise (both sit on the green card fill)
+  const timerColor = isOnBreak ? TIMER_BREAK : '#FFFFFF';
 
   return (
     <div style={s.card}>
@@ -113,11 +113,14 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
                   style={s.breakBtn}
                   onClick={() => { setBreakMinutes(1); setCardScreen('breakPicker'); }}
                 >
-                  Take a break
-                  <span style={s.breakBtnSub}>{remainingBreakMin} min available</span>
+                  <span style={s.breakBtnLeft}>Take a break?</span>
+                  <span style={s.breakBtnRight}>{remainingBreakMin} min</span>
                 </button>
               ) : (
-                <div style={s.breakBtnDisabled}>No break time available</div>
+                <div style={s.breakBtnDisabled}>
+                  <span style={s.breakBtnLeft}>Take a break?</span>
+                  <span style={s.breakBtnRight}>0 min</span>
+                </div>
               )}
             </div>
           )}
@@ -127,7 +130,7 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
       {/* Break picker screen */}
       {cardScreen === 'breakPicker' && (
         <div style={{ textAlign: 'center', padding: '8px 0' }}>
-          <div style={{ color: GREEN_DARK, fontSize: 14, marginBottom: 16 }}>Choose break duration</div>
+          <div style={{ color: '#FFFFFF', fontSize: 14, marginBottom: 16 }}>Choose break duration</div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, marginBottom: 16 }}>
             <button
@@ -154,13 +157,11 @@ export default function SessionCard({ session, onCancel }: SessionCardProps) {
   );
 }
 
-// Active-session card is filled green; all foreground colors below are dark
-// shades chosen for solid contrast against that fill (no reliance on borders).
-const GREEN = '#90EE90';
-const GREEN_DARK = '#435432';
-const GREEN_DARK_MUTED = '#2B5E3C';
-const AMBER_DARK = '#7A4A00';
-const RED_DARK = '#A32020';
+// Running session card uses vivid green #23B14D with darker shade #16652D for buttons
+const GREEN = '#23B14D';
+const GREEN_DARK_BTN = '#16652D'; // Darker shade of #23B14D
+const TIMER_BREAK = '#FFF1B8';
+const VIOLATION_RED = '#FFD1D1';
 
 const s: Record<string, React.CSSProperties> = {
   card: {
@@ -176,11 +177,11 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     marginBottom: 16,
   },
-  name: { fontSize: 18, fontWeight: 500, color: GREEN_DARK },
+  name: { fontSize: 18, fontWeight: 600, color: '#FFFFFF' },
   cancelBtn: {
     width: 28, height: 28, borderRadius: 14,
     border: 'none',
-    background: 'rgba(21,77,39,0.12)', color: RED_DARK,
+    background: 'rgba(0, 0, 0, 0.16)', color: '#FFFFFF',
     fontSize: 14, fontWeight: 700, cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
@@ -189,7 +190,6 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 42, fontWeight: 200,
     fontVariantNumeric: 'tabular-nums',
     margin: '8px 0', letterSpacing: 2,
-    // color set inline (dark green or dark amber)
   },
   breakRow: {
     display: 'flex',
@@ -200,55 +200,83 @@ const s: Record<string, React.CSSProperties> = {
     marginBottom: 4,
     padding: '6px 12px',
     borderRadius: 8,
-    backgroundColor: 'rgba(21,77,39,0.10)',
+    backgroundColor: 'rgba(0, 0, 0, 0.16)',
   },
   breakLabel: {
     fontSize: 12,
-    color: AMBER_DARK,
+    color: TIMER_BREAK,
     fontWeight: 500,
     letterSpacing: 0.5,
   },
   breakCountdown: {
     fontSize: 18,
     fontWeight: 300,
-    color: AMBER_DARK,
+    color: '#FFFFFF',
     fontVariantNumeric: 'tabular-nums',
     letterSpacing: 1,
   },
   stats: { textAlign: 'center', marginTop: 8 },
-  violations: { fontSize: 13, fontWeight: 500, color: RED_DARK },
-  noViolations: { fontSize: 13, fontWeight: 400, color: GREEN_DARK_MUTED },
+  violations: { fontSize: 13, fontWeight: 500, color: VIOLATION_RED },
+  noViolations: { fontSize: 13, fontWeight: 400, color: 'rgba(255, 255, 255, 0.9)' },
   breakBtn: {
-    width: '100%', padding: '12px 16px',
-    borderRadius: 10, border: 'none',
-    background: GREEN_DARK, color: '#FFFFFF',
-    fontSize: 14, fontWeight: 500, cursor: 'pointer',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+    width: '100%',
+    padding: '13px 18px',
+    borderRadius: 10,
+    border: 'none',
+    outline: 'none',
+    background: GREEN_DARK_BTN,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    boxSizing: 'border-box',
   },
-  breakBtnSub: { fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 400 },
+  breakBtnLeft: {
+    fontSize: 14,
+    fontWeight: 500,
+    color: '#FFFFFF',
+  },
+  breakBtnRight: {
+    fontSize: 17,
+    fontWeight: 700,
+    color: '#FFFFFF',
+    fontVariantNumeric: 'tabular-nums',
+  },
   breakBtnDisabled: {
-    width: '100%', padding: '12px 16px',
-    borderRadius: 10, border: 'none',
-    background: 'rgba(21,77,39,0.08)', color: 'rgba(21,77,39,0.45)',
-    fontSize: 13, textAlign: 'center', boxSizing: 'border-box',
+    width: '100%',
+    padding: '13px 18px',
+    borderRadius: 10,
+    border: 'none',
+    outline: 'none',
+    background: 'rgba(0, 0, 0, 0.12)',
+    color: 'rgba(255, 255, 255, 0.55)',
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    boxSizing: 'border-box',
   },
   arrowBtn: {
     background: 'none', border: 'none',
-    color: GREEN_DARK_MUTED, fontSize: 18, cursor: 'pointer', padding: '6px 32px',
+    color: '#FFFFFF', fontSize: 18, cursor: 'pointer', padding: '6px 32px',
   },
   pickerNum: {
-    color: GREEN_DARK, fontSize: 52, fontWeight: 200, lineHeight: 1,
+    color: '#FFFFFF', fontSize: 52, fontWeight: 200, lineHeight: 1,
   },
-  pickerLabel: { color: GREEN_DARK_MUTED, fontSize: 13, marginTop: 0 },
+  pickerLabel: { color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, marginTop: 0 },
   confirmBreakBtn: {
     width: '100%', padding: '11px 16px',
     borderRadius: 10, border: 'none',
-    background: GREEN_DARK, color: '#FFFFFF',
+    background: GREEN_DARK_BTN, color: '#FFFFFF',
     fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 8,
   },
   backBtn: {
     background: 'none', border: 'none',
-    color: GREEN_DARK_MUTED, fontSize: 13, cursor: 'pointer',
+    color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, cursor: 'pointer',
     padding: '8px 0', width: '100%',
   },
 };

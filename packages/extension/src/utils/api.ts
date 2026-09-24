@@ -154,8 +154,12 @@ export const authApi = {
 
 // ─── Sessions ──────────────────────────────────────────────────
 export const sessionApi = {
+  getAll: () => apiRequest<{ data: unknown[] }>('/sessions'),
   getActive: () => apiRequest<{ data: unknown[] }>('/sessions/active'),
-  getUpcoming: () => apiRequest<{ data: unknown[] }>('/sessions/upcoming'),
+  getUpcoming: () =>
+    apiRequest<{ data: unknown[] }>(
+      `/sessions/upcoming?client_time=${encodeURIComponent(new Date().toISOString())}`
+    ),
 
   startBreak: (sessionId: string, source: 'manual' | 'violation' = 'manual') =>
     apiRequest<{ id: string; remaining_break_seconds: number }>(

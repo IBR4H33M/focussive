@@ -91,7 +91,7 @@ export const DEFAULT_EXTENSION_SETTINGS: ExtensionSettings = {
   overlay_gif_enabled: true,
   overlay_gif_url: 'cat-no.gif',
   auto_close_tab: true,
-  auto_close_seconds: 5,
+  auto_close_seconds: 15,
   desktop_notifications: true,
   sound_enabled: true,
 };
