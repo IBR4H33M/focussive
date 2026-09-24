@@ -30,11 +30,14 @@ object SessionNotifications {
     private val COLOR_ACTIVE = Color.parseColor("#F87171")   // Light red for running session countdown
 
     /** Notification surface colors matching custom layouts */
-    private val COLOR_SURFACE_ACTIVE = Color.parseColor("#1E2235")
-    private val COLOR_SURFACE_REMINDER = Color.parseColor("#1E2235")
+    private val COLOR_SURFACE_ACTIVE = Color.parseColor("#22B14C")
+    private val COLOR_SURFACE_REMINDER = Color.parseColor("#FEF3C7")
 
     @Volatile
     var latestActiveNotification: Notification? = null
+
+    @Volatile
+    var latestReminderNotification: Notification? = null
 
     private fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -250,20 +253,6 @@ object SessionNotifications {
             )
         }
 
-        // For upcoming reminder notifications, add a quick Skip action
-        if (!isActive) {
-            val skipIntent = skipSessionPendingIntent(context, sessionId, id)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                builder.addAction(
-                    Notification.Action.Builder(
-                        null,
-                        "Skip",
-                        skipIntent
-                    ).build()
-                )
-            }
-        }
-
         // Android 12+: OS can force-dismiss foreground service notifications.
         // Attach a delete intent so we can immediately repost when this happens.
         if (isActive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -319,6 +308,11 @@ object SessionNotifications {
         val notification = buildNotification(
             context, targetId, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText
         )
+        if (isActive) {
+            latestActiveNotification = notification
+        } else {
+            latestReminderNotification = notification
+        }
 
         if (isActive) {
             // Dismiss reminder notifications immediately when session is active

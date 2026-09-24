@@ -33,7 +33,7 @@
             android:text="Remaining time"
             android:textSize="12sp"
             android:letterSpacing="0.03"
-            android:textColor="#BAC6B8" />
+            android:textColor="#E8F8ED" />
 
         <Chronometer
             android:id="@+id/notif_chronometer"
@@ -51,5 +51,5 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:textSize="13sp"
-        android:textColor="#BAC6B8" />
+        android:textColor="#E8F8ED" />
 </LinearLayout>

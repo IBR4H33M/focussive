@@ -508,7 +508,7 @@ export default function CreateSessionScreen() {
             <Text style={[styles.subLabel, { color: theme.textSecondary, marginTop: 14 }]}>Additional Websites</Text>
             <View style={styles.customRow}>
               <TextInput
-                style={[styles.customInput, { color: theme.text, backgroundColor: theme.background, borderColor: 'transparent' }]}
+                style={[styles.customInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
                 placeholder="example.com" placeholderTextColor={theme.textSecondary}
                 value={customWebsite} onChangeText={setCustomWebsite}
                 autoCapitalize="none" keyboardType="url"
@@ -564,14 +564,18 @@ export default function CreateSessionScreen() {
         {allowBreaks && (
           <View style={[styles.focusContent, { paddingTop: 12 }]}>
             <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Max Break Time (minutes)</Text>
-            <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.background, borderColor: 'transparent' }]}
-              placeholder="10"
-              placeholderTextColor={theme.textSecondary}
-              value={maxBreakMinutes}
-              onChangeText={setMaxBreakMinutes}
-              keyboardType="number-pad"
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <TextInput
+                style={[styles.compactTimeInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
+                placeholder="10"
+                placeholderTextColor={theme.textSecondary}
+                value={maxBreakMinutes}
+                onChangeText={setMaxBreakMinutes}
+                keyboardType="number-pad"
+                maxLength={3}
+              />
+              <Text style={{ color: theme.textSecondary, fontSize: 14 }}>min</Text>
+            </View>
           </View>
         )}
       </View>
@@ -595,9 +599,10 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
   label: { fontSize: 12, fontWeight: '600', letterSpacing: 2, marginBottom: 8, marginTop: 20 },
   subLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginBottom: 8, marginTop: 12 },
-  input: { height: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300' },
+  input: { height: 48, borderWidth: 2.5, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300' },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  timeInput: { width: 70, height: 48, borderWidth: 1, borderRadius: 10, textAlign: 'center', fontSize: 18, fontWeight: '300' },
+  timeInput: { width: 70, height: 48, borderWidth: 2.5, borderRadius: 10, textAlign: 'center', fontSize: 18, fontWeight: '300' },
+  compactTimeInput: { width: 80, height: 44, borderWidth: 2.5, borderRadius: 10, textAlign: 'center', fontSize: 16, fontWeight: '500' },
   timeSep: { fontSize: 24, fontWeight: '300' },
   ampmRow: { flexDirection: 'row', gap: 4, marginLeft: 8 },
   ampmBtn: { width: 52, height: 48, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
@@ -621,7 +626,7 @@ const styles = StyleSheet.create({
   groupItemText: { fontSize: 15 },
   groupItemCount: { fontSize: 13 },
   customRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  customInput: { flex: 1, height: 44, borderRadius: 10, paddingHorizontal: 14, fontSize: 14, borderWidth: 0 },
+  customInput: { flex: 1, height: 44, borderRadius: 10, paddingHorizontal: 14, fontSize: 14, borderWidth: 2.5 },
   addIconBtn: { width: 44, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   sitePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 0 },

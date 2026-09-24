@@ -1196,20 +1196,36 @@ export default function SettingsScreen() {
             </View>
 
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
               placeholder="Name"
               placeholderTextColor={theme.textSecondary}
               value={editName}
               onChangeText={setEditName}
             />
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
               placeholder="Age"
               placeholderTextColor={theme.textSecondary}
               value={editAge}
               onChangeText={setEditAge}
               keyboardType="numeric"
             />
+
+            {/* My Driving Forces */}
+            <TouchableOpacity
+              style={styles.drivingForcesBtn}
+              onPress={() => {
+                setEditModalVisible(false);
+                router.push({ pathname: '/driving-forces', params: { from: 'settings' } } as never);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.drivingForcesBtnText, { color: theme.textSecondary }]}>
+                My Driving Forces
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+
             <View style={styles.modalButtons}>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.surface }]} onPress={() => setEditModalVisible(false)}>
                 <Text style={{ color: theme.textSecondary }}>Cancel</Text>
@@ -1228,7 +1244,7 @@ export default function SettingsScreen() {
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Change Password</Text>
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
               placeholder="Current Password"
               placeholderTextColor={theme.textSecondary}
               value={currentPassword}
@@ -1236,7 +1252,7 @@ export default function SettingsScreen() {
               secureTextEntry
             />
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
               placeholder="New Password"
               placeholderTextColor={theme.textSecondary}
               value={newPassword}
@@ -1244,7 +1260,7 @@ export default function SettingsScreen() {
               secureTextEntry
             />
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface }]}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
               placeholder="Confirm New Password"
               placeholderTextColor={theme.textSecondary}
               value={confirmPassword}
@@ -1434,7 +1450,15 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
   modalContent: { borderRadius: 16, padding: 24 },
   modalTitle: { fontSize: 20, fontWeight: '500', marginBottom: 20 },
-  input: { height: 48, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300', marginBottom: 12 },
+  input: {
+    height: 48,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    fontWeight: '300',
+    marginBottom: 12,
+    borderWidth: 2.5,
+  },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   modalBtn: { flex: 1, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   // Accordion
@@ -1463,13 +1487,14 @@ const styles = StyleSheet.create({
   reminderPresetText: { fontSize: 13, fontWeight: '600' },
   reminderCustomRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   reminderInput: {
-    flex: 1,
+    width: 80,
     height: 44,
     borderRadius: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     fontSize: 16,
-    fontWeight: '300',
-    borderWidth: 1,
+    fontWeight: '500',
+    textAlign: 'center',
+    borderWidth: 2.5,
   },
   proBadge: {
     paddingHorizontal: 8,
@@ -1492,6 +1517,17 @@ const styles = StyleSheet.create({
   upgradeBtnText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  // Driving Forces row button in Edit Profile modal
+  drivingForcesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+  },
+  drivingForcesBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

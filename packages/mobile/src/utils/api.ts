@@ -279,6 +279,8 @@ export const userApi = {
     overlay_gif_enabled?: boolean;
     overlay_gif_url?: string;
     monthly_skip_limit?: number;
+    driving_forces?: string[];
+    big_why?: string | null;
   }) => apiRequest('/user/profile', { method: 'PUT', body }),
 
   updatePassword: (body: { current_password: string; new_password: string; new_password_confirm: string }) =>

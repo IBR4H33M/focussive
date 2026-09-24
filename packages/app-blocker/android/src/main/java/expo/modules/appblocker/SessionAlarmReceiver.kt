@@ -31,6 +31,13 @@ class SessionAlarmReceiver : BroadcastReceiver() {
             if (notifId != -1) {
                 SessionNotifications.cancel(context, notifId)
             }
+            try {
+                val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
+                    action = "STOP"
+                }
+                context.startService(serviceIntent)
+            } catch (_: Exception) {}
+
             val sessionId = intent.getStringExtra("sessionId") ?: return
 
             // Open app via deep link to trigger skip confirmation flow
@@ -56,21 +63,23 @@ class SessionAlarmReceiver : BroadcastReceiver() {
         if (isActive) {
             // Dismiss reminder notifications immediately when session becomes active
             SessionNotifications.cancelAllReminders(context)
+        }
 
-            try {
-                val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
-                    putExtra("SESSION_ID", sessionId)
-                    putExtra("SESSION_NAME", title)
-                    putExtra("END_AT_MILLIS", targetAtMillis)
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
-                }
-            } catch (_: Exception) {
-                // Ignore if background service cannot start in restricted device states
+        try {
+            val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
+                action = if (isActive) "START_ACTIVE" else "START_REMINDER"
+                putExtra("SESSION_ID", sessionId)
+                putExtra("SESSION_NAME", title)
+                putExtra("END_AT_MILLIS", targetAtMillis)
+                putExtra("NOTIF_ID", id)
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
+        } catch (_: Exception) {
+            // Ignore if background service cannot start in restricted device states
         }
     }
 }

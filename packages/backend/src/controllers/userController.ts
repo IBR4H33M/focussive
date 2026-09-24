@@ -22,7 +22,7 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, email, name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, subscription_tier, subscription_status, trial_used, trial_ends_at, created_at, updated_at')
+    .select('id, email, name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, subscription_tier, subscription_status, trial_used, trial_ends_at, driving_forces, big_why, created_at, updated_at')
     .eq('id', userId)
     .single();
 
@@ -66,6 +66,8 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
     overlay_gif_enabled,
     overlay_gif_url,
     monthly_skip_limit,
+    driving_forces,
+    big_why,
   } = req.body;
 
   const updates: Record<string, unknown> = {};
@@ -77,6 +79,13 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
   if (overlay_quote_enabled !== undefined) updates.overlay_quote_enabled = overlay_quote_enabled;
   if (overlay_gif_enabled !== undefined) updates.overlay_gif_enabled = overlay_gif_enabled;
   if (overlay_gif_url !== undefined) updates.overlay_gif_url = overlay_gif_url;
+  if (driving_forces !== undefined) {
+    if (!Array.isArray(driving_forces)) {
+      throw new AppError('driving_forces must be an array', 400, 'VALIDATION_ERROR');
+    }
+    updates.driving_forces = driving_forces;
+  }
+  if (big_why !== undefined) updates.big_why = big_why;
   if (monthly_skip_limit !== undefined) {
     const parsed = parseInt(String(monthly_skip_limit), 10);
     if (isNaN(parsed) || parsed < 0 || parsed > 100) {
@@ -93,7 +102,7 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
     .from('users')
     .update(updates)
     .eq('id', userId)
-    .select('id, email, name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, created_at, updated_at')
+    .select('id, email, name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, driving_forces, big_why, created_at, updated_at')
     .single();
 
   if (error || !user) {

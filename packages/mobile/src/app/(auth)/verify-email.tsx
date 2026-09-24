@@ -96,9 +96,8 @@ export default function VerifyEmailScreen() {
     setLoading(true);
     try {
       await verifyEmail(email, code);
-      // Navigation is handled automatically by root layout once authenticated,
-      // but we can also optionally navigate to extension-qr:
-      router.replace('/(auth)/extension-qr' as never);
+      // Navigate to motivations onboarding before the extension pairing step
+      router.replace('/driving-forces' as never);
     } catch (err: unknown) {
       const msg =
         (err as { errors?: Array<{ message?: string; longMessage?: string }> })?.errors?.[0]?.longMessage ||
@@ -271,7 +270,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 56,
     borderRadius: 12,
-    borderWidth: 1.5,
+    borderWidth: 2.5,
     fontSize: 24,
     fontWeight: '600',
   },

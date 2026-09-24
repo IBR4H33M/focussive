@@ -14,7 +14,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="16sp"
-        android:textColor="#FFFFFF"
+        android:textColor="#452C03"
         android:maxLines="2"
         android:ellipsize="end" />
 
@@ -33,7 +33,7 @@
             android:text="Starts in"
             android:textSize="12sp"
             android:letterSpacing="0.03"
-            android:textColor="#BAC6B8" />
+            android:textColor="#78350F" />
 
         <Chronometer
             android:id="@+id/notif_chronometer"

@@ -19,6 +19,7 @@ interface SessionCardProps {
     break_ends_at?: string | null;
   };
   isActive?: boolean;
+  isUpcoming?: boolean;
 }
 
 function formatTimeRange(startTime: string, durationMinutes: number): string {
@@ -48,21 +49,29 @@ function getBreakSecondsLeft(breakEndsAt: string | null | undefined): number {
 const TIMER_BREAK_DARK = '#9A5B00';
 const TIMER_BREAK_LIGHT = '#F6C531';
 
-const ACTIVE_DARK_CARD_BG = '#F6C531';
-const ACTIVE_DARK_CARD_TEXT = '#2F3456';
-const ACTIVE_DARK_CARD_MUTED = '#5D6E75';
-const ACTIVE_DARK_CARD_BORDER = '#2F3456';
-const ACTIVE_DARK_CARD_SUBTLE = 'rgba(47, 52, 86, 0.12)';
-const ACTIVE_DARK_CARD_DANGER = '#7A1F1F';
+// Active session palette: vivid green #22B14C with darker green border #1B8C3C
+const ACTIVE_DARK_CARD_BG = '#22B14C';
+const ACTIVE_DARK_CARD_TEXT = '#FFFFFF';
+const ACTIVE_DARK_CARD_MUTED = 'rgba(255, 255, 255, 0.88)';
+const ACTIVE_DARK_CARD_BORDER = '#1B8C3C';
+const ACTIVE_DARK_CARD_SUBTLE = 'rgba(0, 0, 0, 0.18)';
+const ACTIVE_DARK_CARD_DANGER = '#FFB4B4';
 
-const ACTIVE_LIGHT_CARD_BG = '#F6C531';
-const ACTIVE_LIGHT_CARD_TEXT = '#2E3B22';
-const ACTIVE_LIGHT_CARD_MUTED = '#5A6B48';
-const ACTIVE_LIGHT_CARD_BORDER = '#3D5730';
-const ACTIVE_LIGHT_CARD_SUBTLE = 'rgba(46, 59, 34, 0.12)';
-const ACTIVE_LIGHT_CARD_DANGER = '#8A3800';
+const ACTIVE_LIGHT_CARD_BG = '#22B14C';
+const ACTIVE_LIGHT_CARD_TEXT = '#FFFFFF';
+const ACTIVE_LIGHT_CARD_MUTED = 'rgba(255, 255, 255, 0.88)';
+const ACTIVE_LIGHT_CARD_BORDER = '#1B8C3C';
+const ACTIVE_LIGHT_CARD_SUBTLE = 'rgba(0, 0, 0, 0.14)';
+const ACTIVE_LIGHT_CARD_DANGER = '#FFB4B4';
 
-export default function SessionCard({ session, isActive }: SessionCardProps) {
+// Upcoming session palette (very light filled yellow, with dark shades of yellow for text)
+const UPCOMING_CARD_BG = '#FEF3C7';
+const UPCOMING_CARD_BORDER = '#FDE68A';
+const UPCOMING_CARD_TEXT = '#452C03';
+const UPCOMING_CARD_MUTED = '#78350F';
+const UPCOMING_CARD_SUBTLE = 'rgba(120, 53, 15, 0.12)';
+
+export default function SessionCard({ session, isActive, isUpcoming }: SessionCardProps) {
   const theme = useTheme();
   const isDark = useIsDark();
   const router = useRouter();
@@ -112,21 +121,31 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
   const timeRange = formatTimeRange(session.start_time, session.duration);
   const durationLabel = formatDuration(session.duration);
 
+  const isUpcomingSession = isUpcoming && !isActiveSession;
+
   const cardBackgroundColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_BG : ACTIVE_LIGHT_CARD_BG)
-    : theme.card;
+    : isUpcomingSession
+      ? UPCOMING_CARD_BG
+      : theme.card;
 
   const cardBorderColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_BORDER : ACTIVE_LIGHT_CARD_BORDER)
-    : 'transparent';
+    : isUpcomingSession
+      ? UPCOMING_CARD_BORDER
+      : 'transparent';
 
   const primaryTextColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
-    : theme.text;
+    : isUpcomingSession
+      ? UPCOMING_CARD_TEXT
+      : theme.text;
 
   const secondaryTextColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_MUTED : ACTIVE_LIGHT_CARD_MUTED)
-    : theme.textSecondary;
+    : isUpcomingSession
+      ? UPCOMING_CARD_MUTED
+      : theme.textSecondary;
 
   const breakColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
@@ -134,26 +153,32 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
 
   const timerColor = isActiveSession
     ? (isOnBreak ? breakColor : (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT))
-    : primaryTextColor;
+    : isUpcomingSession
+      ? '#D97706'
+      : primaryTextColor;
 
   const badgeBackgroundColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_SUBTLE : ACTIVE_LIGHT_CARD_SUBTLE)
-    : theme.surface;
+    : isUpcomingSession
+      ? UPCOMING_CARD_SUBTLE
+      : theme.surface;
 
   const badgeForegroundColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
-    : theme.textSecondary;
+    : isUpcomingSession
+      ? UPCOMING_CARD_MUTED
+      : theme.textSecondary;
 
   const breakRowBorderColor = isActiveSession
-    ? (isDark ? 'rgba(47, 52, 86, 0.24)' : 'rgba(46, 59, 34, 0.24)')
+    ? 'rgba(0, 0, 0, 0.2)'
     : `${isDark ? theme.accent : theme.accentDark}40`;
 
   const breakRowBackgroundColor = isActiveSession
-    ? (isDark ? 'rgba(47, 52, 86, 0.08)' : 'rgba(46, 59, 34, 0.08)')
+    ? 'rgba(0, 0, 0, 0.12)'
     : `${isDark ? theme.accent : theme.accentDark}10`;
 
   const breakTextColor = isActiveSession
-    ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
+    ? '#FFFFFF'
     : (isDark ? theme.accent : theme.accentDark);
 
   const violationColor = isActiveSession
@@ -166,7 +191,7 @@ export default function SessionCard({ session, isActive }: SessionCardProps) {
         styles.card,
         {
           backgroundColor: cardBackgroundColor,
-          borderWidth: isActiveSession ? 1.5 : 0,
+          borderWidth: (isActiveSession || isUpcomingSession) ? 1.5 : 0,
           borderColor: cardBorderColor,
         },
       ]}

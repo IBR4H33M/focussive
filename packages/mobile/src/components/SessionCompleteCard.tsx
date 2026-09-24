@@ -81,13 +81,6 @@ export default function SessionCompleteCard({
             />
           </View>
 
-          {/* Tier Name */}
-          <View style={[styles.tierBadge, { backgroundColor: `${tier.color}25` }]}>
-            <Text style={[styles.tierBadgeText, { color: tier.color }]}>
-              {tier.name.toUpperCase()} TIER
-            </Text>
-          </View>
-
           {/* Congratulatory Message */}
           <Text style={[styles.congratsMessage, { color: theme.text }]}>
             Congratulations! You just earned the{' '}
@@ -103,14 +96,14 @@ export default function SessionCompleteCard({
           {onViewBadges && (
             <View style={styles.actions}>
               <TouchableOpacity
-                style={[styles.secondaryBtn, { borderColor: theme.border }]}
+                style={[styles.primaryBtn, { backgroundColor: theme.accent }]}
                 onPress={() => {
                   onDismiss();
                   onViewBadges();
                 }}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
               >
-                <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
+                <Text style={styles.primaryBtnText}>
                   View in Badges
                 </Text>
               </TouchableOpacity>
@@ -166,23 +159,12 @@ const styles = StyleSheet.create({
     width: 92,
     height: 92,
   },
-  tierBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  tierBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
   congratsMessage: {
     fontSize: 15,
     lineHeight: 22,
     fontWeight: '500',
     textAlign: 'center',
-    marginTop: 6,
+    marginTop: 4,
     marginBottom: 16,
     paddingHorizontal: 6,
   },
@@ -190,16 +172,16 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: 4,
   },
-  secondaryBtn: {
+  primaryBtn: {
     width: '100%',
-    height: 42,
-    borderRadius: 12,
-    borderWidth: 1,
+    height: 46,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  secondaryBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

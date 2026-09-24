@@ -221,6 +221,14 @@ function RootLayoutContent() {
             headerShadowVisible: false,
           }}
         />
+        <Stack.Screen
+          name="driving-forces"
+          options={{
+            headerShown: false,
+            animation: 'slide_from_bottom',
+            presentation: 'modal',
+          }}
+        />
       </Stack>
     </>
   );

@@ -140,6 +140,46 @@ class AppBlockerService : Service() {
                 return START_NOT_STICKY
             }
 
+            "START_REMINDER" -> {
+                val notifId = intent.getIntExtra("NOTIF_ID", 2001)
+                val sId = intent.getStringExtra("SESSION_ID")
+                if (sId != null) currentSessionId = sId
+                val sName = intent.getStringExtra("SESSION_NAME")
+                if (sName != null) currentSessionName = sName
+                val endMs = intent.getLongExtra("END_AT_MILLIS", 0L)
+                if (endMs > 0L) currentTargetMillis = endMs
+
+                val notification = SessionNotifications.latestReminderNotification
+                    ?: SessionNotifications.buildNotification(
+                        this, notifId, currentSessionId ?: "", currentSessionName ?: "Upcoming Session",
+                        "", currentTargetMillis, 0L, false
+                    )
+                startForeground(notifId, notification)
+                // In reminder state, app blocker does NOT block apps yet
+                isMonitoring = false
+                return START_NOT_STICKY
+            }
+
+            "START_ACTIVE" -> {
+                // Cancel any previous reminder notification
+                SessionNotifications.cancelAllReminders(this)
+                val sId = intent.getStringExtra("SESSION_ID")
+                if (sId != null) currentSessionId = sId
+                val sName = intent.getStringExtra("SESSION_NAME")
+                if (sName != null) currentSessionName = sName
+                val endMs = intent.getLongExtra("END_AT_MILLIS", 0L)
+                if (endMs > 0L) currentTargetMillis = endMs
+
+                val notification = getForegroundNotification()
+                startForeground(SessionNotifications.ACTIVE_NOTIFICATION_ID, notification)
+
+                if (!isMonitoring) {
+                    isMonitoring = true
+                    handler.post(monitorRunnable)
+                }
+                return START_NOT_STICKY
+            }
+
             null, "" -> { /* fall through to start/update */ }
         }
 

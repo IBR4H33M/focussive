@@ -281,5 +281,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS revenuecat_customer_id VARCHAR(255);
 
 
-
+-- ============================================================
+-- MIGRATION: Driving Forces & Big Why (Onboarding Motivation)
+-- ============================================================
+ALTER TABLE users ADD COLUMN IF NOT EXISTS driving_forces TEXT[] DEFAULT '{}';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS big_why TEXT;
 
