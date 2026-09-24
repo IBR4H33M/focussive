@@ -1230,10 +1230,12 @@ export default function StatsScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Text style={[styles.milestoneTitle, { color: theme.text }]}>{item.badge.title}</Text>
                       {item.isUnlocked ? (
-                        <View style={[styles.unlockedBadge, { backgroundColor: '#10B98120' }]}>
-                          <Ionicons name="checkmark-circle" size={12} color="#10B981" />
-                          <Text style={styles.unlockedBadgeText}>{isEquipped ? 'Active' : 'Unlocked'}</Text>
-                        </View>
+                        !isEquipped ? (
+                          <View style={[styles.unlockedBadge, { backgroundColor: '#10B98120' }]}>
+                            <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                            <Text style={styles.unlockedBadgeText}>Unlocked</Text>
+                          </View>
+                        ) : null
                       ) : (
                         <Text style={[styles.progressText, { color: theme.textSecondary }]}>
                           {item.current} / {item.target}

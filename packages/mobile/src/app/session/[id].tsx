@@ -414,30 +414,30 @@ export default function SessionDetailScreen() {
   const breakRemaining = Math.floor((session.break_used_seconds != null
     ? Math.max(0, ((session.max_break_minutes ?? 0) * 60) - session.break_used_seconds)
     : (session.max_break_minutes ?? 0) * 60) / 60);
-  const activeGreen = isDark ? theme.accent : theme.accentDark;
+  const activeGreen = '#22B14C';
   const liveRemaining = isActive ? getRemainingSeconds(session) : 0;
 
   return (
     <>
       <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
         {/* Status Banner */}
-        <View style={[styles.statusBanner, { backgroundColor: isActive ? `${theme.accent}15` : theme.surface }]}>
+        <View style={[styles.statusBanner, { backgroundColor: isActive ? 'rgba(34, 177, 76, 0.16)' : theme.surface }]}>
           <Ionicons
             name={isActive ? 'radio-button-on' : 'calendar-outline'}
             size={16}
-            color={isActive ? theme.accent : theme.textSecondary}
+            color={isActive ? '#22B14C' : theme.textSecondary}
           />
-          <Text style={[styles.statusText, { color: isActive ? theme.accent : theme.textSecondary }]}>
+          <Text style={[styles.statusText, { color: isActive ? '#22B14C' : theme.textSecondary }]}>
             {isActive ? 'Active' : session.status.charAt(0).toUpperCase() + session.status.slice(1)}
           </Text>
         </View>
 
         {isActive && (
-          <View style={[styles.liveBanner, { borderColor: `${activeGreen}35`, backgroundColor: `${activeGreen}10` }]}> 
-            <Text style={[styles.liveBannerLabel, { color: activeGreen }]}>Session running</Text>
-            <Text style={[styles.liveBannerName, { color: theme.text }]} numberOfLines={1}>{session.name}</Text>
-            <Text style={[styles.liveBannerCountdown, { color: activeGreen }]}>{formatCountdown(liveRemaining)}</Text>
-            <Text style={[styles.liveBannerMeta, { color: theme.textSecondary }]}>remaining until this session ends</Text>
+          <View style={[styles.liveBanner, { borderColor: '#1B8C3C', backgroundColor: '#22B14C' }]}> 
+            <Text style={[styles.liveBannerLabel, { color: '#FFFFFF' }]}>Session running</Text>
+            <Text style={[styles.liveBannerName, { color: '#FFFFFF' }]} numberOfLines={1}>{session.name}</Text>
+            <Text style={[styles.liveBannerCountdown, { color: '#FFFFFF' }]}>{formatCountdown(liveRemaining)}</Text>
+            <Text style={[styles.liveBannerMeta, { color: 'rgba(255, 255, 255, 0.88)' }]}>remaining until this session ends</Text>
           </View>
         )}
 
@@ -602,12 +602,12 @@ export default function SessionDetailScreen() {
         {/* Skip this session button — upcoming or running sessions (Filled, Borderless) */}
         {(isActive || session.status === SessionStatus.SCHEDULED) && (
           <TouchableOpacity
-            style={[styles.skipSessionBtn, { backgroundColor: theme.card, borderWidth: 0 }]}
+            style={[styles.skipSessionBtn, { backgroundColor: '#D97706', borderWidth: 0 }]}
             onPress={handleSkipSession}
             activeOpacity={0.8}
           >
-            <Ionicons name="play-forward-outline" size={16} color={theme.text} />
-            <Text style={[styles.skipSessionBtnText, { color: theme.text }]}>Skip this session</Text>
+            <Ionicons name="play-forward-outline" size={16} color="#FFFFFF" />
+            <Text style={[styles.skipSessionBtnText, { color: '#FFFFFF' }]}>Skip this session</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

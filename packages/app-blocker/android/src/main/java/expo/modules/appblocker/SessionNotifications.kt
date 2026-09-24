@@ -330,6 +330,12 @@ object SessionNotifications {
                 service.startForeground(ACTIVE_NOTIFICATION_ID, notification)
                 return
             }
+        } else {
+            val service = AppBlockerService.instance
+            if (service != null) {
+                service.startForeground(targetId, notification)
+                return
+            }
         }
 
         val manager = context.getSystemService(NotificationManager::class.java) ?: return

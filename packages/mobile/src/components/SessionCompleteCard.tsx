@@ -81,15 +81,15 @@ export default function SessionCompleteCard({
             />
           </View>
 
+          {/* Congratulatory Title */}
+          <Text style={[styles.congratsTitle, { color: theme.text }]}>
+            Congratulations!
+          </Text>
+
           {/* Congratulatory Message */}
           <Text style={[styles.congratsMessage, { color: theme.text }]}>
-            Congratulations! You just earned the{' '}
-            <Text style={{ color: tier.color, fontWeight: '800' }}>
-              "{tier.tagline}"
-            </Text>{' '}
-            badge! You finished{' '}
-            <Text style={{ fontWeight: '700' }}>{sessionName}</Text>{' '}
-            with {violationsBlocked === 0 ? 'Zero distractions' : `${violationsBlocked} distractions`} and on schedule!
+            You just earned the {tier.tagline} badge for finishing {sessionName} with{' '}
+            {violationsBlocked === 0 ? 'zero distractions' : `${violationsBlocked} distractions`} and on schedule!
           </Text>
 
           {/* Actions */}
@@ -159,14 +159,20 @@ const styles = StyleSheet.create({
     width: 92,
     height: 92,
   },
+  congratsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 8,
+  },
   congratsMessage: {
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: '500',
+    fontWeight: '400',
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 16,
-    paddingHorizontal: 6,
+    marginBottom: 20,
+    paddingHorizontal: 8,
   },
   actions: {
     width: '100%',

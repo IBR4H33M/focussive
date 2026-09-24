@@ -222,20 +222,21 @@ export default function DashboardScreen() {
             <SessionCard
               key={nextUpcomingSession.id}
               session={nextUpcomingSession as Session & { violations_count?: number; pause_count?: number }}
+              isUpcoming
             />
             {/* Show skip button under upcoming ONLY if there is no active session */}
             {!currentActiveOrPaused && (
               <TouchableOpacity
                 style={[
                   styles.skipUpcomingBtn,
-                  { backgroundColor: theme.card },
+                  { backgroundColor: '#D97706' },
                 ]}
                 onPress={() => handleSkipSession(nextUpcomingSession)}
                 disabled={isSkippingUpcoming}
                 activeOpacity={0.7}
               >
-                <Ionicons name="play-forward-outline" size={15} color={theme.textSecondary} />
-                <Text style={[styles.skipUpcomingBtnText, { color: theme.text }]}>Skip this session</Text>
+                <Ionicons name="play-forward-outline" size={15} color="#FFFFFF" />
+                <Text style={[styles.skipUpcomingBtnText, { color: '#FFFFFF' }]}>Skip this session</Text>
               </TouchableOpacity>
             )}
           </View>
