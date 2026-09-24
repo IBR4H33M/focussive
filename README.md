@@ -22,7 +22,6 @@ focussive/
 ├── DEPLOYMENT.md           # Unified Build & Deployment Guide (Mobile, Backend, Ext)
 ├── Procfile                # Heroku deployment process definition
 ├── fly.toml                # Fly.io container deployment configuration
-├── render.yaml             # Render deployment configuration
 └── package.json            # Monorepo root workspace scripts
 ```
 
@@ -163,7 +162,7 @@ pnpm build:mobile:dev
 
 ## Complete Build & Deployment Guide
 
-For full instructions on local APK/AAB builds, EAS cloud profiles, database migrations, and backend hosting (Heroku, Fly.io, Render):
+For full instructions on local APK/AAB builds, EAS cloud profiles, database migrations, and backend hosting (Heroku, Fly.io):
 
 **[Read DEPLOYMENT.md](./DEPLOYMENT.md)**
 

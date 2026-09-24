@@ -17,7 +17,6 @@
     "build:mobile:prod": "pnpm -F @focussive/mobile build:prod",
     "build:mobile:prod-apk": "pnpm -F @focussive/mobile build:prod-apk",
     "typecheck": "tsc -p packages/shared/tsconfig.json --noEmit && tsc -p packages/backend/tsconfig.json --noEmit && tsc -p packages/mobile/tsconfig.json --noEmit && tsc -p packages/extension/tsconfig.json --noEmit",
-    "test-db": "pnpm -F @focussive/backend test-db",
     "clean": "pnpm -r run clean",
     "heroku-prebuild": "npm install -g pnpm@10.33.2",
     "heroku-postbuild": "pnpm install && pnpm -F @focussive/shared build && pnpm -F @focussive/backend build",

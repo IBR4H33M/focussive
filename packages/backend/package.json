@@ -7,7 +7,6 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test-db": "tsx src/test-db.ts",
     "clean": "rimraf dist"
   },
   "dependencies": {

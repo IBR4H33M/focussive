@@ -1,6 +1,6 @@
 # Focussive — Build & Deployment Guide
 
-A unified guide covering mobile app builds (local & cloud), backend deployment (Heroku, Fly.io, Render), database configuration, and Chrome extension setup for the **Focussive** monorepo.
+A unified guide covering mobile app builds (local & cloud), backend deployment (Heroku, Fly.io), database configuration, and Chrome extension setup for the **Focussive** monorepo.
 
 ---
 
@@ -14,7 +14,6 @@ A unified guide covering mobile app builds (local & cloud), backend deployment (
 3. [Backend Deployment](#-backend-deployment)
    - [Heroku (Active Production)](#1-heroku-active-production)
    - [Fly.io (Docker Containerized)](#2-flyio-containerized-deployment)
-   - [Render (Alternative Option)](#3-rendercom-alternative-deployment)
    - [Environment Variables](#backend-environment-variables)
 4. [Database Configuration & Migrations](#-database-configuration--migrations)
 5. [Browser Extension Build](#-browser-extension-build)
@@ -211,23 +210,9 @@ fly logs
 
 ---
 
-### 3. Render.com (Alternative Deployment)
-The backend can also be hosted on Render (`https://focussive.onrender.com`):
-- **Build Command:**
-  ```bash
-  pnpm install && pnpm -F @focussive/shared build && pnpm -F @focussive/backend build
-  ```
-- **Start Command:**
-  ```bash
-  node packages/backend/dist/server.js
-  ```
-- **Cold Starts:** Render's free tier spins down after 15 minutes of inactivity; first response after idle takes ~30 seconds.
-
----
-
 ### Backend Environment Variables
 
-Set these environment variables in your hosting provider (Heroku / Fly.io / Render) or `.env` for local development:
+Set these environment variables in your hosting provider (Heroku / Fly.io) or `.env` for local development:
 
 | Variable | Description | Example / Notes |
 |----------|-------------|-----------------|
