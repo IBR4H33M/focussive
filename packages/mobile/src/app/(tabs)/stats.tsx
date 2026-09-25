@@ -843,7 +843,7 @@ export default function StatsScreen() {
               <Text style={[styles.historyLimitText, { color: theme.text, flex: 1 }]}>
                 Free tier shows last 3 weeks of history. Upgrade for unlimited lifetime records.
               </Text>
-              <View style={[styles.historyUpgradePill, { backgroundColor: theme.accent }]}>
+              <View style={[styles.historyUpgradePill, { backgroundColor: '#D4AF37' }]}>
                 <Text style={styles.historyUpgradePillText}>Upgrade</Text>
               </View>
             </TouchableOpacity>
@@ -999,7 +999,7 @@ export default function StatsScreen() {
                       {p.label}
                     </Text>
                     {isLocked && (
-                      <View style={[styles.periodProBadge, { backgroundColor: theme.accent }]}>
+                      <View style={[styles.periodProBadge, { backgroundColor: '#D4AF37' }]}>
                         <Text style={styles.periodProText}>PRO</Text>
                       </View>
                     )}
@@ -1051,7 +1051,7 @@ export default function StatsScreen() {
                       Last {d} days
                     </Text>
                     {isLocked && (
-                      <View style={[styles.periodProBadge, { backgroundColor: theme.accent }]}>
+                      <View style={[styles.periodProBadge, { backgroundColor: '#D4AF37' }]}>
                         <Text style={styles.periodProText}>PRO</Text>
                       </View>
                     )}
@@ -1918,6 +1918,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
+    backgroundColor: '#D4AF37',
   },
   historyUpgradePillText: {
     color: '#FFFFFF',
@@ -1928,6 +1929,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 6,
+    backgroundColor: '#D4AF37',
   },
   periodProText: {
     color: '#FFFFFF',

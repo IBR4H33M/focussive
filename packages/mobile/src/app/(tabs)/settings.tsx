@@ -746,45 +746,83 @@ export default function SettingsScreen() {
         </Text>
 
         <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
-          <View style={[styles.cardItem, { justifyContent: 'space-between', alignItems: 'center' }]}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <Text style={[styles.menuText, { color: theme.text, fontSize: 16, fontWeight: '700' }]}>
-                  {isPremium ? (isTrialActive ? 'Pro (Free Trial)' : 'Focussive Pro') : 'Free Tier'}
-                </Text>
-                {isPremium && (
-                  <View style={[styles.proBadge, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.proBadgeText}>PRO</Text>
+          {isPremium ? (
+            <>
+              <View style={[styles.cardItem, { justifyContent: 'space-between', alignItems: 'center' }]}>
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Text style={[styles.menuText, { color: theme.text, fontSize: 16, fontWeight: '700' }]}>
+                      {isTrialActive ? 'Pro (Free Trial)' : 'Focussive Pro'}
+                    </Text>
+                    <View style={[styles.proBadge, { backgroundColor: '#D4AF37' }]}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
                   </View>
-                )}
-              </View>
-              <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
-                {isPremium
-                  ? isTrialActive
-                    ? `${trialDaysRemaining} days remaining in trial`
-                    : 'Unlimited groups, apps, sites & lifetime history'
-                  : 'Max 2 groups, 3 apps/sites each, 3 weeks history'}
-              </Text>
-            </View>
+                  <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
+                    {isTrialActive
+                      ? `${trialDaysRemaining} days remaining in trial`
+                      : 'Unlimited groups, apps, sites & lifetime history'}
+                  </Text>
+                </View>
 
-            <TouchableOpacity
-              style={[
-                styles.upgradeBtn,
-                { backgroundColor: isPremium ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : theme.accent },
-              ]}
-              onPress={() => openPaywall('settings')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.upgradeBtnText,
-                  { color: isPremium ? theme.text : '#FFFFFF' },
-                ]}
+                <TouchableOpacity
+                  style={[
+                    styles.upgradeBtn,
+                    { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' },
+                  ]}
+                  onPress={() => openPaywall('settings')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.upgradeBtnText, { color: theme.text }]}>
+                    Manage
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+              <TouchableOpacity
+                style={[styles.cardItem, { justifyContent: 'space-between', paddingVertical: 12 }]}
+                onPress={() => router.push('/pro-benefits' as never)}
+                activeOpacity={0.7}
               >
-                {isPremium ? 'Manage' : 'Upgrade'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="sparkles-outline" size={16} color="#D4AF37" />
+                  <Text style={[styles.menuText, { color: theme.text, fontSize: 14 }]}>View Pro Benefits</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={{ padding: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity
+                  style={[styles.upgradeBtn, { backgroundColor: '#D4AF37' }]}
+                  onPress={() => openPaywall('settings')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.upgradeBtnText, { color: '#FFFFFF' }]}>Upgrade</Text>
+                </TouchableOpacity>
+                <Text style={{ color: theme.text, fontSize: 13, fontWeight: '500', flex: 1, lineHeight: 18 }}>
+                  Upgrade to pro for a more focussive experience!
+                </Text>
+              </View>
+
+              <View style={[styles.cardDivider, { backgroundColor: theme.border, marginTop: 14, marginBottom: 10 }]} />
+
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 }}
+                onPress={() => router.push('/pro-benefits' as never)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="sparkles-outline" size={15} color="#D4AF37" />
+                <Text style={{ color: theme.text, fontSize: 13, fontWeight: '600' }}>
+                  View Pro Benefits
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
 
@@ -875,7 +913,7 @@ export default function SettingsScreen() {
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Text style={[styles.menuText, { color: theme.text }]}>Block screen image</Text>
-                  <View style={[styles.proBadge, { backgroundColor: theme.accent }]}>
+                  <View style={[styles.proBadge, { backgroundColor: '#D4AF37' }]}>
                     <Text style={styles.proBadgeText}>PRO</Text>
                   </View>
                 </View>
@@ -1663,6 +1701,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
+    backgroundColor: '#D4AF37',
   },
   proBadgeText: {
     color: '#FFFFFF',
@@ -1674,12 +1713,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
+    backgroundColor: '#D4AF37',
     justifyContent: 'center',
     alignItems: 'center',
   },
   upgradeBtnText: {
     fontSize: 13,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
   // Driving Forces row button in Edit Profile modal
   drivingForcesBtn: {

@@ -223,6 +223,13 @@ function RootLayoutContent() {
             presentation: 'modal',
           }}
         />
+        <Stack.Screen
+          name="pro-benefits"
+          options={{
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+        />
       </Stack>
     </>
   );

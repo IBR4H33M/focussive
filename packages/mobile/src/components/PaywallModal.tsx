@@ -86,11 +86,11 @@ export default function PaywallModal() {
             <View
               style={[
                 styles.badge,
-                { backgroundColor: isDark ? 'rgba(139, 167, 148, 0.2)' : 'rgba(88, 112, 66, 0.15)' },
+                { backgroundColor: 'rgba(212, 175, 55, 0.15)' },
               ]}
             >
-              <Ionicons name="sparkles" size={14} color={theme.accent} />
-              <Text style={[styles.badgeText, { color: theme.accent }]}>FOCUSSIVE PRO</Text>
+              <Ionicons name="sparkles" size={14} color="#D4AF37" />
+              <Text style={[styles.badgeText, { color: '#D4AF37' }]}>FOCUSSIVE PRO</Text>
             </View>
             <TouchableOpacity
               onPress={closePaywall}
@@ -282,7 +282,7 @@ export default function PaywallModal() {
 
             {/* Main Action Button */}
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: theme.accent }]}
+              style={[styles.actionBtn, { backgroundColor: '#D4AF37' }]}
               onPress={handleAction}
               disabled={isLoading}
               activeOpacity={0.85}
