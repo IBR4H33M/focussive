@@ -21,6 +21,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { userApi } from '@/utils/api';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 // ─── Driving Forces definitions ──────────────────────────────
 
@@ -148,7 +149,7 @@ export default function DrivingForcesScreen() {
   if (initialLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+        <LoadingSpinner size={64} />
       </View>
     );
   }

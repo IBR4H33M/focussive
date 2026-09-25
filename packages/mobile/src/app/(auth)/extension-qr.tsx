@@ -18,6 +18,7 @@ import { useTheme } from '@/utils/theme';
 import { authApi, deviceApi } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 // Conditionally import QRCode (may not be installed yet — handled via try/catch)
 let QRCode: any = null;
@@ -159,8 +160,8 @@ export default function ExtensionQRScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <LoadingSpinner size={64} />
       </View>
     );
   }
@@ -297,7 +298,7 @@ export default function ExtensionQRScreen() {
           {/* QR / Code Display */}
           <View style={[styles.qrContainer, { borderColor: theme.border }]}>
             {generating ? (
-              <ActivityIndicator size="large" color={theme.accent} />
+              <LoadingSpinner size={64} />
             ) : qrCode ? (
               <View style={styles.qrContent}>
                 {pairMode === 'qr' ? (

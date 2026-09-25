@@ -17,6 +17,7 @@ import { historyApi } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
 import type { SessionHistory } from '@focussive/shared';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export default function HistoryScreen() {
   const theme = useTheme();
@@ -105,7 +106,7 @@ export default function HistoryScreen() {
   if (loading && history.length === 0) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+        <LoadingSpinner size={64} />
       </View>
     );
   }

@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
 import type { SessionHistory, AppGroup } from '@focussive/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import {
   QUALITY_TIERS,
   type QualityTierKey,
@@ -807,7 +808,7 @@ export default function StatsScreen() {
   // ─── History ─────────────────────────────────────────────
   function renderHistory() {
     if (loading) {
-      return <View style={styles.centered}><ActivityIndicator size="large" color={theme.accent} /></View>;
+      return <View style={styles.centered}><LoadingSpinner size={56} /></View>;
     }
     if (history.length === 0) {
       return (
@@ -1070,7 +1071,7 @@ export default function StatsScreen() {
           </View>
 
           {detailLoading ? (
-            <View style={styles.centered}><ActivityIndicator size="large" color={theme.accent} /></View>
+            <View style={styles.centered}><LoadingSpinner size={56} /></View>
           ) : selectedEntry ? (
             <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
 

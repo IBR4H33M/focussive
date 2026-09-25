@@ -102,7 +102,13 @@ export default function PermissionModal({
 
           <View style={styles.buttonRow}>
             <TouchableOpacity
-              style={styles.buttonGrant}
+              style={[
+                styles.buttonGrant,
+                isDark && {
+                  backgroundColor: '#374145',
+                  borderColor: '#374145',
+                },
+              ]}
               onPress={handleGrantPermissions}
               activeOpacity={0.8}
             >
@@ -112,11 +118,17 @@ export default function PermissionModal({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.buttonLater}
+              style={[
+                styles.buttonLater,
+                isDark && {
+                  borderColor: '#374145',
+                  backgroundColor: 'transparent',
+                },
+              ]}
               onPress={onDismiss}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonTextLater}>
+              <Text style={[styles.buttonTextLater, isDark && { color: '#FFFFFF' }]}>
                 Later
               </Text>
             </TouchableOpacity>
@@ -216,6 +228,7 @@ const styles = StyleSheet.create({
     borderColor: '#115926',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 8,
   },
   buttonLater: {
     flex: 1,
@@ -226,15 +239,18 @@ const styles = StyleSheet.create({
     borderColor: '#115926',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 8,
   },
   buttonTextGrant: {
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+    textAlign: 'center',
   },
   buttonTextLater: {
     fontSize: 14,
     fontWeight: '700',
     color: '#115926',
+    textAlign: 'center',
   },
 });

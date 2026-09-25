@@ -26,6 +26,7 @@ import type { Session, AppGroup, SessionTimeSlot } from '@focussive/shared';
 import InstalledApps from '@focussive/installed-apps';
 import TimeSlotPicker from '@/components/TimeSlotPicker';
 import MiniCalendar from '@/components/MiniCalendar';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.MONDAY, label: 'Mon' },
@@ -316,6 +317,22 @@ export default function SessionDetailScreen() {
     }
   }, [session, action]);
 
+  const breakHandledRef = useRef(false);
+  useEffect(() => {
+    if (session && action === 'break' && !breakHandledRef.current) {
+      breakHandledRef.current = true;
+      const onBreak = (session as any).is_on_break ?? false;
+      if (session.allow_breaks && !onBreak) {
+        setBreakPickerMinutes(1);
+        setBreakModalVisible(true);
+      } else if (!session.allow_breaks) {
+        Alert.alert('Breaks Not Allowed', 'Breaks are disabled for this session.');
+      } else if (onBreak) {
+        Alert.alert('Break Ongoing', 'You are already on a break for this session.');
+      }
+    }
+  }, [session, action]);
+
   function handleCancelSession() {
     if (!session) return;
     Alert.alert(
@@ -400,7 +417,7 @@ export default function SessionDetailScreen() {
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+        <LoadingSpinner size={64} />
       </View>
     );
   }

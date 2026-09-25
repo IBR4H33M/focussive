@@ -196,7 +196,7 @@ async function scheduleAndroidNativeNotifications(
         nativeScheduleActive(
           activeId,
           session.id,
-          `Session ${session.name} is running`,
+          `${session.name} is running`,
           `Ends at ${formattedEnd}`,
           sessionEnd.getTime(),
           sessionEnd.getTime(),
@@ -222,7 +222,7 @@ async function scheduleAndroidNativeNotifications(
     nativeScheduleActive(
       activeId,
       session.id,
-      `Session ${session.name} is running`,
+      `${session.name} is running`,
       `Ends at ${formattedEnd}`,
       endAt,
       endAt,

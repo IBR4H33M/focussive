@@ -27,10 +27,10 @@ object SessionNotifications {
     private const val CHANNEL_REMINDER = "session-reminder"
     private const val CHANNEL_ACTIVE = "session-active"
     private val COLOR_REMINDER = Color.parseColor("#F87171") // Light red countdown matching active
-    private val COLOR_ACTIVE = Color.parseColor("#F87171")   // Light red for running session countdown
+    private val COLOR_ACTIVE = Color.parseColor("#B91C1C")   // Dark red for running session countdown
 
     /** Notification surface colors matching custom layouts */
-    private val COLOR_SURFACE_ACTIVE = Color.parseColor("#22B14C")
+    private val COLOR_SURFACE_ACTIVE = Color.parseColor("#258F44")
     private val COLOR_SURFACE_REMINDER = Color.parseColor("#FEF3C7")
 
     @Volatile
@@ -155,6 +155,16 @@ object SessionNotifications {
         )
     }
 
+    private fun sessionActionIntent(context: Context, sessionId: String, action: String, requestCode: Int): PendingIntent {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("focussive://session/$sessionId?action=$action")).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        return PendingIntent.getActivity(
+            context, requestCode, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
     /** Build the large, card-like expanded layout with the live countdown. */
     private fun buildExpandedView(
         context: Context,
@@ -172,7 +182,11 @@ object SessionNotifications {
         bindChronometer(views, targetAtMillis)
 
         if (isActive) {
-            views.setTextViewText(R.id.notif_violations, violationsText ?: "No violations")
+            val skipIntent = sessionActionIntent(context, sessionId, "skip", id + 100)
+            views.setOnClickPendingIntent(R.id.notif_skip_btn, skipIntent)
+
+            val breakIntent = sessionActionIntent(context, sessionId, "break", id + 200)
+            views.setOnClickPendingIntent(R.id.notif_break_btn, breakIntent)
         } else {
             val skipIntent = skipSessionPendingIntent(context, sessionId, id)
             views.setOnClickPendingIntent(R.id.notif_skip_btn, skipIntent)

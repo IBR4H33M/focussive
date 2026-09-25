@@ -22,6 +22,7 @@ import type { Session } from '@focussive/shared';
 import { sortByNextOccurrence, getNextSessionOccurrence, isSessionInActiveWindow } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export default function DashboardScreen() {
   const theme = useTheme();
@@ -188,6 +189,13 @@ export default function DashboardScreen() {
           />
         }
       >
+        {/* Loading State when starting up */}
+        {allSessions.length === 0 && isLoading && (
+          <View style={{ paddingVertical: 60, alignItems: 'center' }}>
+            <LoadingSpinner size={64} />
+          </View>
+        )}
+
         {/* Active + Paused Sessions */}
         {(effectiveActiveSessions.length > 0 || pausedSessions.length > 0) && (
           <View style={styles.section}>

@@ -17,6 +17,7 @@ import { useTheme } from '@/utils/theme';
 import { historyApi } from '@/utils/api';
 import { formatDate, formatDuration } from '@focussive/shared';
 import type { SessionHistory } from '@focussive/shared';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export default function ManageHistoryScreen() {
   const theme = useTheme();
@@ -117,7 +118,7 @@ export default function ManageHistoryScreen() {
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+        <LoadingSpinner size={64} />
       </View>
     );
   }

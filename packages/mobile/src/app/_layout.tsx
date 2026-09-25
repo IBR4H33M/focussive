@@ -28,6 +28,7 @@ import { tokenCache } from '@/utils/cache';
 import { SubscriptionProvider } from '@/context/SubscriptionContext';
 import { useSessions } from '@/context/SessionContext';
 import PaywallModal from '@/components/PaywallModal';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import ThemedAlert, { installThemedAlert } from '@/components/ThemedAlert';
 import SessionCompleteCard from '@/components/SessionCompleteCard';
 import Constants from 'expo-constants';
@@ -143,13 +144,9 @@ function RootLayoutContent() {
     }
   };
 
-  // Show a spinner while checking auth state on startup
+  // Show the custom animated Focussive logo while checking auth state on startup
   if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
-        <ActivityIndicator size="large" color={theme.accent} />
-      </View>
-    );
+    return <LoadingScreen backgroundColor={theme.background} />;
   }
 
   return (

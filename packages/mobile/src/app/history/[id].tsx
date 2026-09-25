@@ -17,6 +17,7 @@ import { useTheme } from '@/utils/theme';
 import { historyApi } from '@/utils/api';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
 import type { SessionHistory } from '@focussive/shared';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export default function HistoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -49,7 +50,7 @@ export default function HistoryDetailScreen() {
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+        <LoadingSpinner size={64} />
       </View>
     );
   }
