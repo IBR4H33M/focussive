@@ -8,9 +8,14 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
+import android.text.Html
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.StyleSpan
 import android.widget.RemoteViews
 
 /**
@@ -127,6 +132,69 @@ object SessionNotifications {
     }
 
     /**
+     * Formats notification titles so that the session name is in bold.
+     * Handles both HTML-tagged strings (e.g. <b>...</b>) and standard patterns:
+     * - "<session_name> is running" -> bold session name
+     * - "<session_name> is scheduled at <time>" -> bold session name
+     */
+    fun formatTitle(rawTitle: String): CharSequence {
+        if (rawTitle.isEmpty()) return rawTitle
+
+        if (rawTitle.contains("<b>") || rawTitle.contains("</b>")) {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                Html.fromHtml(rawTitle, Html.FROM_HTML_MODE_LEGACY)
+            } else {
+                @Suppress("DEPRECATION")
+                Html.fromHtml(rawTitle)
+            }
+        }
+
+        val runningSuffix = " is running"
+        val scheduledInfix = " is scheduled at "
+
+        return when {
+            rawTitle.endsWith(runningSuffix) -> {
+                val sessionName = rawTitle.removeSuffix(runningSuffix)
+                val ssb = SpannableStringBuilder()
+                ssb.append(sessionName)
+                ssb.setSpan(
+                    StyleSpan(Typeface.BOLD),
+                    0,
+                    sessionName.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                ssb.append(runningSuffix)
+                ssb
+            }
+            rawTitle.contains(scheduledInfix) -> {
+                val parts = rawTitle.split(scheduledInfix, limit = 2)
+                val sessionName = parts[0]
+                val ssb = SpannableStringBuilder()
+                ssb.append(sessionName)
+                ssb.setSpan(
+                    StyleSpan(Typeface.BOLD),
+                    0,
+                    sessionName.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                ssb.append(scheduledInfix).append(parts[1])
+                ssb
+            }
+            else -> {
+                val ssb = SpannableStringBuilder()
+                ssb.append(rawTitle)
+                ssb.setSpan(
+                    StyleSpan(Typeface.BOLD),
+                    0,
+                    rawTitle.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                ssb
+            }
+        }
+    }
+
+    /**
      * Wire up a Chronometer to tick down to [targetAtMillis].
      *
      * Chronometer's clock is elapsedRealtime, not wall-clock, so the base has to
@@ -177,7 +245,7 @@ object SessionNotifications {
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_active else R.layout.notification_reminder
         val views = RemoteViews(context.packageName, layout)
-        views.setTextViewText(R.id.notif_title, title)
+        views.setTextViewText(R.id.notif_title, formatTitle(title))
         views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
         bindChronometer(views, targetAtMillis)
 
@@ -203,7 +271,7 @@ object SessionNotifications {
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_collapsed else R.layout.notification_collapsed_reminder
         val views = RemoteViews(context.packageName, layout)
-        views.setTextViewText(R.id.notif_title, title)
+        views.setTextViewText(R.id.notif_title, formatTitle(title))
         views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
         bindChronometer(views, targetAtMillis)
         return views
@@ -248,7 +316,7 @@ object SessionNotifications {
         val surfaceColor = if (isActive) COLOR_SURFACE_ACTIVE else COLOR_SURFACE_REMINDER
 
         builder
-            .setContentTitle(title)
+            .setContentTitle(formatTitle(title))
             .setContentText(body)
             .setSmallIcon(getSmallIconResId(context))
             .setOngoing(true)

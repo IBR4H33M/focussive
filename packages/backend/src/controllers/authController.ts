@@ -19,13 +19,17 @@ const REFRESH_EXPIRY = '30d';
 const QR_EXPIRY_MINUTES = 5;
 
 export async function registerExtensionDevice(userId: string, req: Request): Promise<string> {
-  await supabase
+  const { error: deleteError } = await supabase
     .from('devices')
     .delete()
     .eq('user_id', userId)
     .eq('device_type', 'extension');
 
-  const userAgent = req.headers['user-agent'] || 'Unknown';
+  if (deleteError) {
+    console.error('[registerExtensionDevice] delete error:', deleteError);
+  }
+
+  const userAgent = (req.headers['user-agent'] || 'Unknown').substring(0, 300);
   const parsedUa = parseUserAgent(userAgent);
   const ip = getClientIp(req);
 
@@ -40,15 +44,21 @@ export async function registerExtensionDevice(userId: string, req: Request): Pro
 
   const deviceId = uuidv4();
   const deviceName = `${fullDeviceInfo.browser} on ${fullDeviceInfo.os}`;
-  const tokenPayload = JSON.stringify(fullDeviceInfo);
+  // Truncate to 490 chars to stay within VARCHAR(500)
+  const tokenPayload = JSON.stringify(fullDeviceInfo).substring(0, 490);
 
-  await supabase.from('devices').insert({
+  const { error: insertError } = await supabase.from('devices').insert({
     id: deviceId,
     user_id: userId,
     device_type: 'extension',
     device_name: deviceName,
     device_token: tokenPayload,
   });
+
+  if (insertError) {
+    console.error('[registerExtensionDevice] insert error:', insertError);
+    throw new AppError('Failed to register extension device', 500, 'DEVICE_REGISTER_ERROR');
+  }
 
   return deviceId;
 }

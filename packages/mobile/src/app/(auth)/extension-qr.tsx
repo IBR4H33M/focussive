@@ -58,6 +58,11 @@ export default function ExtensionQRScreen() {
   // Unpairing
   const [unpairing, setUnpairing] = useState(false);
 
+  // Re-pair connection code (for when extension is reinstalled)
+  const [reCodeLoading, setReCodeLoading] = useState(false);
+  const [reCode, setReCode] = useState<string | null>(null);
+  const [reCodeExpiresIn, setReCodeExpiresIn] = useState(0);
+
   // Check extension connection status
   const checkStatus = useCallback(async () => {
     try {
@@ -129,6 +134,8 @@ export default function ExtensionQRScreen() {
               setPaired(false);
               setConnected(false);
               setDevice(null);
+              setReCode(null);
+              setReCodeExpiresIn(0);
             } catch {
               Alert.alert('Error', 'Failed to unpair extension. Please try again.');
             } finally {
@@ -139,6 +146,34 @@ export default function ExtensionQRScreen() {
       ]
     );
   }
+
+  // Generate a one-time connection code for re-pairing a reinstalled extension
+  async function handleGenerateCode() {
+    setReCodeLoading(true);
+    setReCode(null);
+    setReCodeExpiresIn(0);
+    try {
+      const response = await authApi.qrGenerate();
+      setReCode(response.code);
+      setReCodeExpiresIn(response.expires_in_seconds);
+    } catch {
+      Alert.alert('Error', 'Failed to generate connection code. Please try again.');
+    } finally {
+      setReCodeLoading(false);
+    }
+  }
+
+  // Countdown for re-pair code
+  useEffect(() => {
+    if (reCodeExpiresIn <= 0) return;
+    const interval = setInterval(() => {
+      setReCodeExpiresIn((prev) => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [reCodeExpiresIn]);
 
   // Start pairing flow
   function startPairing() {
@@ -241,9 +276,55 @@ export default function ExtensionQRScreen() {
             }
           </Text>
 
+          {/* Generate Connection Code (for reinstalled extension) */}
+          <View style={[styles.reCodeSection, { borderColor: theme.border }]}>
+            <View style={styles.reCodeHeader}>
+              <Ionicons name="key-outline" size={16} color={theme.textSecondary} />
+              <Text style={[styles.reCodeTitle, { color: theme.text }]}>Reinstalled the Extension?</Text>
+            </View>
+            <Text style={[styles.reCodeDesc, { color: theme.textSecondary }]}>
+              Generate a one-time code to reconnect your extension without unpairing.
+            </Text>
+            {reCode && reCodeExpiresIn > 0 ? (
+              <View style={[styles.reCodeBox, { backgroundColor: theme.surface, borderColor: theme.accent }]}>
+                <Text style={[styles.reCodeValue, { color: theme.accent }]} selectable>
+                  {reCode}
+                </Text>
+                <Text style={[styles.reCodeTimer, { color: theme.textSecondary }]}>
+                  Expires in {Math.floor(reCodeExpiresIn / 60)}:{(reCodeExpiresIn % 60).toString().padStart(2, '0')}
+                </Text>
+              </View>
+            ) : reCode && reCodeExpiresIn === 0 ? (
+              <TouchableOpacity
+                style={[styles.reCodeBtn, { borderColor: theme.accent }]}
+                onPress={handleGenerateCode}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="refresh-outline" size={15} color={theme.accent} />
+                <Text style={[styles.reCodeBtnText, { color: theme.accent }]}>Code Expired — Regenerate</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.reCodeBtn, { borderColor: theme.accent }]}
+                onPress={handleGenerateCode}
+                disabled={reCodeLoading}
+                activeOpacity={0.7}
+              >
+                {reCodeLoading ? (
+                  <ActivityIndicator size="small" color={theme.accent} />
+                ) : (
+                  <>
+                    <Ionicons name="qr-code-outline" size={15} color={theme.accent} />
+                    <Text style={[styles.reCodeBtnText, { color: theme.accent }]}>Generate Connection Code</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* Unpair Button */}
           <TouchableOpacity
-            style={[styles.unpairBtn, { borderColor: '#FF6B6B' }]}
+            style={[styles.unpairBtn, { borderColor: '#FF6B6B', backgroundColor: 'transparent' }]}
             onPress={handleUnpair}
             disabled={unpairing}
             activeOpacity={0.7}
@@ -510,7 +591,8 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 2,
+    backgroundColor: 'transparent',
   },
   unpairText: {
     fontSize: 14,
@@ -652,6 +734,57 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     lineHeight: 18,
+  },
+  // ── Re-pair code ──
+  reCodeSection: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
+    gap: 10,
+  },
+  reCodeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reCodeTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  reCodeDesc: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  reCodeBox: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    gap: 6,
+  },
+  reCodeValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    letterSpacing: 2,
+  },
+  reCodeTimer: {
+    fontSize: 11,
+  },
+  reCodeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  reCodeBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   // ── Back Button ──
   backButton: {

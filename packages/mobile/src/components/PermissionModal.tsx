@@ -81,7 +81,7 @@ export default function PermissionModal({
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-          <Text style={[styles.title, { color: theme.text }]}>
+          <Text style={[styles.title, { color: isDark ? theme.background : theme.text }]}>
             Permissions Required
           </Text>
           <Text style={[styles.description, { color: theme.textSecondary }]}>
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   permissionsList: {
     borderTopWidth: 1,
     paddingVertical: 16,
-    marginBottom: 20,
+    marginBottom: 8,
   },
   permissionItem: {
     paddingVertical: 12,
@@ -218,6 +218,8 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 18,
+    marginBottom: 10,
   },
   buttonGrant: {
     flex: 1,

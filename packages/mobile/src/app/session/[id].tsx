@@ -541,25 +541,39 @@ export default function SessionDetailScreen() {
           </Text>
         )}
 
-        {/* Action Buttons — shown for all non-active sessions (Filled Buttons, Borderless) */}
+        {/* Action Buttons — shown for all non-active sessions (Fat Bordered, No Fills) */}
         {!isActive && (
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
-              style={[styles.editBtn, { backgroundColor: theme.accent, borderWidth: 0 }]}
+              style={[
+                styles.editBtn,
+                {
+                  backgroundColor: 'transparent',
+                  borderWidth: 2,
+                  borderColor: theme.accent,
+                },
+              ]}
               onPress={openEditModal}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <Ionicons name="create-outline" size={16} color={isDark ? '#2F3456' : '#FFFFFF'} />
-              <Text style={[styles.editBtnText, { color: isDark ? '#2F3456' : '#FFFFFF' }]}>Edit</Text>
+              <Ionicons name="create-outline" size={16} color={theme.accent} />
+              <Text style={[styles.editBtnText, { color: theme.accent }]}>Edit</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.deleteBtn, { backgroundColor: theme.danger, borderWidth: 2, borderColor: theme.dangerBorder }]}
+              style={[
+                styles.deleteBtn,
+                {
+                  backgroundColor: 'transparent',
+                  borderWidth: 2,
+                  borderColor: theme.danger,
+                },
+              ]}
               onPress={handleDelete}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
-              <Text style={[styles.deleteBtnText, { color: '#FFFFFF' }]}>Delete</Text>
+              <Ionicons name="trash-outline" size={16} color={theme.danger} />
+              <Text style={[styles.deleteBtnText, { color: theme.danger }]}>Delete</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -993,10 +1007,10 @@ const styles = StyleSheet.create({
   saveBtn: { height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 32 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   actionButtonsContainer: { flexDirection: 'row', marginTop: 24, gap: 12 },
-  editBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 0, borderRadius: 12 },
+  editBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12 },
   editBtnText: { fontSize: 14, fontWeight: '600' },
-  deleteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 0, borderRadius: 12 },
-  deleteBtnText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  deleteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12 },
+  deleteBtnText: { fontSize: 14, fontWeight: '600' },
   breakBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 14, borderWidth: 0, marginTop: 12 },
   breakBtnText: { fontSize: 15, fontWeight: '600' },
   breakBtnSub: { color: '#8A7A5C', fontSize: 12 },

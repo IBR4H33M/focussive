@@ -16,7 +16,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { authApi, deviceApi } from '@/utils/api';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
@@ -36,6 +36,8 @@ interface ExtensionModalProps {
 
 export default function ExtensionModal({ visible, onClose, onStatusChange }: ExtensionModalProps) {
   const theme = useTheme();
+  const isDark = useIsDark();
+  const titleColor = isDark ? theme.background : theme.text;
 
   // Connection status state
   const [loading, setLoading] = useState(true);
@@ -239,14 +241,9 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
         <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Header */}
           <View style={styles.header}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={[styles.iconBadge, { backgroundColor: theme.accent + '20' }]}>
-                <Ionicons name="browsers" size={20} color={theme.accent} />
-              </View>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>Browser Extension</Text>
-            </View>
+            <Text style={[styles.headerTitle, { color: titleColor }]}>Browser Extension</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Ionicons name="close" size={22} color={theme.textSecondary} />
+              <Ionicons name="close" size={22} color={isDark ? theme.background : theme.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -277,7 +274,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
 
               {/* Device Details (No container) */}
               <View style={styles.detailsSection}>
-                <Text style={[styles.detailsSectionTitle, { color: theme.textSecondary }]}>DEVICE DETAILS</Text>
+                <Text style={[styles.detailsSectionTitle, { color: isDark ? theme.background : theme.textSecondary }]}>DEVICE DETAILS</Text>
 
                 <View style={[styles.detailRow, { borderBottomColor: theme.border }]}>
                   <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Device Name</Text>
@@ -319,17 +316,26 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                 )}
               </View>
 
-              {/* Unpair Button */}
+              {/* Unpair Button (Border-only, no fill) */}
               <TouchableOpacity
-                style={[styles.unpairBtn, { opacity: unpairing ? 0.6 : 1 }]}
+                style={[
+                  styles.unpairBtn,
+                  {
+                    backgroundColor: 'transparent',
+                    borderColor: isDark ? '#FF6B6B' : '#8B1E1E',
+                    opacity: unpairing ? 0.6 : 1,
+                  },
+                ]}
                 onPress={handleUnpair}
                 disabled={unpairing}
                 activeOpacity={0.8}
               >
                 {unpairing ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={isDark ? '#FF6B6B' : '#8B1E1E'} />
                 ) : (
-                  <Text style={styles.unpairBtnText}>Unpair Extension</Text>
+                  <Text style={[styles.unpairBtnText, { color: isDark ? '#FF6B6B' : '#8B1E1E' }]}>
+                    Unpair Extension
+                  </Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -369,7 +375,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                   {scanMode === 'camera' ? (
                     /* CAMERA SCANNER VIEW */
                     <View style={styles.cameraSection}>
-                      <Text style={[styles.instructionTitle, { color: theme.text }]}>
+                      <Text style={[styles.instructionTitle, { color: titleColor }]}>
                         Scan Extension QR Code
                       </Text>
                       <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
@@ -379,7 +385,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                       {!cameraPermission?.granted ? (
                         <View style={[styles.cameraFallbackBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
                           <Ionicons name="camera-outline" size={44} color={theme.textSecondary} />
-                          <Text style={[styles.cameraFallbackTitle, { color: theme.text }]}>
+                          <Text style={[styles.cameraFallbackTitle, { color: titleColor }]}>
                             Camera Access Needed
                           </Text>
                           <Text style={[styles.cameraFallbackDesc, { color: theme.textSecondary }]}>
@@ -437,7 +443,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                   ) : (
                     /* PIN INPUT VIEW */
                     <View style={styles.pinSection}>
-                      <Text style={[styles.instructionTitle, { color: theme.text }]}>
+                      <Text style={[styles.instructionTitle, { color: titleColor }]}>
                         Enter Extension QR PIN
                       </Text>
                       <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
@@ -506,7 +512,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
               {/* TAB 2: Generate 6-Character One-Time Code */}
               {tab === 'code' && (
                 <View style={styles.tabContent}>
-                  <Text style={[styles.instructionTitle, { color: theme.text }]}>
+                  <Text style={[styles.instructionTitle, { color: titleColor }]}>
                     Connect via One-Time Code
                   </Text>
                   <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
@@ -650,13 +656,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#8B1E1E',
+    backgroundColor: 'transparent',
     borderWidth: 2.5,
-    borderColor: '#5B1212',
+    borderColor: '#8B1E1E',
     marginTop: 12,
   },
   unpairBtnText: {
-    color: '#FFFFFF',
+    color: '#8B1E1E',
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.3,
@@ -721,7 +727,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   grantBtn: {
-    marginTop: 6,
+    marginTop: 14,
+    marginBottom: 8,
     backgroundColor: '#1C853D',
     borderWidth: 2,
     borderColor: '#115926',

@@ -3,7 +3,6 @@
 // ============================================================
 
 import React, { useState, useEffect, useRef } from 'react';
-// @ts-expect-error qrcode untyped in extension
 import QRCode from 'qrcode';
 import { authApi, setToken, setRefreshToken } from '../utils/api';
 import { setDeviceId } from '../utils/storage';

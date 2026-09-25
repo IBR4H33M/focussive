@@ -263,7 +263,8 @@ class AppBlockerService : Service() {
         val cached = SessionNotifications.latestActiveNotification
         if (cached != null) return cached
 
-        val sessionName = currentSessionName ?: "Focus"
+        val rawName = currentSessionName ?: "Focus"
+        val titleText = if (rawName.endsWith(" is running")) rawName else "$rawName is running"
         val sessionId = currentSessionId ?: ""
         val targetMillis = if (currentTargetMillis > System.currentTimeMillis()) {
             currentTargetMillis
@@ -275,7 +276,7 @@ class AppBlockerService : Service() {
             context = this,
             id = SessionNotifications.ACTIVE_NOTIFICATION_ID,
             sessionId = sessionId,
-            title = "$sessionName is running",
+            title = titleText,
             body = "In progress",
             targetAtMillis = targetMillis,
             timeoutAtMillis = targetMillis,
