@@ -10,6 +10,7 @@ import { Resend } from 'resend';
 import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
+import { clerkClient } from '@clerk/express';
 import { isValidEmail, isValidPassword, generateQRCode } from '@focussive/shared';
 import { getClientIp, parseUserAgent } from './deviceController';
 
@@ -316,18 +317,130 @@ export async function login(req: Request, res: Response): Promise<void> {
     throw new AppError('Email and password are required', 400, 'VALIDATION_ERROR');
   }
 
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email.toLowerCase())
-    .single();
+  const cleanEmail = email.toLowerCase().trim();
+  let user: any = null;
+  let authenticatedViaClerk = false;
 
-  if (error || !user) {
-    throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
+  // 1. Try Clerk authentication if CLERK_SECRET_KEY is configured
+  if (process.env.CLERK_SECRET_KEY) {
+    try {
+      const clerkUsers = await clerkClient.users.getUserList({
+        emailAddress: [cleanEmail],
+      });
+
+      if (clerkUsers.data && clerkUsers.data.length > 0) {
+        const clerkUser = clerkUsers.data[0];
+        try {
+          const verifyResult = await clerkClient.users.verifyPassword({
+            userId: clerkUser.id,
+            password,
+          });
+
+          if (verifyResult && verifyResult.verified) {
+            authenticatedViaClerk = true;
+
+            // Find or sync user in Supabase
+            const { data: existingUserByClerk } = await supabase
+              .from('users')
+              .select('*')
+              .eq('clerk_id', clerkUser.id)
+              .maybeSingle();
+
+            if (existingUserByClerk) {
+              user = existingUserByClerk;
+            } else {
+              const { data: existingUserByEmail } = await supabase
+                .from('users')
+                .select('*')
+                .eq('email', cleanEmail)
+                .maybeSingle();
+
+              if (existingUserByEmail) {
+                const { data: updatedUser } = await supabase
+                  .from('users')
+                  .update({
+                    clerk_id: clerkUser.id,
+                    email_verified: true,
+                  })
+                  .eq('id', existingUserByEmail.id)
+                  .select('*')
+                  .single();
+                user = updatedUser || existingUserByEmail;
+              } else {
+                const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ');
+                const newUserId = uuidv4();
+                const { data: newUser, error: insertError } = await supabase
+                  .from('users')
+                  .insert({
+                    id: newUserId,
+                    clerk_id: clerkUser.id,
+                    email: cleanEmail,
+                    name: fullName || clerkUser.username || cleanEmail.split('@')[0],
+                    avatar_url: clerkUser.imageUrl || null,
+                    email_verified: true,
+                  })
+                  .select('*')
+                  .single();
+
+                if (insertError) {
+                  console.error('[Clerk Login] Failed to insert new user into Supabase:', insertError);
+                }
+                user = newUser;
+              }
+            }
+          }
+        } catch (verifyErr: any) {
+          console.warn('[Clerk Login] Password verification failed:', verifyErr?.errors || verifyErr?.message);
+          const firstErrCode = verifyErr?.errors?.[0]?.code;
+          if (firstErrCode === 'incorrect_password') {
+            throw new AppError('Incorrect email or password', 401, 'INVALID_CREDENTIALS');
+          }
+          if (firstErrCode === 'user_password_not_found') {
+            throw new AppError(
+              'This account was created with Google or passwordless login. Please use the QR code or connection code tab to connect.',
+              400,
+              'NO_PASSWORD_SET'
+            );
+          }
+        }
+      }
+    } catch (clerkErr: any) {
+      if (clerkErr instanceof AppError) {
+        throw clerkErr;
+      }
+      console.warn('[Clerk Login] Could not verify with Clerk API, falling back to local database:', clerkErr?.message);
+    }
   }
 
-  const isMatch = await bcrypt.compare(password, user.password_hash);
-  if (!isMatch) {
+  // 2. Fall back to legacy Supabase password authentication if not authenticated via Clerk
+  if (!authenticatedViaClerk) {
+    const { data: dbUser, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', cleanEmail)
+      .maybeSingle();
+
+    if (error || !dbUser) {
+      throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
+    }
+
+    if (!dbUser.password_hash) {
+      throw new AppError(
+        'This account does not have a password set. Please connect via QR code or connection code.',
+        400,
+        'NO_PASSWORD_SET'
+      );
+    }
+
+    const isMatch = await bcrypt.compare(password, dbUser.password_hash);
+    if (!isMatch) {
+      throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
+    }
+
+    user = dbUser;
+  }
+
+  if (!user) {
     throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 

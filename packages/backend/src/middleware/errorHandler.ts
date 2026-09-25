@@ -13,6 +13,7 @@ export class AppError extends Error {
     this.statusCode = statusCode;
     this.code = code;
     this.name = 'AppError';
+    Object.setPrototypeOf(this, AppError.prototype);
   }
 }
 
@@ -24,10 +25,11 @@ export function errorHandler(
 ): void {
   console.error('[Error]', err.message);
 
-  if (err instanceof AppError) {
-    res.status(err.statusCode).json({
+  if (err instanceof AppError || (err && typeof (err as any).statusCode === 'number')) {
+    const statusCode = (err as any).statusCode || 500;
+    res.status(statusCode).json({
       error: err.message,
-      code: err.code,
+      code: (err as any).code || 'ERROR',
     });
     return;
   }
