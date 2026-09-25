@@ -125,7 +125,7 @@ const SECTIONS = ['Overview', 'Milestones', 'History'];
 export default function StatsScreen() {
   const theme = useTheme();
   const isDark = useIsDark();
-  const containerBg = isDark ? '#65767C' : theme.card;
+  const containerBg = isDark ? '#20233B' : theme.card;
   const insets = useSafeAreaInsets();
   const { isPremium, openPaywall } = useSubscription();
 
