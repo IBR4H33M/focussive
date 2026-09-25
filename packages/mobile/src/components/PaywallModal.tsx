@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
@@ -89,8 +90,12 @@ export default function PaywallModal() {
                 { backgroundColor: 'rgba(212, 175, 55, 0.15)' },
               ]}
             >
-              <Ionicons name="sparkles" size={14} color="#D4AF37" />
-              <Text style={[styles.badgeText, { color: '#D4AF37' }]}>FOCUSSIVE PRO</Text>
+              <Image
+                source={require('../../assets/pro_icon.png')}
+                style={{ width: 14, height: 14, marginRight: 6 }}
+                resizeMode="contain"
+              />
+              <Text style={[styles.badgeText, { color: '#877023' }]}>FOCUSSIVE PRO</Text>
             </View>
             <TouchableOpacity
               onPress={closePaywall}
@@ -288,13 +293,13 @@ export default function PaywallModal() {
               activeOpacity={0.85}
             >
               {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <ActivityIndicator color="#877023" size="small" />
               ) : (
                 <>
-                  <Text style={styles.actionBtnText}>
+                  <Text style={[styles.actionBtnText, { color: '#877023' }]}>
                     {!trialUsed ? 'Start 3-Week Free Trial' : 'Subscribe Now'}
                   </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                  <Ionicons name="arrow-forward" size={18} color="#877023" style={{ marginLeft: 6 }} />
                 </>
               )}
             </TouchableOpacity>
@@ -506,7 +511,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   actionBtnText: {
-    color: '#FFFFFF',
+    color: '#877023',
     fontSize: 16,
     fontWeight: '800',
   },

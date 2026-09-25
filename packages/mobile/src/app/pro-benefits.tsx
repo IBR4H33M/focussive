@@ -1,5 +1,5 @@
 // ============================================================
-// Focussive Mobile — Pro Benefits & Feature Comparison Screen
+// Focussive Mobile — Free vs Pro Comparison Screen
 // ============================================================
 
 import React from 'react';
@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +21,7 @@ import { useSubscription } from '@/context/SubscriptionContext';
 interface ComparisonRow {
   feature: string;
   free: string;
-  premium: string;
+  pro: string;
   isDifferent?: boolean;
 }
 
@@ -28,49 +29,49 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   {
     feature: 'App Groups',
     free: '2 groups max',
-    premium: 'Unlimited',
+    pro: 'Unlimited',
     isDifferent: true,
   },
   {
     feature: 'Apps per Group',
     free: 'Max 3 apps per group',
-    premium: 'Unlimited',
+    pro: 'Unlimited',
     isDifferent: true,
   },
   {
     feature: 'Website Groups',
     free: 'Max 2 groups',
-    premium: 'Unlimited',
+    pro: 'Unlimited',
     isDifferent: true,
   },
   {
     feature: 'Websites per Group',
     free: 'Max 3 websites per group',
-    premium: 'Unlimited',
+    pro: 'Unlimited',
     isDifferent: true,
   },
   {
     feature: 'Session History Retention',
     free: '21 days (3 weeks)',
-    premium: 'Lifetime (Forever)',
+    pro: 'Lifetime (Forever)',
     isDifferent: true,
   },
   {
     feature: 'Analytics & Trends',
     free: 'Day & Week views (≤ 21 days)',
-    premium: 'Full Month & Year views, all-time trends',
+    pro: 'Full Month & Year views, all-time trends',
     isDifferent: true,
   },
   {
     feature: 'Browser monitor',
     free: 'Included',
-    premium: 'Included',
+    pro: 'Included',
     isDifferent: false,
   },
   {
     feature: 'Block overlay images',
     free: 'None',
-    premium: 'All, including custom',
+    pro: 'All, including custom',
     isDifferent: true,
   },
 ];
@@ -94,7 +95,7 @@ export default function ProBenefitsScreen() {
         >
           <Ionicons name="chevron-back" size={22} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Pro Benefits</Text>
+        <View style={{ flex: 1 }} />
         <View style={{ width: 38 }} />
       </View>
 
@@ -105,17 +106,15 @@ export default function ProBenefitsScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Section */}
+        {/* Hero Section — Title: "Free vs Pro" with pro_icon instead of star */}
         <View style={styles.heroBox}>
-          <View style={styles.proCrownBadge}>
-            <Ionicons name="sparkles" size={16} color="#D4AF37" />
-            <Text style={styles.proCrownText}>PLAN COMPARISON</Text>
-          </View>
+          <Image
+            source={require('../../assets/pro_icon.png')}
+            style={styles.heroProIcon}
+            resizeMode="contain"
+          />
           <Text style={[styles.heroHeading, { color: theme.text }]}>
-            Free vs. Premium
-          </Text>
-          <Text style={[styles.heroSubheading, { color: theme.textSecondary }]}>
-            Compare features across tiers and unlock maximum productivity with Focussive Pro.
+            Free vs Pro
           </Text>
         </View>
 
@@ -130,9 +129,13 @@ export default function ProBenefitsScreen() {
               <Text style={[styles.tableHeaderTitle, { color: theme.textSecondary }]}>FREE</Text>
             </View>
             <View style={[styles.colTier, styles.colPremiumHeader]}>
-              <View style={styles.premiumHeaderBadge}>
-                <Ionicons name="star" size={10} color="#FFFFFF" />
-                <Text style={styles.premiumHeaderText}>PREMIUM</Text>
+              <View style={[styles.proHeaderBadge, { backgroundColor: '#D4AF37' }]}>
+                <Image
+                  source={require('../../assets/pro_icon.png')}
+                  style={styles.headerBadgeIcon}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.proHeaderText, { color: '#877023' }]}>PRO</Text>
               </View>
             </View>
           </View>
@@ -159,7 +162,7 @@ export default function ProBenefitsScreen() {
                   <Text style={[styles.cellText, { color: theme.textSecondary }]}>{row.free}</Text>
                 </View>
 
-                {/* Premium Column */}
+                {/* Pro Column */}
                 <View style={styles.colTier}>
                   <Text
                     style={[
@@ -168,7 +171,7 @@ export default function ProBenefitsScreen() {
                       { color: row.isDifferent ? '#D4AF37' : theme.text },
                     ]}
                   >
-                    {row.premium}
+                    {row.pro}
                   </Text>
                 </View>
               </View>
@@ -233,7 +236,11 @@ export default function ProBenefitsScreen() {
       >
         {isPremium ? (
           <View style={[styles.proActiveBanner, { backgroundColor: 'rgba(212, 175, 55, 0.15)' }]}>
-            <Ionicons name="checkmark-circle" size={20} color="#D4AF37" />
+            <Image
+              source={require('../../assets/pro_icon.png')}
+              style={{ width: 18, height: 18, marginRight: 6 }}
+              resizeMode="contain"
+            />
             <Text style={styles.proActiveBannerText}>You are enjoying Focussive Pro</Text>
           </View>
         ) : (
@@ -242,9 +249,13 @@ export default function ProBenefitsScreen() {
             onPress={() => openPaywall('pro_benefits')}
             activeOpacity={0.85}
           >
-            <Ionicons name="sparkles" size={18} color="#FFFFFF" />
-            <Text style={styles.upgradeCtaBtnText}>Upgrade to Pro</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 4 }} />
+            <Image
+              source={require('../../assets/pro_icon.png')}
+              style={{ width: 18, height: 18, marginRight: 6 }}
+              resizeMode="contain"
+            />
+            <Text style={[styles.upgradeCtaBtnText, { color: '#877023' }]}>Upgrade to Pro</Text>
+            <Ionicons name="arrow-forward" size={18} color="#877023" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         )}
       </View>
@@ -261,7 +272,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingBottom: 6,
   },
   backBtn: {
     width: 38,
@@ -270,46 +281,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   heroBox: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
     paddingHorizontal: 8,
   },
-  proCrownBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+  heroProIcon: {
+    width: 44,
+    height: 44,
     marginBottom: 10,
   },
-  proCrownText: {
-    color: '#D4AF37',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
   heroHeading: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 6,
-  },
-  heroSubheading: {
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'center',
-    maxWidth: 320,
   },
 
   // Table Card
@@ -353,17 +342,19 @@ const styles = StyleSheet.create({
   colPremiumHeader: {
     alignItems: 'flex-start',
   },
-  premiumHeaderBadge: {
+  proHeaderBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#D4AF37',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
   },
-  premiumHeaderText: {
-    color: '#FFFFFF',
+  headerBadgeIcon: {
+    width: 12,
+    height: 12,
+  },
+  proHeaderText: {
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -440,7 +431,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     height: 48,
     borderRadius: 12,
     ...Platform.select({
@@ -456,20 +447,18 @@ const styles = StyleSheet.create({
     }),
   },
   upgradeCtaBtnText: {
-    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   proActiveBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     height: 44,
     borderRadius: 10,
   },
   proActiveBannerText: {
-    color: '#D4AF37',
+    color: '#877023',
     fontSize: 14,
     fontWeight: '700',
   },

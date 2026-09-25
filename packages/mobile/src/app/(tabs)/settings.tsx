@@ -787,7 +787,11 @@ export default function SettingsScreen() {
                 activeOpacity={0.7}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="sparkles-outline" size={16} color="#D4AF37" />
+                  <Image
+                    source={require('../../../assets/pro_icon.png')}
+                    style={{ width: 16, height: 16 }}
+                    resizeMode="contain"
+                  />
                   <Text style={[styles.menuText, { color: theme.text, fontSize: 14 }]}>View Pro Benefits</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
@@ -801,7 +805,7 @@ export default function SettingsScreen() {
                   onPress={() => openPaywall('settings')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.upgradeBtnText, { color: '#FFFFFF' }]}>Upgrade</Text>
+                  <Text style={[styles.upgradeBtnText, { color: '#877023' }]}>Upgrade</Text>
                 </TouchableOpacity>
                 <Text style={{ color: theme.text, fontSize: 13, fontWeight: '500', flex: 1, lineHeight: 18 }}>
                   Upgrade to pro for a more focussive experience!
@@ -815,7 +819,11 @@ export default function SettingsScreen() {
                 onPress={() => router.push('/pro-benefits' as never)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="sparkles-outline" size={15} color="#D4AF37" />
+                <Image
+                  source={require('../../../assets/pro_icon.png')}
+                  style={{ width: 15, height: 15 }}
+                  resizeMode="contain"
+                />
                 <Text style={{ color: theme.text, fontSize: 13, fontWeight: '600' }}>
                   View Pro Benefits
                 </Text>
@@ -1704,7 +1712,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D4AF37',
   },
   proBadgeText: {
-    color: '#FFFFFF',
+    color: '#877023',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -1720,7 +1728,7 @@ const styles = StyleSheet.create({
   upgradeBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#877023',
   },
   // Driving Forces row button in Edit Profile modal
   drivingForcesBtn: {

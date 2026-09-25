@@ -1921,7 +1921,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D4AF37',
   },
   historyUpgradePillText: {
-    color: '#FFFFFF',
+    color: '#877023',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -1932,7 +1932,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D4AF37',
   },
   periodProText: {
-    color: '#FFFFFF',
+    color: '#877023',
     fontSize: 9,
     fontWeight: '800',
   },
