@@ -635,26 +635,41 @@ export default function SessionDetailScreen() {
       <Modal visible={breakModalVisible} transparent animationType="fade">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' }}>
           <View style={[{ backgroundColor: theme.card, borderRadius: 20, padding: 32, width: '80%', alignItems: 'center', borderWidth: 1, borderColor: theme.border }]}>
-            <Text style={[{ fontSize: 20, fontWeight: '600', color: theme.text, marginBottom: 6 }]}>Take a break</Text>
-            <Text style={[{ fontSize: 13, color: theme.textSecondary, marginBottom: 28, textAlign: 'center' }]}>Breaks don't count as distracted time</Text>
+            <Text style={[{ fontSize: 20, fontWeight: '700', color: theme.text, marginBottom: 8, textAlign: 'center' }]}>Take a break</Text>
+            <Text style={[{ fontSize: 13, color: theme.textSecondary, marginBottom: 24, textAlign: 'center', lineHeight: 19 }]}>
+              {'Even machines need to cool down.\n\nNo violations tracked during breaks.\nCome back when you\'re ready.'}
+            </Text>
 
             <TouchableOpacity onPress={() => setBreakPickerMinutes(m => Math.min(m + 1, breakRemaining))} style={{ paddingVertical: 8, paddingHorizontal: 40 }}>
-              <Text style={{ color: theme.textSecondary, fontSize: 22 }}>▲</Text>
+              <Text style={{ color: isDark ? '#2F3456' : theme.textSecondary, fontSize: 22 }}>▲</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 64, fontWeight: '200', color: theme.text, lineHeight: 72 }}>{breakPickerMinutes}</Text>
-            <Text style={{ color: theme.textSecondary, fontSize: 14, marginBottom: 8 }}>min</Text>
+            <Text style={{ fontSize: 64, fontWeight: '400', color: isDark ? '#2F3456' : theme.accentDark, lineHeight: 72 }}>{breakPickerMinutes}</Text>
+            <Text style={{ color: isDark ? '#2F3456' : theme.textSecondary, fontSize: 14, marginBottom: 8, fontWeight: '600' }}>
+              {breakPickerMinutes === 1 ? 'minute' : 'minutes'}
+            </Text>
             <TouchableOpacity onPress={() => setBreakPickerMinutes(m => Math.max(m - 1, 1))} style={{ paddingVertical: 8, paddingHorizontal: 40 }}>
-              <Text style={{ color: theme.textSecondary, fontSize: 22 }}>▼</Text>
+              <Text style={{ color: isDark ? '#2F3456' : theme.textSecondary, fontSize: 22 }}>▼</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[{ marginTop: 28, width: '100%', paddingVertical: 14, borderRadius: 12, backgroundColor: `${theme.accent}25`, borderWidth: 1.5, borderColor: theme.accent, alignItems: 'center' }]}
+              style={[{
+                marginTop: 24,
+                width: '100%',
+                paddingVertical: 14,
+                borderRadius: 12,
+                backgroundColor: isDark ? '#1C281F' : `${theme.accent}25`,
+                borderWidth: 1.5,
+                borderColor: isDark ? '#2E4233' : theme.accent,
+                alignItems: 'center',
+              }]}
               onPress={async () => {
                 setBreakModalVisible(false);
                 await handleBreak(session.id, breakPickerMinutes);
               }}
             >
-              <Text style={{ color: theme.accent, fontWeight: '600', fontSize: 15 }}>Start {breakPickerMinutes} min break</Text>
+              <Text style={{ color: isDark ? '#8BA794' : theme.accent, fontWeight: '700', fontSize: 15 }}>
+                Start {breakPickerMinutes} minute break
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setBreakModalVisible(false)} style={{ marginTop: 14, padding: 8 }}>

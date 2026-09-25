@@ -161,7 +161,7 @@ class BlockOverlayActivity : Activity() {
 
         val title = if (isBreak) "Take a break" else "WARNING!"
         val subtitle = if (isBreak)
-            "Breaks don't count as distracted time"
+            "Even machines need to cool down.\n\nNo violations tracked during breaks.\nCome back when you're ready."
         else
             "You are getting distracted\nwithin a focus session!"
         val titleColor = if (isBreak) Color.parseColor("#90EE90") else Color.parseColor("#FF6B6B")
@@ -181,8 +181,9 @@ class BlockOverlayActivity : Activity() {
         })
 
         // Minute number
-        container.addView(styledText("$current", 72f, Color.WHITE, bold = false, bottomPadDp = 0))
-        container.addView(styledText("min", 15f, 0x99FFFFFF.toInt(), bold = false, bottomPadDp = 0))
+        val numberColor = if (isBreak) Color.parseColor("#2F3456") else Color.WHITE
+        container.addView(styledText("$current", 72f, numberColor, bold = false, bottomPadDp = 0))
+        container.addView(styledText(if (current == 1) "minute" else "minutes", 15f, if (isBreak) Color.parseColor("#2F3456") else 0x99FFFFFF.toInt(), bold = false, bottomPadDp = 0))
 
         // ▼ Down
         container.addView(arrowButton("▼") {
@@ -195,9 +196,9 @@ class BlockOverlayActivity : Activity() {
         container.addView(spacer(28))
 
         // Confirm
-        val confirmLabel = if (isBreak) "Start $current min break" else "Allow $current min"
-        val confirmBg = if (isBreak) Color.parseColor("#1A3A1A") else Color.parseColor("#3A0A0A")
-        val confirmBorder = if (isBreak) Color.parseColor("#90EE90") else Color.parseColor("#FF6B6B")
+        val confirmLabel = if (isBreak) "Start $current minute break" else "Allow $current min"
+        val confirmBg = if (isBreak) Color.parseColor("#142217") else Color.parseColor("#3A0A0A")
+        val confirmBorder = if (isBreak) Color.parseColor("#2E4233") else Color.parseColor("#FF6B6B")
         val confirmText = if (isBreak) Color.parseColor("#90EE90") else Color.parseColor("#FF6B6B")
 
         container.addView(solidButton(confirmLabel, confirmText, confirmBg, confirmBorder) {

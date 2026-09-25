@@ -151,32 +151,38 @@ export default function ViolationOverlay({
           {screen === 'selectBreak' && (
             <>
               <Text style={styles.title}>Take a break</Text>
-              <Text style={styles.subtitle}>Choose break duration</Text>
+              <Text style={[styles.subtitle, { lineHeight: 18, marginBottom: 20 }]}>
+                {'Even machines need to cool down.\n\nNo violations tracked during breaks.\nCome back when you\'re ready.'}
+              </Text>
 
               <View style={styles.pickerContainer}>
                 <Pressable
                   style={styles.arrowBtn}
                   onPress={() => setBreakMinutes(m => Math.min(m + 1, breakMaxMinutes))}
                 >
-                  <Text style={styles.arrowText}>▲</Text>
+                  <Text style={[styles.arrowText, { color: '#2F3456' }]}>▲</Text>
                 </Pressable>
 
                 <View style={styles.minuteDisplay}>
-                  <Text style={styles.minuteNumber}>{breakMinutes}</Text>
-                  <Text style={styles.minuteLabel}>min</Text>
+                  <Text style={[styles.minuteNumber, { color: '#2F3456' }]}>{breakMinutes}</Text>
+                  <Text style={[styles.minuteLabel, { color: '#2F3456' }]}>{breakMinutes === 1 ? 'minute' : 'minutes'}</Text>
                 </View>
 
                 <Pressable
                   style={styles.arrowBtn}
                   onPress={() => setBreakMinutes(m => Math.max(m - 1, 1))}
                 >
-                  <Text style={styles.arrowText}>▼</Text>
+                  <Text style={[styles.arrowText, { color: '#2F3456' }]}>▼</Text>
                 </Pressable>
               </View>
 
               <View style={styles.buttons}>
-                <TouchableOpacity style={styles.breakBtn} onPress={handleTakeBreakConfirm} activeOpacity={0.8}>
-                  <Text style={styles.breakBtnText}>Start {breakMinutes} min break</Text>
+                <TouchableOpacity
+                  style={[styles.breakBtn, { backgroundColor: '#1C281F', borderColor: '#2E4233' }]}
+                  onPress={handleTakeBreakConfirm}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.breakBtnText}>Start {breakMinutes} minute break</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.backBtn} onPress={() => setScreen('idle')} activeOpacity={0.8}>
                   <Text style={styles.backText}>Back</Text>
