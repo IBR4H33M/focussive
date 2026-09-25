@@ -223,9 +223,9 @@ export default function ExtensionQRScreen() {
             <View style={styles.statusRow}>
               <View style={[
                 styles.statusDot,
-                { backgroundColor: connected ? theme.accent : '#FF6B6B' },
+                { backgroundColor: connected ? theme.accent : theme.danger },
               ]} />
-              <Text style={[styles.statusText, { color: connected ? theme.accent : '#FF6B6B' }]}>
+              <Text style={[styles.statusText, { color: connected ? theme.accent : theme.danger }]}>
                 {connected ? 'Connected' : 'Disconnected'}
               </Text>
             </View>
@@ -324,17 +324,17 @@ export default function ExtensionQRScreen() {
 
           {/* Unpair Button */}
           <TouchableOpacity
-            style={[styles.unpairBtn, { borderColor: '#FF6B6B', backgroundColor: 'transparent' }]}
+            style={[styles.unpairBtn, { borderColor: theme.danger, backgroundColor: 'transparent' }]}
             onPress={handleUnpair}
             disabled={unpairing}
             activeOpacity={0.7}
           >
             {unpairing ? (
-              <ActivityIndicator size="small" color="#FF6B6B" />
+              <ActivityIndicator size="small" color={theme.danger} />
             ) : (
               <>
-                <Ionicons name="unlink-outline" size={18} color="#FF6B6B" />
-                <Text style={styles.unpairText}>Unpair Extension</Text>
+                <Ionicons name="trash-outline" size={16} color={theme.danger} />
+                <Text style={[styles.unpairText, { color: theme.danger }]}>Unpair Extension</Text>
               </>
             )}
           </TouchableOpacity>
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   unpairText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FF6B6B',
+    color: '#8B1E1E',
   },
   // ── Pairing View ──
   modeToggle: {

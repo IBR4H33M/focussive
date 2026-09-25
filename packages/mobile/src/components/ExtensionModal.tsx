@@ -316,13 +316,73 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                 )}
               </View>
 
-              {/* Unpair Button (Border-only, no fill) */}
+              {/* One-Time Code Generate Option (for Paired / Offline or Inactive state) */}
+              {!connected && (
+                <View
+                  style={[
+                    styles.reconnectSection,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: isDark ? 'rgba(93, 110, 117, 0.25)' : theme.surface,
+                    },
+                  ]}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Ionicons name="key-outline" size={16} color={theme.accent} />
+                    <Text style={[styles.reconnectTitle, { color: titleColor }]}>Reinstalled the Extension?</Text>
+                  </View>
+                  <Text style={[styles.reconnectSubtitle, { color: theme.textSecondary }]}>
+                    Generate a one-time connection code to reconnect your extension without having to unpair first.
+                  </Text>
+
+                  {generatingCode ? (
+                    <View style={styles.codeLoadingBox}>
+                      <ActivityIndicator size="small" color={theme.accent} />
+                    </View>
+                  ) : mobileCode && codeTimeLeft > 0 ? (
+                    <View style={[styles.codeDisplayCard, { backgroundColor: theme.card, borderColor: theme.accent, marginTop: 8 }]}>
+                      <Text style={[styles.codeString, { color: theme.accent }]}>
+                        {mobileCode.split('').join(' ')}
+                      </Text>
+                      <View style={styles.timerBadge}>
+                        <Ionicons name="time-outline" size={13} color={theme.textSecondary} />
+                        <Text style={[styles.codeTimer, { color: theme.textSecondary }]}>
+                          Expires in {formatSeconds(codeTimeLeft)}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : mobileCode && codeTimeLeft === 0 ? (
+                    <TouchableOpacity
+                      style={[styles.reconnectBtn, { borderColor: theme.accent, backgroundColor: 'transparent' }]}
+                      onPress={generateMobileCode}
+                      disabled={generatingCode}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="refresh-outline" size={15} color={theme.accent} />
+                      <Text style={[styles.reconnectBtnText, { color: theme.accent }]}>Code Expired — Tap to Regenerate</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.reconnectBtn, { borderColor: theme.accent, backgroundColor: 'transparent' }]}
+                      onPress={generateMobileCode}
+                      disabled={generatingCode}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="qr-code-outline" size={15} color={theme.accent} />
+                      <Text style={[styles.reconnectBtnText, { color: theme.accent }]}>Generate Connection Code</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {/* Unpair Button (Border-only, matching other delete buttons in the app) */}
               <TouchableOpacity
                 style={[
                   styles.unpairBtn,
                   {
                     backgroundColor: 'transparent',
-                    borderColor: isDark ? '#FF6B6B' : '#8B1E1E',
+                    borderWidth: 2,
+                    borderColor: theme.danger,
                     opacity: unpairing ? 0.6 : 1,
                   },
                 ]}
@@ -331,11 +391,14 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                 activeOpacity={0.8}
               >
                 {unpairing ? (
-                  <ActivityIndicator size="small" color={isDark ? '#FF6B6B' : '#8B1E1E'} />
+                  <ActivityIndicator size="small" color={theme.danger} />
                 ) : (
-                  <Text style={[styles.unpairBtnText, { color: isDark ? '#FF6B6B' : '#8B1E1E' }]}>
-                    Unpair Extension
-                  </Text>
+                  <>
+                    <Ionicons name="trash-outline" size={16} color={theme.danger} />
+                    <Text style={[styles.unpairBtnText, { color: theme.danger }]}>
+                      Unpair Extension
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -651,13 +714,44 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  unpairBtn: {
+  reconnectSection: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    marginTop: 14,
+    marginBottom: 4,
+    gap: 8,
+  },
+  reconnectTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  reconnectSubtitle: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  reconnectBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  reconnectBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  unpairBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: 14,
     borderRadius: 12,
     backgroundColor: 'transparent',
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: '#8B1E1E',
     marginTop: 12,
   },
