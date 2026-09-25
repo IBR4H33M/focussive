@@ -277,12 +277,12 @@ export default function DashboardScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.viewAllButton, { backgroundColor: theme.card }]}
+              style={[styles.viewAllButton, { backgroundColor: '#565E9E' }]}
               onPress={() => router.push({ pathname: '/(tabs)/app-groups', params: { tab: 'sessions' } } as never)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.viewAllButtonText, { color: theme.text }]}>View All</Text>
-              <Ionicons name="arrow-forward" size={14} color={theme.accent} style={{ marginLeft: 6 }} />
+              <Text style={[styles.viewAllButtonText, { color: '#FFFFFF' }]}>View All</Text>
+              <Ionicons name="arrow-forward" size={14} color="#FFFFFF" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           </View>
         )}
@@ -291,12 +291,12 @@ export default function DashboardScreen() {
         {scheduledSessions.length === 0 && allSessions.length > 1 && (
           <View style={{ marginBottom: 24 }}>
             <TouchableOpacity
-              style={[styles.viewAllButton, { backgroundColor: theme.card }]}
+              style={[styles.viewAllButton, { backgroundColor: '#565E9E' }]}
               onPress={() => router.push({ pathname: '/(tabs)/app-groups', params: { tab: 'sessions' } } as never)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.viewAllButtonText, { color: theme.text }]}>View All Sessions</Text>
-              <Ionicons name="arrow-forward" size={14} color={theme.accent} style={{ marginLeft: 6 }} />
+              <Text style={[styles.viewAllButtonText, { color: '#FFFFFF' }]}>View All Sessions</Text>
+              <Ionicons name="arrow-forward" size={14} color="#FFFFFF" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           </View>
         )}
