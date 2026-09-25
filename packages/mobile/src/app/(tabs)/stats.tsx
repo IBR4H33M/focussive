@@ -125,6 +125,7 @@ const SECTIONS = ['Overview', 'Milestones', 'History'];
 export default function StatsScreen() {
   const theme = useTheme();
   const isDark = useIsDark();
+  const containerBg = isDark ? '#65767C' : theme.card;
   const insets = useSafeAreaInsets();
   const { isPremium, openPaywall } = useSubscription();
 
@@ -396,7 +397,7 @@ export default function StatsScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.progressionCard, { backgroundColor: theme.card }]}
+              style={[styles.progressionCard, { backgroundColor: containerBg }]}
               onPress={() => goToSection(1)}
               activeOpacity={0.8}
             >
@@ -501,7 +502,7 @@ export default function StatsScreen() {
               {getPeriodSectionTitle(activePeriod)}
             </Text>
             <TouchableOpacity
-              style={[styles.periodBtnClean, { backgroundColor: theme.card }]}
+              style={[styles.periodBtnClean, { backgroundColor: containerBg }]}
               onPress={() => setPeriodDropdownVisible(true)}
               activeOpacity={0.7}
             >
@@ -512,7 +513,7 @@ export default function StatsScreen() {
 
           {/* 4 Requested Metrics Grid (Borderless) */}
           <View style={styles.metricsGrid}>
-            <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
+            <View style={[styles.metricCard, { backgroundColor: containerBg }]}>
               <View style={styles.metricIconRow}>
                 <Ionicons name="checkmark-done-circle-outline" size={17} color={theme.accent} />
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Sessions completed</Text>
@@ -520,7 +521,7 @@ export default function StatsScreen() {
               <Text style={[styles.metricValue, { color: theme.text }]}>{completedOnly.length}</Text>
             </View>
 
-            <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
+            <View style={[styles.metricCard, { backgroundColor: containerBg }]}>
               <View style={styles.metricIconRow}>
                 <Ionicons name="time-outline" size={17} color="#3B82F6" />
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Hours focused</Text>
@@ -528,7 +529,7 @@ export default function StatsScreen() {
               <Text style={[styles.metricValue, { color: theme.text }]}>{formattedFocusTime}</Text>
             </View>
 
-            <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
+            <View style={[styles.metricCard, { backgroundColor: containerBg }]}>
               <View style={styles.metricIconRow}>
                 <Ionicons name="shield-outline" size={17} color={totalViolations > 0 ? theme.danger : '#10B981'} />
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Distraction attempts</Text>
@@ -538,7 +539,7 @@ export default function StatsScreen() {
               </Text>
             </View>
 
-            <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
+            <View style={[styles.metricCard, { backgroundColor: containerBg }]}>
               <View style={styles.metricIconRow}>
                 <Ionicons name="flame-outline" size={17} color="#F59E0B" />
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Longest clean streak</Text>
@@ -551,7 +552,7 @@ export default function StatsScreen() {
 
           {/* Focus vs Distracted Bar */}
           {totalFocusMinutes > 0 && (
-            <View style={[styles.barSection, { backgroundColor: theme.card }]}>
+            <View style={[styles.barSection, { backgroundColor: containerBg }]}>
               <Text style={[styles.barTitle, { color: theme.textSecondary }]}>FOCUS BREAKDOWN</Text>
               <View style={styles.barTrack}>
                 <View
@@ -559,7 +560,7 @@ export default function StatsScreen() {
                     styles.barFill,
                     {
                       flex: focusedMinutes,
-                      backgroundColor: theme.accent,
+                      backgroundColor: '#2FB556',
                       borderTopLeftRadius: 6,
                       borderBottomLeftRadius: 6,
                       borderTopRightRadius: distractedMinutes === 0 ? 6 : 0,
@@ -583,7 +584,7 @@ export default function StatsScreen() {
               </View>
               <View style={styles.legendRow}>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: theme.accent }]} />
+                  <View style={[styles.legendDot, { backgroundColor: '#2FB556' }]} />
                   <Text style={[styles.legendText, { color: theme.textSecondary }]}>
                     Focused — {formatDuration(focusedMinutes)}
                   </Text>
@@ -672,7 +673,7 @@ export default function StatsScreen() {
                 style={[
                   styles.milestoneCard,
                   {
-                    backgroundColor: theme.card,
+                    backgroundColor: containerBg,
                     borderWidth: 0,
                   },
                 ]}
@@ -853,7 +854,7 @@ export default function StatsScreen() {
           const violations = item.violations_count ?? 0;
           return (
             <TouchableOpacity
-              style={[styles.historyCard, { backgroundColor: theme.card }]}
+              style={[styles.historyCard, { backgroundColor: containerBg }]}
               onPress={() => openDetail(item)}
               activeOpacity={0.7}
             >
@@ -964,7 +965,7 @@ export default function StatsScreen() {
         onRequestClose={() => setPeriodDropdownVisible(false)}
       >
         <TouchableOpacity style={styles.dropdownBackdrop} activeOpacity={1} onPress={() => setPeriodDropdownVisible(false)}>
-          <View style={[styles.dropdown, { backgroundColor: theme.card }]}>
+          <View style={[styles.dropdown, { backgroundColor: containerBg }]}>
             <Text style={[styles.dropdownTitle, { color: theme.textSecondary }]}>SELECT PERIOD</Text>
             {PERIODS.map(p => {
               const isLocked = !isPremium && (p.key === 'month' || p.key === 'year');
@@ -1004,7 +1005,7 @@ export default function StatsScreen() {
         onRequestClose={() => setCustomInputVisible(false)}
       >
         <TouchableOpacity style={styles.dropdownBackdrop} activeOpacity={1} onPress={() => setCustomInputVisible(false)}>
-          <View style={[styles.dropdown, { backgroundColor: theme.card }]}>
+          <View style={[styles.dropdown, { backgroundColor: containerBg }]}>
             <Text style={[styles.dropdownTitle, { color: theme.textSecondary }]}>CUSTOM RANGE</Text>
             <Text style={[styles.dropdownSubtitle, { color: theme.textSecondary }]}>Show last N days (excluding today)</Text>
 
@@ -1093,7 +1094,7 @@ export default function StatsScreen() {
 
               {/* Duration */}
               <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>DURATION</Text>
-              <View style={[styles.detailGrid, { backgroundColor: theme.card }]}>
+              <View style={[styles.detailGrid, { backgroundColor: containerBg }]}>
                 <DetailCell label="Actual" value={formatDuration(selectedEntry.actual_duration ?? selectedEntry.scheduled_duration)} theme={theme} />
                 <View style={[styles.detailDivider, { backgroundColor: theme.border }]} />
                 <DetailCell label="Scheduled" value={formatDuration(selectedEntry.scheduled_duration)} theme={theme} />
@@ -1103,7 +1104,7 @@ export default function StatsScreen() {
 
               {/* Violations */}
               <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>VIOLATIONS</Text>
-              <View style={[styles.detailCard, { backgroundColor: theme.card }]}>
+              <View style={[styles.detailCard, { backgroundColor: containerBg }]}>
                 <View style={styles.detailRow}>
                   <View style={styles.detailRowLeft}>
                     <Ionicons name="alert-circle-outline" size={20} color={(selectedEntry.violations_count ?? 0) > 0 ? theme.danger : theme.textSecondary} />
@@ -1148,7 +1149,7 @@ export default function StatsScreen() {
               {((selectedEntry as any).pause_count ?? 0) > 0 && (
                 <>
                   <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>PAUSES</Text>
-                  <View style={[styles.detailCard, { backgroundColor: theme.card }]}>
+                  <View style={[styles.detailCard, { backgroundColor: containerBg }]}>
                     <View style={styles.detailRow}>
                       <View style={styles.detailRowLeft}>
                         <Ionicons name="pause-circle-outline" size={20} color={theme.textSecondary} />
@@ -1166,7 +1167,7 @@ export default function StatsScreen() {
               {selectedEntry.status === 'cancelled' && (selectedEntry as any).cancellation_reason && (
                 <>
                   <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>REASON</Text>
-                  <View style={[styles.detailCard, { backgroundColor: theme.card }]}>
+                  <View style={[styles.detailCard, { backgroundColor: containerBg }]}>
                     <Text style={[styles.cancelReason, { color: theme.text }]}>
                       {(selectedEntry as any).cancellation_reason}
                     </Text>
@@ -1211,7 +1212,7 @@ export default function StatsScreen() {
                   style={[
                     styles.archetypeOptionCard,
                     {
-                      backgroundColor: theme.card,
+                      backgroundColor: containerBg,
                       borderColor: isEquipped ? theme.accent : theme.border,
                       opacity: item.isUnlocked ? 1 : 0.6,
                     },
@@ -1271,7 +1272,7 @@ export default function StatsScreen() {
               style={[
                 styles.tierDetailModalCard,
                 {
-                  backgroundColor: theme.card,
+                  backgroundColor: containerBg,
                   borderColor: selectedTierDetail.borderColor,
                 },
               ]}

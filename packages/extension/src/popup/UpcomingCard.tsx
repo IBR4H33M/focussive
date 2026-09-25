@@ -16,21 +16,21 @@ const styles: Record<string, React.CSSProperties> = {
     margin: '0 auto 8px auto',
     padding: 14,
     borderRadius: 10,
-    border: '1px solid #333',
-    backgroundColor: '#252525',
+    border: '1px solid #FDE68A',
+    backgroundColor: '#FEF3C7',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   name: {
     fontSize: 14,
-    fontWeight: 400,
-    color: '#E0E0E0',
+    fontWeight: 600,
+    color: '#452C03',
   },
   time: {
     fontSize: 13,
-    fontWeight: 300,
-    color: '#999',
+    fontWeight: 500,
+    color: '#78350F',
   },
 };
 

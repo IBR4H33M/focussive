@@ -497,13 +497,28 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
             <TouchableOpacity
               style={[
                 styles.createSessionTopBtn,
-                { backgroundColor: theme.accentDark },
+                {
+                  borderColor: isDark ? theme.accent : theme.accentDark,
+                  backgroundColor: 'transparent',
+                },
               ]}
               onPress={() => router.push('/session/create' as never)}
               activeOpacity={0.8}
             >
-              <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.createSessionTopBtnText}>Create new session</Text>
+              <Ionicons
+                name="add-circle-outline"
+                size={18}
+                color={isDark ? theme.accent : theme.accentDark}
+                style={{ marginRight: 8 }}
+              />
+              <Text
+                style={[
+                  styles.createSessionTopBtnText,
+                  { color: isDark ? theme.accent : theme.accentDark },
+                ]}
+              >
+                Create new session
+              </Text>
             </TouchableOpacity>
 
             {sessionsLoading ? (
@@ -517,36 +532,41 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
               </View>
             ) : (
               sortedSessions.map((session) => {
+                const isActive = session.status === SessionStatus.ACTIVE;
                 const badge = getStatusBadge(session.status);
+                const cardBg = isActive ? '#22B14C' : '#565E9E';
+
                 return (
                   <TouchableOpacity
                     key={session.id}
-                    style={[styles.sessionCard, { backgroundColor: theme.card }]}
+                    style={[styles.sessionCard, { backgroundColor: cardBg }]}
                     onPress={() => router.push(`/session/${session.id}` as never)}
                     activeOpacity={0.7}
                   >
-                    {/* Card Header: Name + Status Badge */}
+                    {/* Card Header: Name + Status Badge (small active pill removed) */}
                     <View style={styles.sessionCardHeader}>
-                      <Text style={[styles.sessionName, { color: theme.text }]} numberOfLines={1}>
+                      <Text style={[styles.sessionName, { color: '#FFFFFF' }]} numberOfLines={1}>
                         {session.name}
                       </Text>
-                      <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
-                        <Ionicons name={badge.icon as any} size={12} color={badge.text} style={{ marginRight: 4 }} />
-                        <Text style={[styles.statusText, { color: badge.text }]}>
-                          {badge.label}
-                        </Text>
-                      </View>
+                      {!isActive && (
+                        <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
+                          <Ionicons name={badge.icon as any} size={12} color={badge.text} style={{ marginRight: 4 }} />
+                          <Text style={[styles.statusText, { color: badge.text }]}>
+                            {badge.label}
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
                     {/* Time & Duration */}
                     <View style={styles.sessionMetaRow}>
-                      <Ionicons name="time-outline" size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
-                      <Text style={[styles.sessionMetaText, { color: theme.text }]}>
+                      <Ionicons name="time-outline" size={14} color="rgba(255, 255, 255, 0.85)" style={{ marginRight: 6 }} />
+                      <Text style={[styles.sessionMetaText, { color: '#FFFFFF' }]}>
                         {formatTime(session.start_time)} · {formatDuration(session.duration)}
                       </Text>
                     </View>
 
-                    {/* Weekday strip (compact connected days, removing "recurring" wording) */}
+                    {/* Weekday strip */}
                     <View style={styles.cardDaysRow}>
                       {WEEKDAY_ITEMS.map((day, idx) => {
                         const isSelected = isDayActiveForSession(day.key, session);
@@ -560,8 +580,8 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                               styles.cardDayBtn,
                               {
                                 backgroundColor: isSelected
-                                  ? theme.accent
-                                  : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                                  ? 'rgba(255, 255, 255, 0.28)'
+                                  : 'rgba(0, 0, 0, 0.16)',
                                 borderTopLeftRadius: prevSelected ? 0 : 5,
                                 borderBottomLeftRadius: prevSelected ? 0 : 5,
                                 borderTopRightRadius: nextSelected ? 0 : 5,
@@ -573,7 +593,7 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                               style={[
                                 styles.cardDayBtnText,
                                 {
-                                  color: isSelected ? '#FFFFFF' : theme.textSecondary,
+                                  color: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
                                   fontWeight: isSelected ? '700' : '400',
                                 },
                               ]}
@@ -585,7 +605,7 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                       })}
                     </View>
 
-                    {/* Footer: Focus pills (both Mobile & Browser, active filled dark, breaks removed) & Created At */}
+                    {/* Footer: Focus pills & Created At */}
                     <View style={styles.sessionCardFooter}>
                       <View style={styles.focusPills}>
                         <View
@@ -593,21 +613,21 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                             styles.focusPill,
                             {
                               backgroundColor: session.mobile_focus
-                                ? (isDark ? '#2D324D' : '#1E2235')
-                                : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                                ? 'rgba(0, 0, 0, 0.22)'
+                                : 'rgba(255, 255, 255, 0.12)',
                             },
                           ]}
                         >
                           <Ionicons
                             name="phone-portrait-outline"
                             size={10}
-                            color={session.mobile_focus ? '#FFFFFF' : theme.textSecondary}
+                            color={session.mobile_focus ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)'}
                             style={{ marginRight: 3 }}
                           />
                           <Text
                             style={[
                               styles.focusPillText,
-                              { color: session.mobile_focus ? '#FFFFFF' : theme.textSecondary },
+                              { color: session.mobile_focus ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)' },
                             ]}
                           >
                             Mobile
@@ -619,28 +639,28 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                             styles.focusPill,
                             {
                               backgroundColor: session.browser_focus
-                                ? (isDark ? '#2D324D' : '#1E2235')
-                                : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                                ? 'rgba(0, 0, 0, 0.22)'
+                                : 'rgba(255, 255, 255, 0.12)',
                             },
                           ]}
                         >
                           <Ionicons
                             name="globe-outline"
                             size={10}
-                            color={session.browser_focus ? '#FFFFFF' : theme.textSecondary}
+                            color={session.browser_focus ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)'}
                             style={{ marginRight: 3 }}
                           />
                           <Text
                             style={[
                               styles.focusPillText,
-                              { color: session.browser_focus ? '#FFFFFF' : theme.textSecondary },
+                              { color: session.browser_focus ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)' },
                             ]}
                           >
                             Browser
                           </Text>
                         </View>
                       </View>
-                      <Text style={[styles.sessionDateText, { color: theme.textSecondary }]}>
+                      <Text style={[styles.sessionDateText, { color: 'rgba(255, 255, 255, 0.75)' }]}>
                         Created {formatDate(session.created_at)}
                       </Text>
                     </View>
@@ -1062,12 +1082,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
     paddingHorizontal: 16,
-    borderWidth: 0,
+    borderWidth: 2.5,
+    backgroundColor: 'transparent',
   },
   createSessionTopBtnText: {
-    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: 0.2,
   },
   sessionCard: {

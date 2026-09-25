@@ -14,7 +14,8 @@ interface LoginViewProps {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     padding: '20px 18px',
-    color: '#E0E0E0',
+    backgroundColor: '#2F3456',
+    color: '#E9E4DC',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   logo: {
@@ -25,16 +26,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 20,
     fontWeight: 400,
     letterSpacing: 2,
-    color: '#E0E0E0',
+    color: '#E9E4DC',
     marginTop: 6,
   },
   tabs: {
     display: 'flex',
-    borderRadius: 8,
-    backgroundColor: '#1E1E1E',
+    borderRadius: 10,
+    backgroundColor: '#242944',
     padding: 3,
     marginBottom: 18,
     gap: 4,
+    border: '1px solid #5D6E75',
   },
   tab: {
     flex: 1,
@@ -42,57 +44,57 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontWeight: 500,
     textAlign: 'center' as const,
-    borderRadius: 6,
+    borderRadius: 7,
     border: 'none',
     cursor: 'pointer',
     backgroundColor: 'transparent',
-    color: '#888',
+    color: '#BAC6B8',
     transition: 'all 0.2s ease',
   },
   tabActive: {
-    backgroundColor: '#2A2A2A',
-    color: '#FFF',
+    backgroundColor: '#3A4062',
+    color: '#E9E4DC',
     boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
   },
   form: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: 10,
+    gap: 12,
   },
   input: {
-    height: 40,
-    border: '1px solid #333',
-    borderRadius: 8,
+    height: 44,
+    border: '2.5px solid #5D6E75',
+    borderRadius: 10,
     paddingLeft: 12,
     paddingRight: 12,
-    fontSize: 13,
-    backgroundColor: '#222',
-    color: '#E0E0E0',
+    fontSize: 14,
+    backgroundColor: '#3A4062',
+    color: '#E9E4DC',
     outline: 'none',
     width: '100%',
     boxSizing: 'border-box' as const,
   },
   button: {
-    height: 40,
-    borderRadius: 8,
+    height: 44,
+    borderRadius: 10,
     border: 'none',
-    backgroundColor: '#435432',
-    color: 'white',
-    fontSize: 13,
-    fontWeight: 600,
+    backgroundColor: '#8BA794',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 700,
     cursor: 'pointer',
     marginTop: 6,
     transition: 'opacity 0.2s',
   },
   error: {
-    color: '#EF4444',
+    color: '#FFD1D1',
     fontSize: 12,
     textAlign: 'center' as const,
     marginTop: 10,
-    padding: '6px 10px',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 6,
-    border: '1px solid rgba(239, 68, 68, 0.2)',
+    padding: '8px 12px',
+    backgroundColor: 'rgba(139, 30, 30, 0.22)',
+    borderRadius: 8,
+    border: '1px solid #5B1212',
   },
   qrContainer: {
     display: 'flex',
@@ -114,20 +116,20 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 22,
     fontWeight: 700,
     letterSpacing: 4,
-    color: '#90EE90',
+    color: '#8BA794',
     fontFamily: 'monospace',
     marginTop: 4,
   },
   qrPrompt: {
     fontSize: 12,
-    color: '#999',
+    color: '#BAC6B8',
     marginTop: 4,
     lineHeight: 1.4,
   },
   refreshButton: {
     background: 'none',
     border: 'none',
-    color: '#90EE90',
+    color: '#8BA794',
     fontSize: 12,
     cursor: 'pointer',
     marginTop: 10,
@@ -343,13 +345,13 @@ export default function LoginView({ onSuccess }: LoginViewProps) {
                 Scan with Focussive mobile app, or enter PIN:
               </div>
               {pairingPin && <div style={styles.pinText}>{pairingPin}</div>}
-              <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#BAC6B8', marginTop: 4 }}>
                 Expires in {formatSeconds(timeLeft)}
               </div>
             </>
           ) : (
             <div style={{ padding: '24px 0', textAlign: 'center' }}>
-              <p style={{ color: '#888', fontSize: 13, marginBottom: 8 }}>
+              <p style={{ color: '#BAC6B8', fontSize: 13, marginBottom: 8 }}>
                 QR code expired
               </p>
               <button style={styles.refreshButton} onClick={initQRPairing}>
@@ -363,7 +365,7 @@ export default function LoginView({ onSuccess }: LoginViewProps) {
       {/* TAB 2: Enter Mobile One-Time Code */}
       {tab === 'code' && (
         <form style={styles.form} onSubmit={handleManualCodeSubmit}>
-          <p style={{ color: '#999', fontSize: 12, textAlign: 'center', margin: '4px 0 10px 0', lineHeight: 1.4 }}>
+          <p style={{ color: '#BAC6B8', fontSize: 12, textAlign: 'center', margin: '4px 0 10px 0', lineHeight: 1.4 }}>
             Generate a connection code from the Focussive mobile app (Settings &gt; Extension) and enter it below:
           </p>
           <input

@@ -15,8 +15,8 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     width: 400,
     minHeight: 300,
-    backgroundColor: '#18181B',
-    color: '#E0E0E0',
+    backgroundColor: '#2F3456',
+    color: '#E9E4DC',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
   header: {
@@ -24,18 +24,19 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '16px 20px',
-    borderBottom: '1px solid #27272A',
+    borderBottom: '1px solid #5D6E75',
+    backgroundColor: '#2F3456',
   },
   logo: {
     fontSize: 18,
-    fontWeight: 300,
+    fontWeight: 400,
     letterSpacing: 2,
-    color: '#90EE90',
+    color: '#8BA794',
   },
   menuBtn: {
     background: 'none',
     border: 'none',
-    color: '#999',
+    color: '#BAC6B8',
     fontSize: 20,
     cursor: 'pointer',
     padding: 4,
@@ -46,8 +47,8 @@ const styles: Record<string, React.CSSProperties> = {
   dropdownContainer: {
     marginTop: 10,
     marginBottom: 12,
-    backgroundColor: '#202024',
-    border: '1px solid #2E2E34',
+    backgroundColor: '#3A4062',
+    border: '1px solid #5D6E75',
     borderRadius: 10,
     overflow: 'hidden',
   },
@@ -60,16 +61,16 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     cursor: 'pointer',
-    color: '#E0E0E0',
+    color: '#E9E4DC',
   },
   dropdownTitle: {
     fontSize: 13,
     fontWeight: 500,
-    color: '#E0E0E0',
+    color: '#E9E4DC',
   },
   dropdownContent: {
     padding: '4px 14px 10px',
-    borderTop: '1px solid #27272A',
+    borderTop: '1px solid #5D6E75',
     display: 'flex',
     flexDirection: 'column' as const,
     maxHeight: 180,
@@ -77,12 +78,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
   siteRow: {
     padding: '7px 0',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
   },
   siteText: {
     fontSize: 13,
     fontWeight: 400,
-    color: '#D4D4D8',
+    color: '#E9E4DC',
     letterSpacing: 0.2,
   },
   noSession: {
@@ -91,27 +92,27 @@ const styles: Record<string, React.CSSProperties> = {
   },
   noSessionTitle: {
     fontSize: 16,
-    fontWeight: 300,
-    color: '#E0E0E0',
+    fontWeight: 400,
+    color: '#E9E4DC',
     marginBottom: 4,
   },
   noSessionSub: {
     fontSize: 13,
     fontWeight: 300,
-    color: '#999',
+    color: '#BAC6B8',
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: 600,
     letterSpacing: 2,
-    color: '#999',
+    color: '#BAC6B8',
     marginTop: 16,
     marginBottom: 8,
   },
   loading: {
     textAlign: 'center' as const,
     padding: '40px 20px',
-    color: '#999',
+    color: '#BAC6B8',
   },
 };
 
@@ -250,7 +251,7 @@ export default function Popup() {
                       Blocked Websites ({blockedList.length})
                     </span>
                   </div>
-                  <span style={{ transform: blockedSitesOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', fontSize: 11, color: '#888' }}>
+                  <span style={{ transform: blockedSitesOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', fontSize: 11, color: '#BAC6B8' }}>
                     ▼
                   </span>
                 </button>

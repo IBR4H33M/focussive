@@ -103,7 +103,7 @@ export default function Menu({ onClose, onLogout, onRefreshData }: MenuProps) {
             <div style={styles.menuList}>
               <button style={styles.menuItem} onClick={() => setCurrentView('settings')}>
                 <div style={styles.menuItemLeft}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#90EE90" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8BA794" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="3" />
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                   </svg>
@@ -114,7 +114,7 @@ export default function Menu({ onClose, onLogout, onRefreshData }: MenuProps) {
 
               <button style={styles.menuItem} onClick={() => setCurrentView('device_sync')}>
                 <div style={styles.menuItemLeft}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#90EE90" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8BA794" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
                     <line x1="12" y1="18" x2="12.01" y2="18" />
                   </svg>
@@ -177,7 +177,7 @@ export default function Menu({ onClose, onLogout, onRefreshData }: MenuProps) {
                           onClick={() => updateSetting('overlay_gif_url', img.id)}
                           style={{
                             ...styles.imageCard,
-                            borderColor: isSelected ? '#90EE90' : '#333',
+                            borderColor: isSelected ? '#8BA794' : '#5D6E75',
                             borderWidth: isSelected ? 2 : 1,
                           }}
                         >
@@ -215,7 +215,7 @@ export default function Menu({ onClose, onLogout, onRefreshData }: MenuProps) {
               {/* Auto-close seconds selector: 10, 15 (Default), 20, 25 */}
               {settings.auto_close_tab && (
                 <div style={styles.secondsSelectorRow}>
-                  <span style={{ fontSize: 12, color: '#AAA' }}>Countdown Time:</span>
+                  <span style={{ fontSize: 12, color: '#BAC6B8' }}>Countdown Time:</span>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {[10, 15, 20, 25].map((sec) => (
                       <button
@@ -223,8 +223,8 @@ export default function Menu({ onClose, onLogout, onRefreshData }: MenuProps) {
                         onClick={() => updateSetting('auto_close_seconds', sec)}
                         style={{
                           ...styles.secBtn,
-                          backgroundColor: settings.auto_close_seconds === sec ? '#90EE90' : '#2A2A2A',
-                          color: settings.auto_close_seconds === sec ? '#111' : '#E0E0E0',
+                          backgroundColor: settings.auto_close_seconds === sec ? '#8BA794' : '#2F3456',
+                          color: settings.auto_close_seconds === sec ? '#2F3456' : '#E9E4DC',
                           fontWeight: settings.auto_close_seconds === sec ? 700 : 400,
                         }}
                       >
@@ -275,8 +275,8 @@ export default function Menu({ onClose, onLogout, onRefreshData }: MenuProps) {
               <div style={styles.infoCard}>
                 <div style={styles.infoRow}>
                   <span style={styles.infoLabel}>Status</span>
-                  <span style={{ color: '#90EE90', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#90EE90' }} />
+                  <span style={{ color: '#8BA794', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#8BA794' }} />
                     Connected & Syncing
                   </span>
                 </div>
@@ -375,8 +375,8 @@ const styles: Record<string, React.CSSProperties> = {
     right: 0,
     width: 320,
     height: '100%',
-    backgroundColor: '#18181B',
-    borderLeft: '1px solid #2E2E34',
+    backgroundColor: '#2F3456',
+    borderLeft: '1px solid #5D6E75',
     zIndex: 101,
     display: 'flex',
     flexDirection: 'column',
@@ -388,24 +388,24 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '16px 18px',
-    borderBottom: '1px solid #27272A',
-    backgroundColor: '#18181B',
+    borderBottom: '1px solid #5D6E75',
+    backgroundColor: '#2F3456',
   },
   title: {
     fontSize: 16,
     fontWeight: 600,
-    color: '#FFFFFF',
+    color: '#E9E4DC',
     letterSpacing: 0.5,
   },
   subViewTitle: {
     fontSize: 14,
     fontWeight: 600,
-    color: '#FFFFFF',
+    color: '#E9E4DC',
   },
   backBtn: {
     background: 'none',
     border: 'none',
-    color: '#90EE90',
+    color: '#8BA794',
     fontSize: 14,
     fontWeight: 600,
     cursor: 'pointer',
@@ -414,7 +414,7 @@ const styles: Record<string, React.CSSProperties> = {
   iconBtn: {
     background: 'none',
     border: 'none',
-    color: '#888',
+    color: '#BAC6B8',
     fontSize: 16,
     cursor: 'pointer',
     padding: '4px 8px',
@@ -436,10 +436,10 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     width: '100%',
     padding: '14px 14px',
-    backgroundColor: '#202024',
-    border: '1px solid #2A2A30',
+    backgroundColor: '#3A4062',
+    border: '1px solid #5D6E75',
     borderRadius: 10,
-    color: '#FFFFFF',
+    color: '#E9E4DC',
     fontSize: 14,
     fontWeight: 500,
     cursor: 'pointer',
@@ -452,7 +452,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   chevron: {
     fontSize: 18,
-    color: '#666',
+    color: '#BAC6B8',
   },
   subViewContainer: {
     display: 'flex',
@@ -467,7 +467,7 @@ const styles: Record<string, React.CSSProperties> = {
   sectionTitle: {
     fontSize: 11,
     fontWeight: 700,
-    color: '#90EE90',
+    color: '#8BA794',
     letterSpacing: 1.5,
   },
   toggleRow: {
@@ -475,30 +475,30 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '12px 14px',
-    backgroundColor: '#202024',
-    border: '1px solid #2A2A30',
+    backgroundColor: '#3A4062',
+    border: '1px solid #5D6E75',
     borderRadius: 10,
   },
   toggleLabel: {
     fontSize: 13,
     fontWeight: 600,
-    color: '#FFFFFF',
+    color: '#E9E4DC',
     marginBottom: 2,
   },
   toggleDesc: {
     fontSize: 11,
-    color: '#8E8E93',
+    color: '#BAC6B8',
   },
   switchInput: {
     cursor: 'pointer',
     width: 18,
     height: 18,
-    accentColor: '#90EE90',
+    accentColor: '#8BA794',
   },
   imagePickerContainer: {
     padding: '12px 14px',
-    backgroundColor: '#1E1E22',
-    border: '1px solid #2A2A30',
+    backgroundColor: '#3A4062',
+    border: '1px solid #5D6E75',
     borderRadius: 10,
   },
   imageGrid: {
@@ -512,7 +512,7 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     position: 'relative',
     cursor: 'pointer',
-    backgroundColor: '#2A2A30',
+    backgroundColor: '#2F3456',
     borderStyle: 'solid',
   },
   imageThumbnail: {
@@ -528,8 +528,8 @@ const styles: Record<string, React.CSSProperties> = {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#90EE90',
-    color: '#000',
+    backgroundColor: '#8BA794',
+    color: '#2F3456',
     fontSize: 10,
     fontWeight: 800,
     display: 'flex',
@@ -541,8 +541,8 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '10px 14px',
-    backgroundColor: '#202024',
-    border: '1px solid #2A2A30',
+    backgroundColor: '#3A4062',
+    border: '1px solid #5D6E75',
     borderRadius: 10,
   },
   secBtn: {
@@ -554,8 +554,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   infoCard: {
     padding: '14px',
-    backgroundColor: '#202024',
-    border: '1px solid #2A2A30',
+    backgroundColor: '#3A4062',
+    border: '1px solid #5D6E75',
     borderRadius: 10,
     display: 'flex',
     flexDirection: 'column',
@@ -568,10 +568,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
   },
   infoLabel: {
-    color: '#8E8E93',
+    color: '#BAC6B8',
   },
   infoVal: {
-    color: '#FFFFFF',
+    color: '#E9E4DC',
     fontWeight: 500,
   },
   syncBtn: {
@@ -580,7 +580,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: 8,
     padding: '12px 16px',
-    backgroundColor: '#16652D',
+    backgroundColor: '#5D6E75',
     border: 'none',
     borderRadius: 10,
     color: '#FFFFFF',
@@ -593,8 +593,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   syncSuccessToast: {
     padding: '8px 12px',
-    backgroundColor: 'rgba(144, 238, 144, 0.15)',
-    color: '#90EE90',
+    backgroundColor: 'rgba(139, 167, 148, 0.2)',
+    color: '#8BA794',
     borderRadius: 8,
     fontSize: 12,
     textAlign: 'center',
@@ -602,11 +602,11 @@ const styles: Record<string, React.CSSProperties> = {
   },
   footer: {
     padding: '14px 18px',
-    borderTop: '1px solid #27272A',
+    borderTop: '1px solid #5D6E75',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#18181B',
+    backgroundColor: '#2F3456',
   },
   logoutBtn: {
     display: 'flex',
@@ -616,7 +616,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '10px 20px',
     background: 'none',
     border: 'none',
-    color: '#8B1E1E',
+    color: '#FF8080',
     fontSize: 15,
     fontWeight: 600,
     cursor: 'pointer',
