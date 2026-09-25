@@ -374,19 +374,42 @@ function stopHeartbeat() {
   }
 }
 
+// --- Side Panel Setup ---
+
+function setupSidePanel() {
+  if ((chrome as any).sidePanel?.setPanelBehavior) {
+    (chrome as any).sidePanel
+      .setPanelBehavior({ openPanelOnActionClick: true })
+      .catch((err: any) => console.warn('[Focussive BG] sidePanel.setPanelBehavior error:', err));
+  }
+}
+
+// Fallback for action click to guarantee side panel opens
+chrome.action?.onClicked?.addListener((tab) => {
+  if (tab.windowId && (chrome as any).sidePanel?.open) {
+    (chrome as any).sidePanel.open({ windowId: tab.windowId }).catch((err: any) => {
+      console.warn('[Focussive BG] sidePanel.open error:', err);
+    });
+  }
+});
+
 // --- Lifecycle ---
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[Focussive] Extension installed');
+  setupSidePanel();
   startPolling();
   startHeartbeat();
 });
 
 chrome.runtime.onStartup.addListener(() => {
+  setupSidePanel();
   startPolling();
   startHeartbeat();
 });
 
 // Start on load
+setupSidePanel();
 startPolling();
 startHeartbeat();
+
