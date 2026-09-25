@@ -53,7 +53,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   {
     feature: 'Session History Retention',
     free: '21 days (3 weeks)',
-    pro: 'Lifetime (Forever)',
+    pro: 'Lifetime',
     isDifferent: true,
   },
   {
@@ -118,7 +118,50 @@ export default function ProBenefitsScreen() {
           </Text>
         </View>
 
-        {/* Comparison Table Card */}
+        {/* Feature Highlights Section (Moved UP, single container, no icons) */}
+        <View style={styles.highlightsContainer}>
+          <Text style={[styles.highlightsHeading, { color: theme.textSecondary }]}>
+            WHY UPGRADE TO PRO?
+          </Text>
+
+          <View style={[styles.highlightsCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={styles.highlightItem}>
+              <Text style={[styles.highlightTitle, { color: theme.text }]}>No Group or App Limits</Text>
+              <Text style={[styles.highlightDesc, { color: theme.textSecondary }]}>
+                Group work, study, gaming, and social apps without any restriction on group size or app count.
+              </Text>
+            </View>
+
+            <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
+
+            <View style={styles.highlightItem}>
+              <Text style={[styles.highlightTitle, { color: theme.text }]}>Lifetime History & Full Trends</Text>
+              <Text style={[styles.highlightDesc, { color: theme.textSecondary }]}>
+                Free tier caps history at 21 days. Pro keeps every single completed session and unlocked milestone.
+              </Text>
+            </View>
+
+            <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
+
+            <View style={styles.highlightItem}>
+              <Text style={[styles.highlightTitle, { color: theme.text }]}>Custom Blocker Overlay Images</Text>
+              <Text style={[styles.highlightDesc, { color: theme.textSecondary }]}>
+                Personalize your screen blocker overlay with motivational presets or custom images from your gallery.
+              </Text>
+            </View>
+
+            <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
+
+            <View style={styles.highlightItem}>
+              <Text style={[styles.highlightTitle, { color: theme.text }]}>Support the Mission</Text>
+              <Text style={[styles.highlightDesc, { color: theme.textSecondary }]}>
+                It will help me keep up the good work, ultimately helping you and lots of other people stay more focused and productive :)
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Comparison Table Card (Below Why Upgrade to Pro) */}
         <View style={[styles.tableCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           {/* Table Header */}
           <View style={[styles.tableHeaderRow, { borderBottomColor: theme.border, backgroundColor: isDark ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.03)' }]}>
@@ -177,49 +220,6 @@ export default function ProBenefitsScreen() {
               </View>
             );
           })}
-        </View>
-
-        {/* Feature Highlights Cards */}
-        <View style={styles.highlightsContainer}>
-          <Text style={[styles.highlightsHeading, { color: theme.textSecondary }]}>
-            WHY UPGRADE TO PRO?
-          </Text>
-
-          <View style={[styles.highlightCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={[styles.highlightIcon, { backgroundColor: 'rgba(212, 175, 55, 0.15)' }]}>
-              <Ionicons name="infinite" size={20} color="#D4AF37" />
-            </View>
-            <View style={styles.highlightInfo}>
-              <Text style={[styles.highlightTitle, { color: theme.text }]}>No Group or App Limits</Text>
-              <Text style={[styles.highlightDesc, { color: theme.textSecondary }]}>
-                Group work, study, gaming, and social apps without any restriction on group size or app count.
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.highlightCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={[styles.highlightIcon, { backgroundColor: 'rgba(212, 175, 55, 0.15)' }]}>
-              <Ionicons name="calendar-outline" size={20} color="#D4AF37" />
-            </View>
-            <View style={styles.highlightInfo}>
-              <Text style={[styles.highlightTitle, { color: theme.text }]}>Lifetime History & Full Trends</Text>
-              <Text style={[styles.highlightDesc, { color: theme.textSecondary }]}>
-                Free tier caps history at 21 days. Pro keeps every single completed session and unlocked milestone forever.
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.highlightCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={[styles.highlightIcon, { backgroundColor: 'rgba(212, 175, 55, 0.15)' }]}>
-              <Ionicons name="image-outline" size={20} color="#D4AF37" />
-            </View>
-            <View style={styles.highlightInfo}>
-              <Text style={[styles.highlightTitle, { color: theme.text }]}>Custom Blocker Overlay Images</Text>
-              <Text style={[styles.highlightDesc, { color: theme.textSecondary }]}>
-                Personalize your screen blocker overlay with motivational presets or custom images from your gallery.
-              </Text>
-            </View>
-          </View>
         </View>
       </ScrollView>
 
@@ -380,41 +380,48 @@ const styles = StyleSheet.create({
 
   // Highlights
   highlightsContainer: {
-    gap: 12,
+    marginBottom: 20,
   },
   highlightsHeading: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.2,
-    marginBottom: 2,
+    marginBottom: 8,
     paddingHorizontal: 4,
   },
-  highlightCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-    padding: 14,
-    borderRadius: 14,
+  highlightsCard: {
+    borderRadius: 16,
     borderWidth: 1,
+    overflow: 'hidden',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  highlightIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  highlightInfo: {
-    flex: 1,
+  highlightItem: {
+    paddingVertical: 12,
   },
   highlightTitle: {
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   highlightDesc: {
     fontSize: 12,
-    lineHeight: 17,
+    lineHeight: 18,
+  },
+  itemDivider: {
+    height: StyleSheet.hairlineWidth,
+    width: '100%',
   },
 
   // Bottom Floating Bar
