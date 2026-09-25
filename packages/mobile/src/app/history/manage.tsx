@@ -95,12 +95,12 @@ export default function ManageHistoryScreen() {
   function renderItem({ item }: { item: SessionHistory }) {
     const isDeleting = deletingId === item.id;
     return (
-      <View style={[styles.row, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={[styles.row, { backgroundColor: '#565E9E', borderColor: 'transparent' }]}>
         <View style={styles.rowInfo}>
-          <Text style={[styles.rowName, { color: theme.text }]} numberOfLines={1}>
+          <Text style={[styles.rowName, { color: '#FFFFFF' }]} numberOfLines={1}>
             {item.session_name}
           </Text>
-          <Text style={[styles.rowMeta, { color: theme.textSecondary }]}>
+          <Text style={[styles.rowMeta, { color: 'rgba(255, 255, 255, 0.85)' }]}>
             {formatDate(item.created_at)} · {formatDuration(item.scheduled_duration)}
           </Text>
         </View>

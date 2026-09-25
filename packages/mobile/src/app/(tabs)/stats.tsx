@@ -854,16 +854,26 @@ export default function StatsScreen() {
           const violations = item.violations_count ?? 0;
           return (
             <TouchableOpacity
-              style={[styles.historyCard, { backgroundColor: containerBg }]}
+              style={[styles.historyCard, { backgroundColor: '#565E9E' }]}
               onPress={() => openDetail(item)}
               activeOpacity={0.7}
             >
               <View style={styles.historyCardTop}>
-                <Text style={[styles.historyName, { color: theme.text }]} numberOfLines={1}>
+                <Text style={[styles.historyName, { color: '#FFFFFF' }]} numberOfLines={1}>
                   {item.session_name}
                 </Text>
-                <View style={[styles.statusPill, { backgroundColor: isCancelled ? theme.dangerBg : theme.accent + '22' }]}>
-                  <Text style={[styles.statusPillText, { color: isCancelled ? theme.danger : theme.accent }]}>
+                <View
+                  style={[
+                    styles.statusPill,
+                    { backgroundColor: isCancelled ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.2)' },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusPillText,
+                      { color: isCancelled ? '#FFB4B4' : '#FFFFFF' },
+                    ]}
+                  >
                     {isCancelled ? 'Cancelled' : 'Completed'}
                   </Text>
                 </View>
@@ -871,26 +881,31 @@ export default function StatsScreen() {
 
               <View style={styles.historyCardMid}>
                 <View style={styles.historyMeta}>
-                  <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
-                  <Text style={[styles.historyMetaText, { color: theme.textSecondary }]}>{formatDate(item.created_at)}</Text>
+                  <Ionicons name="calendar-outline" size={12} color="rgba(255, 255, 255, 0.85)" />
+                  <Text style={[styles.historyMetaText, { color: 'rgba(255, 255, 255, 0.85)' }]}>{formatDate(item.created_at)}</Text>
                 </View>
                 <View style={styles.historyMeta}>
-                  <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
-                  <Text style={[styles.historyMetaText, { color: theme.textSecondary }]}>{formatTime(item.start_time)}</Text>
+                  <Ionicons name="time-outline" size={12} color="rgba(255, 255, 255, 0.85)" />
+                  <Text style={[styles.historyMetaText, { color: 'rgba(255, 255, 255, 0.85)' }]}>{formatTime(item.start_time)}</Text>
                 </View>
                 <View style={styles.historyMeta}>
-                  <Ionicons name="hourglass-outline" size={12} color={theme.textSecondary} />
-                  <Text style={[styles.historyMetaText, { color: theme.textSecondary }]}>
+                  <Ionicons name="hourglass-outline" size={12} color="rgba(255, 255, 255, 0.85)" />
+                  <Text style={[styles.historyMetaText, { color: 'rgba(255, 255, 255, 0.85)' }]}>
                     {formatDuration(item.actual_duration ?? item.scheduled_duration)}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.historyCardBottom}>
-                <Text style={[styles.historyViolations, { color: violations > 0 ? theme.danger : theme.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.historyViolations,
+                    { color: violations > 0 ? '#FFB4B4' : 'rgba(255, 255, 255, 0.85)' },
+                  ]}
+                >
                   {violations > 0 ? `${violations} violation${violations !== 1 ? 's' : ''}` : 'No violations'}
                 </Text>
-                <Ionicons name="chevron-forward" size={15} color={theme.textSecondary} />
+                <Ionicons name="chevron-forward" size={15} color="rgba(255, 255, 255, 0.85)" />
               </View>
             </TouchableOpacity>
           );
@@ -1843,7 +1858,7 @@ const styles = StyleSheet.create({
   },
 
   // History cards
-  historyCard: { borderRadius: 12, padding: 14, marginBottom: 10 },
+  historyCard: { borderRadius: 14, padding: 14, marginBottom: 10 },
   historyCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   historyName: { fontSize: 15, fontWeight: '500', flex: 1, marginRight: 10 },
   statusPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },

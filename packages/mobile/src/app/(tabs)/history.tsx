@@ -61,30 +61,30 @@ export default function HistoryScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: theme.card }]}
+        style={[styles.card, { backgroundColor: '#565E9E' }]}
         onPress={() => router.push(`/history/${item.id}` as never)}
       >
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardName, { color: theme.text }]} numberOfLines={1}>
+          <Text style={[styles.cardName, { color: '#FFFFFF' }]} numberOfLines={1}>
             {item.session_name}
           </Text>
           {isCancelled && (
-            <View style={[styles.cancelBadge, { backgroundColor: theme.dangerBg }]}>
-              <Text style={[styles.cancelBadgeText, { color: theme.danger }]}>Cancelled</Text>
+            <View style={[styles.cancelBadge, { backgroundColor: 'rgba(239, 68, 68, 0.25)' }]}>
+              <Text style={[styles.cancelBadgeText, { color: '#FFB4B4' }]}>Cancelled</Text>
             </View>
           )}
         </View>
 
         <View style={styles.cardDetails}>
-          <Text style={[styles.cardDate, { color: theme.textSecondary }]}>
+          <Text style={[styles.cardDate, { color: 'rgba(255, 255, 255, 0.85)' }]}>
             {formatDate(item.created_at)}
           </Text>
-          <Text style={[styles.cardDot, { color: theme.textSecondary }]}>·</Text>
-          <Text style={[styles.cardTime, { color: theme.textSecondary }]}>
+          <Text style={[styles.cardDot, { color: 'rgba(255, 255, 255, 0.85)' }]}>·</Text>
+          <Text style={[styles.cardTime, { color: 'rgba(255, 255, 255, 0.85)' }]}>
             {formatTime(item.start_time)}
           </Text>
-          <Text style={[styles.cardDot, { color: theme.textSecondary }]}>·</Text>
-          <Text style={[styles.cardDuration, { color: theme.textSecondary }]}>
+          <Text style={[styles.cardDot, { color: 'rgba(255, 255, 255, 0.85)' }]}>·</Text>
+          <Text style={[styles.cardDuration, { color: 'rgba(255, 255, 255, 0.85)' }]}>
             {formatDuration(item.actual_duration || item.scheduled_duration)}
           </Text>
         </View>
@@ -93,7 +93,7 @@ export default function HistoryScreen() {
           <Text
             style={[
               styles.violations,
-              { color: item.violations_count > 0 ? theme.danger : theme.textSecondary },
+              { color: item.violations_count > 0 ? '#FFB4B4' : 'rgba(255, 255, 255, 0.85)' },
             ]}
           >
             {item.violations_count} violation{item.violations_count !== 1 ? 's' : ''}
