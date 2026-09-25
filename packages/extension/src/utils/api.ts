@@ -161,10 +161,28 @@ export const sessionApi = {
       `/sessions/upcoming?client_time=${encodeURIComponent(new Date().toISOString())}`
     ),
 
-  startBreak: (sessionId: string, source: 'manual' | 'violation' = 'manual') =>
+  skip: (sessionId: string) =>
+    apiRequest<{
+      skipped_until: string;
+      monthly_skip_limit?: number;
+      skips_used_this_month?: number;
+      skips_remaining?: number;
+    }>(`/sessions/${sessionId}/skip`, { method: 'POST' }),
+
+  getSkipStatus: () =>
+    apiRequest<{
+      monthly_skip_limit: number;
+      skips_used_this_month: number;
+      skips_remaining: number;
+    }>('/sessions/skip-status'),
+
+  cancel: (sessionId: string) =>
+    apiRequest(`/sessions/${sessionId}/cancel`, { method: 'POST' }),
+
+  startBreak: (sessionId: string, source: 'manual' | 'violation' = 'manual', minutes?: number) =>
     apiRequest<{ id: string; remaining_break_seconds: number }>(
       `/sessions/${sessionId}/break/start`,
-      { method: 'POST', body: { source } }
+      { method: 'POST', body: { source, minutes } }
     ),
 
   endBreak: (sessionId: string, break_id?: string) =>

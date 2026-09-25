@@ -91,6 +91,10 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#E9E4DC',
     letterSpacing: 0.2,
   },
+  noSessionHeader: {
+    textAlign: 'center' as const,
+    padding: '24px 16px 12px',
+  },
   noSession: {
     textAlign: 'center' as const,
     padding: '40px 20px',
@@ -285,7 +289,7 @@ export default function Popup() {
         <div style={styles.scrollContent}>
           {activeSession ? (
             <>
-              <SessionCard session={activeSession} />
+              <SessionCard session={activeSession} onRefresh={loadData} />
 
               {/* Blocked Websites Dropdown */}
               {blockedList.length > 0 && (
@@ -324,25 +328,27 @@ export default function Popup() {
                 <>
                   <div style={styles.sectionTitle}>UPCOMING</div>
                   {upcomingSessions.slice(0, 1).map((s) => (
-                    <UpcomingCard key={s.id} session={s} />
+                    <UpcomingCard key={s.id} session={s} onRefresh={loadData} />
                   ))}
                 </>
               )}
             </>
           ) : (
-            <div style={styles.noSession}>
-              <div style={styles.noSessionTitle}>No active session</div>
-              <div style={styles.noSessionSub}>
-                {upcomingSessions.length > 0
-                  ? 'Your next session is coming up'
-                  : 'Create a session in the mobile app'}
+            <div>
+              <div style={styles.noSessionHeader}>
+                <div style={styles.noSessionTitle}>No active session</div>
+                <div style={styles.noSessionSub}>
+                  {upcomingSessions.length > 0
+                    ? 'Your next session is coming up'
+                    : 'Create a session in the mobile app'}
+                </div>
               </div>
 
               {upcomingSessions.length > 0 && (
                 <>
                   <div style={styles.sectionTitle}>UPCOMING</div>
                   {upcomingSessions.slice(0, 1).map((s) => (
-                    <UpcomingCard key={s.id} session={s} />
+                    <UpcomingCard key={s.id} session={s} onRefresh={loadData} />
                   ))}
                 </>
               )}

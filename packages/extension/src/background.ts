@@ -47,6 +47,8 @@ async function pollSessions() {
 
     const storedSession: StoredSession | null = active ? {
       ...active,
+      mobile_focus: (active as any).mobile_focus ?? false,
+      browser_focus: active.browser_focus ?? true,
       blocked_websites: active.blocked_websites || [],
       violations_count: active.violations_count || 0,
       allowlist: active.allowlist || [],
@@ -116,6 +118,8 @@ async function pollSessions() {
       .sort((a, b) => a.nextOccurrence.getTime() - b.nextOccurrence.getTime())
       .map((item) => ({
         ...item.session,
+        mobile_focus: (item.session as any).mobile_focus ?? false,
+        browser_focus: item.session.browser_focus ?? true,
         blocked_websites: item.session.blocked_websites || [],
         violations_count: item.session.violations_count || 0,
         allowlist: item.session.allowlist || [],
@@ -149,7 +153,7 @@ let breakActive = false;
 
 async function handleStartBreak(sessionId: string, minutes: number) {
   try {
-    const breakRes = await sessionApi.startBreak(sessionId, 'manual');
+    const breakRes = await sessionApi.startBreak(sessionId, 'manual', minutes);
 
     // Clear any previous break timer
     if (activeBreakTimer) {
@@ -159,6 +163,9 @@ async function handleStartBreak(sessionId: string, minutes: number) {
 
     breakActive = true;
     const durationMs = minutes * 60 * 1000;
+
+    // Immediately poll and store updated break status
+    await pollSessions();
 
     // Notify any open popup
     chrome.runtime.sendMessage({ type: 'BREAK_STARTED', minutes }).catch(() => {});
@@ -324,6 +331,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       clearTimeout(activeBreakTimer.timeoutId);
       endBreak(message.sessionId, activeBreakTimer.breakId);
     }
+  }
+
+  if (message.type === 'SKIP_SESSION') {
+    (async () => {
+      try {
+        const res = await sessionApi.skip(message.sessionId);
+        await pollSessions();
+        sendResponse({ success: true, res });
+      } catch (err: any) {
+        sendResponse({ success: false, error: err.message || 'Failed to skip' });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === 'CANCEL_SESSION') {
+    (async () => {
+      try {
+        await sessionApi.cancel(message.sessionId);
+        await pollSessions();
+        sendResponse({ success: true });
+      } catch (err: any) {
+        sendResponse({ success: false, error: err.message || 'Failed to cancel' });
+      }
+    })();
+    return true;
   }
 
   return false;

@@ -8,6 +8,7 @@ export interface StoredSession {
   duration: number;
   start_time: string;
   started_at?: string;
+  mobile_focus?: boolean;
   browser_focus: boolean;
   blocked_websites: string[];
   violations_count: number;
