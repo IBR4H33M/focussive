@@ -77,24 +77,30 @@ export default function PermissionModal({
     });
   }
 
+  const POPUP_BG = isDark ? '#2D2E46' : theme.card;
+  const POPUP_TEXT = isDark ? '#FFFFFF' : theme.text;
+  const POPUP_MUTED = isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary;
+  const POPUP_BORDER = isDark ? 'rgba(255, 255, 255, 0.1)' : theme.border;
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
-        <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-          <Text style={[styles.title, { color: isDark ? theme.background : theme.text }]}>
+        <View style={[styles.modalContent, { backgroundColor: POPUP_BG }]}>
+          <Text style={[styles.title, { color: POPUP_TEXT }]}>
             Permissions Required
           </Text>
-          <Text style={[styles.description, { color: theme.textSecondary }]}>
+          <Text style={[styles.description, { color: POPUP_MUTED }]}>
             Focussive needs permissions to run and monitor effectively.
           </Text>
 
-          <View style={[styles.permissionsList, { borderTopColor: theme.border }]}>
+          <View style={[styles.permissionsList, { borderTopColor: POPUP_BORDER }]}>
             {items.map((item, index) => (
               <PermissionItem
                 key={item.name}
                 name={item.name}
                 description={item.description}
                 theme={theme}
+                isDark={isDark}
                 isLast={index === items.length - 1}
               />
             ))}
@@ -143,24 +149,30 @@ function PermissionItem({
   name,
   description,
   theme,
+  isDark,
   isLast,
 }: {
   name: string;
   description: string;
   theme: any;
+  isDark?: boolean;
   isLast?: boolean;
 }) {
+  const permTextColor = isDark ? '#FFFFFF' : theme.text;
+  const permMutedColor = isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary;
+  const permBorderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : theme.border;
+
   return (
     <>
       <View style={styles.permissionItem}>
-        <Text style={[styles.permName, { color: theme.text }]}>{name}</Text>
-        <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+        <Text style={[styles.permName, { color: permTextColor }]}>{name}</Text>
+        <Text style={[styles.permDesc, { color: permMutedColor }]}>
           {description}
         </Text>
       </View>
       {!isLast && (
         <View
-          style={[styles.permDivider, { backgroundColor: theme.border }]}
+          style={[styles.permDivider, { backgroundColor: permBorderColor }]}
         />
       )}
     </>
