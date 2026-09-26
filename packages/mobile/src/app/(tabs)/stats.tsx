@@ -186,19 +186,22 @@ export default function StatsScreen() {
   // Milestone evaluations
   const milestones = useMemo(() => evaluateMilestones(history, appGroups), [history, appGroups]);
 
-  // Milestone nearest to completion
+  // Milestone nearest to completion (uncompleted only)
   const nearestMilestone = useMemo(() => {
     const list = Object.values(milestones);
-    const unearned = list.filter(m => !m.isUnlocked);
+    const unearned = list.filter(m => !m.isUnlocked && m.current < m.target);
     if (unearned.length > 0) {
       unearned.sort((a, b) => {
         const ratioA = a.target > 0 ? a.current / a.target : 0;
         const ratioB = b.target > 0 ? b.current / b.target : 0;
-        return ratioB - ratioA;
+        if (ratioB !== ratioA) {
+          return ratioB - ratioA;
+        }
+        return (a.target - a.current) - (b.target - b.current);
       });
       return unearned[0];
     }
-    return list[0] || null;
+    return null;
   }, [milestones]);
 
   const totalBadgesEarned = useMemo(() => {
@@ -426,28 +429,6 @@ export default function StatsScreen() {
                     <Text style={[styles.progressionTitle, { color: theme.text }]}>
                       {nearestMilestone.badge.title}
                     </Text>
-                    <View
-                      style={[
-                        styles.progressionPctBadge,
-                        { backgroundColor: `${nearestMilestone.badge.color}20` },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.progressionPctText,
-                          { color: nearestMilestone.badge.color },
-                        ]}
-                      >
-                        {nearestMilestone.isUnlocked
-                          ? 'Earned'
-                          : `${Math.round(
-                              Math.min(
-                                100,
-                                (nearestMilestone.current / nearestMilestone.target) * 100
-                              )
-                            )}%`}
-                      </Text>
-                    </View>
                   </View>
                   <Text style={[styles.progressionQuote, { color: theme.textSecondary }]}>
                     {nearestMilestone.badge.quote}
@@ -478,7 +459,7 @@ export default function StatsScreen() {
                         width: `${Math.min(
                           100,
                           Math.max(
-                            nearestMilestone.isUnlocked ? 100 : 4,
+                            4,
                             (nearestMilestone.current / nearestMilestone.target) * 100
                           )
                         )}%`,
@@ -489,9 +470,7 @@ export default function StatsScreen() {
                 </View>
                 <View style={styles.progressionStatsRow}>
                   <Text style={[styles.progressionDetailText, { color: theme.textSecondary }]}>
-                    {nearestMilestone.isUnlocked
-                      ? 'Completed & Ready to equip as Archetype'
-                      : `${nearestMilestone.target - nearestMilestone.current} needed to unlock`}
+                    {`${nearestMilestone.target - nearestMilestone.current} needed to unlock`}
                   </Text>
                   <Text style={[styles.progressionRatioText, { color: theme.text }]}>
                     {nearestMilestone.current} / {nearestMilestone.target}
