@@ -48,7 +48,7 @@ export interface CompletedSessionTierData {
 }
 
 interface SessionContextType extends SessionState {
-  refreshSessions: () => Promise<void>;
+  refreshSessions: (silent?: boolean) => Promise<void>;
   handleBreak: (sessionId: string, minutes: number) => Promise<void>;
   completedSessionTierData: CompletedSessionTierData | null;
   dismissCompletedTierCard: () => void;
@@ -112,12 +112,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     activeSessions: [],
     upcomingSessions: [],
     allSessions: [],
-    isLoading: false,
+    isLoading: true,
     error: null,
   });
 
-  const refreshSessions = useCallback(async () => {
-    if (!isAuthenticated) return;
+  const refreshSessions = useCallback(async (silent = false) => {
+    if (!isAuthenticated) {
+      dispatch({ type: 'SET_LOADING', payload: false });
+      return;
+    }
+    if (!silent || allSessionsRef.current.length === 0) {
+      dispatch({ type: 'SET_LOADING', payload: true });
+    }
     try {
       const [activeRes, upcomingRes, allRes] = await Promise.all([
         sessionApi.getActive(),
@@ -219,8 +225,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Initial fetch + polling every 30s
   useEffect(() => {
     if (isAuthenticated) {
-      refreshSessions();
-      intervalRef.current = setInterval(refreshSessions, POLL_INTERVAL_MS);
+      refreshSessions(false);
+      intervalRef.current = setInterval(() => {
+        refreshSessions(true);
+      }, POLL_INTERVAL_MS);
+    } else {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
 
     return () => {

@@ -189,10 +189,10 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Loading State when starting up */}
+        {/* Loading State when starting up or loading sessions */}
         {allSessions.length === 0 && isLoading && (
-          <View style={{ paddingVertical: 60, alignItems: 'center' }}>
-            <LoadingSpinner size={64} />
+          <View style={styles.loadingContainer}>
+            <LoadingSpinner size={56} />
           </View>
         )}
 
@@ -305,10 +305,35 @@ export default function DashboardScreen() {
         {allSessions.length === 0 && !isLoading && (
           <View style={styles.emptyState}>
             <Ionicons name="bulb-outline" size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No sessions yet</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No sessions Created Yet</Text>
             <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
               Create your first focus session to get started
             </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.emptyCreateBtn,
+                {
+                  backgroundColor: isDark ? theme.accent : theme.accentDark,
+                },
+              ]}
+              onPress={() => router.push('/session/create' as never)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={18}
+                color={isDark ? '#2F3456' : '#FFFFFF'}
+              />
+              <Text
+                style={[
+                  styles.emptyCreateBtnText,
+                  { color: isDark ? '#2F3456' : '#FFFFFF' },
+                ]}
+              >
+                Create new session
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -398,9 +423,15 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 12,
   },
+  loadingContainer: {
+    paddingVertical: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyState: {
     alignItems: 'center',
     paddingTop: 80,
+    paddingHorizontal: 24,
   },
   emptyIcon: {
     fontSize: 48,
@@ -408,13 +439,30 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '300',
+    fontWeight: '600',
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
-    fontWeight: '300',
+    fontWeight: '400',
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyCreateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+  },
+  emptyCreateBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   fab: {
     position: 'absolute',
