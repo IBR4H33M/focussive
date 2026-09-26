@@ -99,7 +99,7 @@ packages/mobile/
   - **Upcoming Session Reminder**: Soft slate surface (`#7C8CA6`), locked (`FLAG_NO_CLEAR` / `FLAG_ONGOING_EVENT`), dark red countdown timer (`#8B1E1E`).
   - **Running Session**: Deep navy surface (`#1E2235`), locked (`FLAG_NO_CLEAR` / `FLAG_ONGOING_EVENT`), light red countdown timer (`#F87171`).
 - **Installed Apps Discovery (`@focussive/installed-apps`)**: Queries user-installed apps and icons via `QUERY_ALL_PACKAGES` to configure blocklists (automatically filtering system and One UI home launchers).
-- **Clerk Authentication**: Secure auth with `@clerk/clerk-expo`, custom OTP email verification with sleek chevron-back navigation, and synchronized user profiles.
+- **Clerk Authentication**: Secure auth with `@clerk/expo`, custom OTP email verification with sleek chevron-back navigation, and synchronized user profiles.
 - **Premium Subscription & Paywall (RevenueCat)**:
   - **Free Tier**: Up to 2 App Groups (max 3 apps/group), 2 Website Groups (max 3 sites/group), and 21-day session history.
   - **Premium Tier**: Unlimited app groups, unlimited website groups, and lifetime session history.

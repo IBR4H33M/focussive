@@ -6,9 +6,11 @@ import React, { createContext, useContext, useEffect, useMemo, type ReactNode } 
 import {
   useAuth as useClerkAuth,
   useUser as useClerkUser,
+} from '@clerk/expo';
+import {
   useSignIn,
   useSignUp,
-} from '@clerk/clerk-expo';
+} from '@clerk/expo/legacy';
 import { setClerkTokenGetter } from '@/utils/api';
 
 export interface User {

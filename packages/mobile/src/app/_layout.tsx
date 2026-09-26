@@ -23,7 +23,7 @@ import {
 } from '@focussive/app-blocker';
 import { setupNotificationHandler } from '@/utils/sessionReminders';
 import PermissionModal, { MissingPermissions } from '@/components/PermissionModal';
-import { ClerkProvider } from '@clerk/clerk-expo';
+import { ClerkProvider } from '@clerk/expo';
 import { tokenCache } from '@/utils/cache';
 import { SubscriptionProvider } from '@/context/SubscriptionContext';
 import { useSessions } from '@/context/SessionContext';
