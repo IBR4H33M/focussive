@@ -71,10 +71,11 @@ function TimeFormatToggle({
   }, [use24Hour]);
 
   const PILL_W = 52;
+  const PILL_PAD = 3;
 
   const translateX = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [2, PILL_W + 2],
+    outputRange: [PILL_PAD, PILL_W + PILL_PAD],
   });
 
   return (
@@ -83,19 +84,18 @@ function TimeFormatToggle({
         flexDirection: 'row',
         backgroundColor: 'rgba(0,0,0,0.25)',
         borderRadius: 10,
-        paddingHorizontal: 2,
-        paddingVertical: 2,
-        paddingBottom: 6,
+        padding: PILL_PAD,
         position: 'relative',
-        width: PILL_W * 2 + 4,
-        height: 40,
+        width: PILL_W * 2 + PILL_PAD * 2,
+        height: 32 + PILL_PAD * 2,
+        alignItems: 'center',
       }}
     >
       {/* Sliding accent pill */}
       <Animated.View
         style={{
           position: 'absolute',
-          top: 2,
+          top: PILL_PAD,
           left: 0,
           width: PILL_W,
           height: 32,
@@ -111,7 +111,7 @@ function TimeFormatToggle({
         style={{ width: PILL_W, height: 32, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}
         activeOpacity={0.7}
       >
-        <Text style={{ fontSize: 13, fontWeight: '600', color: !use24Hour ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: !use24Hour ? '#FFFFFF' : 'rgba(255,255,255,0.6)', includeFontPadding: false }}>
           12H
         </Text>
       </TouchableOpacity>
@@ -122,7 +122,7 @@ function TimeFormatToggle({
         style={{ width: PILL_W, height: 32, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}
         activeOpacity={0.7}
       >
-        <Text style={{ fontSize: 13, fontWeight: '600', color: use24Hour ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: use24Hour ? '#FFFFFF' : 'rgba(255,255,255,0.6)', includeFontPadding: false }}>
           24H
         </Text>
       </TouchableOpacity>
@@ -148,7 +148,7 @@ function ThemeModeToggle({
   const isSystem = preference === 'system';
 
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 10, paddingHorizontal: 2, paddingVertical: 2, paddingBottom: 6, gap: 2 }}>
+    <View style={{ flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 10, padding: 3, gap: 2 }}>
       {options.map((opt) => {
         const active = preference === opt.key;
         return (
@@ -160,12 +160,13 @@ function ThemeModeToggle({
               paddingVertical: 7,
               borderRadius: 8,
               alignItems: 'center',
+              justifyContent: 'center',
               backgroundColor: active ? theme.accentDark : 'transparent',
               opacity: isSystem && opt.key !== 'system' ? 0.35 : 1,
             }}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.6)', includeFontPadding: false }}>
               {opt.label}
             </Text>
           </TouchableOpacity>
