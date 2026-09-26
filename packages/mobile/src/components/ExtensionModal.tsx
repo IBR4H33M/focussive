@@ -230,6 +230,11 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const POPUP_BG = '#2D2E46';
+  const POPUP_TEXT = '#FFFFFF';
+  const POPUP_MUTED = 'rgba(255, 255, 255, 0.65)';
+  const POPUP_BORDER = 'rgba(255, 255, 255, 0.1)';
+
   return (
     <Modal
       visible={visible}
@@ -238,19 +243,19 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.modalCard, { backgroundColor: POPUP_BG, borderColor: POPUP_BORDER }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.headerTitle, { color: titleColor }]}>Browser Extension</Text>
+          <View style={[styles.header, { borderBottomColor: POPUP_BORDER }]}>
+            <Text style={[styles.headerTitle, { color: POPUP_TEXT }]}>Browser Extension</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Ionicons name="close" size={22} color={isDark ? theme.background : theme.textSecondary} />
+              <Ionicons name="close" size={22} color={POPUP_TEXT} />
             </TouchableOpacity>
           </View>
 
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.accent} />
-              <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Checking connection status...</Text>
+              <Text style={[styles.loadingText, { color: POPUP_MUTED }]}>Checking connection status...</Text>
             </View>
           ) : paired ? (
             /* ═════════════════════════════════════════════════════════
@@ -265,7 +270,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                     {connected ? 'Connected & Actively Monitoring' : 'Paired (Browser Offline or Inactive)'}
                   </Text>
                 </View>
-                <Text style={[styles.statusSubtitle, { color: theme.textSecondary }]}>
+                <Text style={[styles.statusSubtitle, { color: POPUP_MUTED }]}>
                   {connected
                     ? 'The extension is actively pinging and ready to block distracting sites.'
                     : 'Extension background ping has not been received in the last 60 seconds.'}
@@ -274,42 +279,42 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
 
               {/* Device Details (No container) */}
               <View style={styles.detailsSection}>
-                <Text style={[styles.detailsSectionTitle, { color: isDark ? theme.background : theme.textSecondary }]}>DEVICE DETAILS</Text>
+                <Text style={[styles.detailsSectionTitle, { color: 'rgba(255, 255, 255, 0.5)' }]}>DEVICE DETAILS</Text>
 
-                <View style={[styles.detailRow, { borderBottomColor: theme.border }]}>
-                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Device Name</Text>
-                  <Text style={[styles.detailValue, { color: theme.text }]}>
+                <View style={[styles.detailRow, { borderBottomColor: POPUP_BORDER }]}>
+                  <Text style={[styles.detailLabel, { color: POPUP_MUTED }]}>Device Name</Text>
+                  <Text style={[styles.detailValue, { color: POPUP_TEXT }]}>
                     {device?.device_name || 'Browser Extension'}
                   </Text>
                 </View>
 
-                <View style={[styles.detailRow, { borderBottomColor: theme.border }]}>
-                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Browser & OS</Text>
-                  <Text style={[styles.detailValue, { color: theme.text }]}>
+                <View style={[styles.detailRow, { borderBottomColor: POPUP_BORDER }]}>
+                  <Text style={[styles.detailLabel, { color: POPUP_MUTED }]}>Browser & OS</Text>
+                  <Text style={[styles.detailValue, { color: POPUP_TEXT }]}>
                     {device?.device_info?.browser || 'Browser'} on {device?.device_info?.os || 'Desktop'}
                   </Text>
                 </View>
 
                 {device?.device_info?.ip && (
-                  <View style={[styles.detailRow, { borderBottomColor: theme.border }]}>
-                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>IP Address</Text>
-                    <Text style={[styles.detailValue, { color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }]}>
+                  <View style={[styles.detailRow, { borderBottomColor: POPUP_BORDER }]}>
+                    <Text style={[styles.detailLabel, { color: POPUP_MUTED }]}>IP Address</Text>
+                    <Text style={[styles.detailValue, { color: POPUP_TEXT, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }]}>
                       {device.device_info.ip}
                     </Text>
                   </View>
                 )}
 
-                <View style={[styles.detailRow, { borderBottomColor: theme.border }]}>
-                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Last Active</Text>
-                  <Text style={[styles.detailValue, { color: theme.text }]}>
+                <View style={[styles.detailRow, { borderBottomColor: POPUP_BORDER }]}>
+                  <Text style={[styles.detailLabel, { color: POPUP_MUTED }]}>Last Active</Text>
+                  <Text style={[styles.detailValue, { color: POPUP_TEXT }]}>
                     {formatLastSeen(device?.last_seen_at)}
                   </Text>
                 </View>
 
                 {device?.created_at && (
                   <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
-                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Paired Since</Text>
-                    <Text style={[styles.detailValue, { color: theme.text }]}>
+                    <Text style={[styles.detailLabel, { color: POPUP_MUTED }]}>Paired Since</Text>
+                    <Text style={[styles.detailValue, { color: POPUP_TEXT }]}>
                       {new Date(device.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                     </Text>
                   </View>
@@ -322,16 +327,16 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                   style={[
                     styles.reconnectSection,
                     {
-                      borderColor: theme.border,
-                      backgroundColor: isDark ? 'rgba(93, 110, 117, 0.25)' : theme.surface,
+                      borderColor: 'rgba(255, 255, 255, 0.12)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
                     },
                   ]}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <Ionicons name="key-outline" size={16} color={theme.accent} />
-                    <Text style={[styles.reconnectTitle, { color: titleColor }]}>Reinstalled the Extension?</Text>
+                    <Text style={[styles.reconnectTitle, { color: POPUP_TEXT }]}>Reinstalled the Extension?</Text>
                   </View>
-                  <Text style={[styles.reconnectSubtitle, { color: theme.textSecondary }]}>
+                  <Text style={[styles.reconnectSubtitle, { color: POPUP_MUTED }]}>
                     Generate a one-time connection code to reconnect your extension without having to unpair first.
                   </Text>
 
@@ -340,13 +345,13 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                       <ActivityIndicator size="small" color={theme.accent} />
                     </View>
                   ) : mobileCode && codeTimeLeft > 0 ? (
-                    <View style={[styles.codeDisplayCard, { backgroundColor: theme.card, borderColor: theme.accent, marginTop: 8 }]}>
+                    <View style={[styles.codeDisplayCard, { backgroundColor: 'rgba(0,0,0,0.25)', borderColor: theme.accent, marginTop: 8 }]}>
                       <Text style={[styles.codeString, { color: theme.accent }]}>
                         {mobileCode.split('').join(' ')}
                       </Text>
                       <View style={styles.timerBadge}>
-                        <Ionicons name="time-outline" size={13} color={theme.textSecondary} />
-                        <Text style={[styles.codeTimer, { color: theme.textSecondary }]}>
+                        <Ionicons name="time-outline" size={13} color={POPUP_MUTED} />
+                        <Text style={[styles.codeTimer, { color: POPUP_MUTED }]}>
                           Expires in {formatSeconds(codeTimeLeft)}
                         </Text>
                       </View>
@@ -408,25 +413,25 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
             ═════════════════════════════════════════════════════════ */
             <ScrollView contentContainerStyle={styles.contentScroll} showsVerticalScrollIndicator={false}>
               {/* Segmented Tabs (2 Equal Buttons, Never Overlapping) */}
-              <View style={[styles.tabBar, { backgroundColor: theme.background }]}>
+              <View style={[styles.tabBar, { backgroundColor: 'rgba(0, 0, 0, 0.25)' }]}>
                 <TouchableOpacity
-                  style={[styles.tabItem, tab === 'scan' && [styles.tabItemActive, { backgroundColor: theme.card }]]}
+                  style={[styles.tabItem, tab === 'scan' && [styles.tabItemActive, { backgroundColor: 'rgba(255, 255, 255, 0.12)' }]]}
                   onPress={() => { setTab('scan'); setApprovalError(''); }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="qr-code-outline" size={16} color={tab === 'scan' ? theme.accent : theme.textSecondary} />
-                  <Text style={[styles.tabText, { color: tab === 'scan' ? theme.text : theme.textSecondary }]}>
+                  <Ionicons name="qr-code-outline" size={16} color={tab === 'scan' ? theme.accent : POPUP_MUTED} />
+                  <Text style={[styles.tabText, { color: tab === 'scan' ? POPUP_TEXT : POPUP_MUTED }]}>
                     Scan QR Code
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.tabItem, tab === 'code' && [styles.tabItemActive, { backgroundColor: theme.card }]]}
+                  style={[styles.tabItem, tab === 'code' && [styles.tabItemActive, { backgroundColor: 'rgba(255, 255, 255, 0.12)' }]]}
                   onPress={() => { setTab('code'); setApprovalError(''); }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="keypad-outline" size={16} color={tab === 'code' ? theme.accent : theme.textSecondary} />
-                  <Text style={[styles.tabText, { color: tab === 'code' ? theme.text : theme.textSecondary }]}>
+                  <Ionicons name="keypad-outline" size={16} color={tab === 'code' ? theme.accent : POPUP_MUTED} />
+                  <Text style={[styles.tabText, { color: tab === 'code' ? POPUP_TEXT : POPUP_MUTED }]}>
                     One-Time Code
                   </Text>
                 </TouchableOpacity>
@@ -438,20 +443,20 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                   {scanMode === 'camera' ? (
                     /* CAMERA SCANNER VIEW */
                     <View style={styles.cameraSection}>
-                      <Text style={[styles.instructionTitle, { color: titleColor }]}>
+                      <Text style={[styles.instructionTitle, { color: POPUP_TEXT }]}>
                         Scan Extension QR Code
                       </Text>
-                      <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
+                      <Text style={[styles.instructionDesc, { color: POPUP_MUTED }]}>
                         Open the Focussive extension on your browser and point your phone camera at the QR code on your computer screen.
                       </Text>
 
                       {!cameraPermission?.granted ? (
-                        <View style={[styles.cameraFallbackBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                          <Ionicons name="camera-outline" size={44} color={theme.textSecondary} />
-                          <Text style={[styles.cameraFallbackTitle, { color: titleColor }]}>
+                        <View style={[styles.cameraFallbackBox, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: POPUP_BORDER }]}>
+                          <Ionicons name="camera-outline" size={44} color={POPUP_MUTED} />
+                          <Text style={[styles.cameraFallbackTitle, { color: POPUP_TEXT }]}>
                             Camera Access Needed
                           </Text>
-                          <Text style={[styles.cameraFallbackDesc, { color: theme.textSecondary }]}>
+                          <Text style={[styles.cameraFallbackDesc, { color: POPUP_MUTED }]}>
                             Grant camera permission to scan the QR code directly from your computer screen.
                           </Text>
                           <TouchableOpacity
@@ -493,7 +498,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
 
                       {/* Button to Switch to PIN Input */}
                       <TouchableOpacity
-                        style={[styles.switchModeBtn, { borderColor: theme.border }]}
+                        style={[styles.switchModeBtn, { borderColor: POPUP_BORDER }]}
                         onPress={() => { setScanMode('pin'); setApprovalError(''); }}
                         activeOpacity={0.7}
                       >
@@ -506,10 +511,10 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                   ) : (
                     /* PIN INPUT VIEW */
                     <View style={styles.pinSection}>
-                      <Text style={[styles.instructionTitle, { color: titleColor }]}>
+                      <Text style={[styles.instructionTitle, { color: POPUP_TEXT }]}>
                         Enter Extension QR PIN
                       </Text>
-                      <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
+                      <Text style={[styles.instructionDesc, { color: POPUP_MUTED }]}>
                         Look at the Focussive extension on your browser and type the 6-digit PIN displayed right below the QR code:
                       </Text>
 
@@ -518,13 +523,13 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                           style={[
                             styles.pinInput,
                             {
-                              backgroundColor: theme.background,
-                              borderColor: approvalError ? '#EF4444' : theme.border,
-                              color: theme.text,
+                              backgroundColor: 'rgba(0,0,0,0.25)',
+                              borderColor: approvalError ? '#EF4444' : POPUP_BORDER,
+                              color: POPUP_TEXT,
                             },
                           ]}
                           placeholder="6-DIGIT PIN"
-                          placeholderTextColor={theme.textSecondary}
+                          placeholderTextColor="rgba(255,255,255,0.4)"
                           keyboardType="number-pad"
                           maxLength={6}
                           value={pinInput}
@@ -558,7 +563,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
 
                       {/* Button to Switch Back to Camera */}
                       <TouchableOpacity
-                        style={[styles.switchModeBtn, { borderColor: theme.border }]}
+                        style={[styles.switchModeBtn, { borderColor: POPUP_BORDER }]}
                         onPress={() => { setScanMode('camera'); setApprovalError(''); }}
                         activeOpacity={0.7}
                       >
@@ -575,10 +580,10 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
               {/* TAB 2: Generate 6-Character One-Time Code */}
               {tab === 'code' && (
                 <View style={styles.tabContent}>
-                  <Text style={[styles.instructionTitle, { color: titleColor }]}>
+                  <Text style={[styles.instructionTitle, { color: POPUP_TEXT }]}>
                     Connect via One-Time Code
                   </Text>
-                  <Text style={[styles.instructionDesc, { color: theme.textSecondary }]}>
+                  <Text style={[styles.instructionDesc, { color: POPUP_MUTED }]}>
                     Open the Focussive extension on your browser, select &ldquo;Enter Code&rdquo;, and type this 6-character code:
                   </Text>
 
@@ -587,20 +592,20 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                       <ActivityIndicator size="small" color={theme.accent} />
                     </View>
                   ) : mobileCode && codeTimeLeft > 0 ? (
-                    <View style={[styles.codeDisplayCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                    <View style={[styles.codeDisplayCard, { backgroundColor: 'rgba(0,0,0,0.25)', borderColor: POPUP_BORDER }]}>
                       <Text style={[styles.codeString, { color: theme.accent }]}>
                         {mobileCode.split('').join(' ')}
                       </Text>
                       <View style={styles.timerBadge}>
-                        <Ionicons name="time-outline" size={13} color={theme.textSecondary} />
-                        <Text style={[styles.codeTimer, { color: theme.textSecondary }]}>
+                        <Ionicons name="time-outline" size={13} color={POPUP_MUTED} />
+                        <Text style={[styles.codeTimer, { color: POPUP_MUTED }]}>
                           Expires in {formatSeconds(codeTimeLeft)}
                         </Text>
                       </View>
                     </View>
                   ) : (
                     <TouchableOpacity
-                      style={[styles.secondaryBtn, { borderColor: theme.border }]}
+                      style={[styles.secondaryBtn, { borderColor: POPUP_BORDER }]}
                       onPress={generateMobileCode}
                       activeOpacity={0.7}
                     >
@@ -609,7 +614,7 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                     </TouchableOpacity>
                   )}
 
-                  <Text style={[styles.helperNote, { color: theme.textSecondary }]}>
+                  <Text style={[styles.helperNote, { color: POPUP_MUTED }]}>
                     Waiting for extension... As soon as you enter this code in your browser, pairing will complete automatically.
                   </Text>
                 </View>

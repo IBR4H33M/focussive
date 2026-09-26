@@ -81,7 +81,7 @@ function TimeFormatToggle({
     <View
       style={{
         flexDirection: 'row',
-        backgroundColor: theme.surface,
+        backgroundColor: 'rgba(0,0,0,0.25)',
         borderRadius: 10,
         paddingHorizontal: 2,
         paddingVertical: 2,
@@ -111,7 +111,7 @@ function TimeFormatToggle({
         style={{ width: PILL_W, height: 32, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}
         activeOpacity={0.7}
       >
-        <Text style={{ fontSize: 13, fontWeight: '600', color: !use24Hour ? '#FFFFFF' : theme.textSecondary }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: !use24Hour ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>
           12H
         </Text>
       </TouchableOpacity>
@@ -122,7 +122,7 @@ function TimeFormatToggle({
         style={{ width: PILL_W, height: 32, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}
         activeOpacity={0.7}
       >
-        <Text style={{ fontSize: 13, fontWeight: '600', color: use24Hour ? '#FFFFFF' : theme.textSecondary }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: use24Hour ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>
           24H
         </Text>
       </TouchableOpacity>
@@ -148,7 +148,7 @@ function ThemeModeToggle({
   const isSystem = preference === 'system';
 
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: theme.surface, borderRadius: 10, paddingHorizontal: 2, paddingVertical: 2, paddingBottom: 6, gap: 2 }}>
+    <View style={{ flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 10, paddingHorizontal: 2, paddingVertical: 2, paddingBottom: 6, gap: 2 }}>
       {options.map((opt) => {
         const active = preference === opt.key;
         return (
@@ -165,7 +165,7 @@ function ThemeModeToggle({
             }}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#FFFFFF' : theme.textSecondary }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>
               {opt.label}
             </Text>
           </TouchableOpacity>
@@ -196,7 +196,12 @@ export default function SettingsScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [use24Hour, setUse24Hour] = useState(true);
   const isDark = themeCtx.isDark;
-  const titleColor = isDark ? theme.background : theme.text;
+  const CARD_BG = '#2D2E46';
+  const CARD_TEXT = '#FFFFFF';
+  const CARD_TEXT_MUTED = 'rgba(255, 255, 255, 0.65)';
+  const CARD_BORDER = 'rgba(255, 255, 255, 0.1)';
+  const CARD_ICON = 'rgba(255, 255, 255, 0.5)';
+  const titleColor = '#FFFFFF';
 
   // Quote and GIF preferences
   const [quoteEnabled, setQuoteEnabled] = useState(true);
@@ -683,7 +688,7 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>PROFILE</Text>
 
-        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+        <View style={[styles.sectionCard, { backgroundColor: CARD_BG }]}>
           <View style={[styles.profileRow, { padding: 16, marginBottom: 0 }]}>
             <TouchableOpacity
               onPress={openEditModal}
@@ -700,27 +705,27 @@ export default function SettingsScreen() {
               )}
             </TouchableOpacity>
             <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, { color: theme.text }]}>
+              <Text style={[styles.profileName, { color: CARD_TEXT }]}>
                 {profile?.name || user?.name}
               </Text>
-              <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
+              <Text style={[styles.profileEmail, { color: CARD_TEXT_MUTED }]}>
                 {profile?.email || user?.email}
               </Text>
             </View>
           </View>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           <TouchableOpacity style={styles.cardItem} onPress={openEditModal} activeOpacity={0.7}>
-            <Text style={[styles.menuText, { color: theme.text }]}>Edit Profile</Text>
-            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            <Text style={[styles.menuText, { color: CARD_TEXT }]}>Edit Profile</Text>
+            <Ionicons name="chevron-forward" size={18} color={CARD_ICON} />
           </TouchableOpacity>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           <TouchableOpacity style={styles.cardItem} onPress={() => setPasswordModalVisible(true)} activeOpacity={0.7}>
-            <Text style={[styles.menuText, { color: theme.text }]}>Change Password</Text>
-            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            <Text style={[styles.menuText, { color: CARD_TEXT }]}>Change Password</Text>
+            <Ionicons name="chevron-forward" size={18} color={CARD_ICON} />
           </TouchableOpacity>
         </View>
       </View>
@@ -731,20 +736,20 @@ export default function SettingsScreen() {
           SUBSCRIPTION & PLAN
         </Text>
 
-        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+        <View style={[styles.sectionCard, { backgroundColor: CARD_BG }]}>
           {isPremium ? (
             <>
               <View style={[styles.cardItem, { justifyContent: 'space-between', alignItems: 'center' }]}>
                 <View style={{ flex: 1, marginRight: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <Text style={[styles.menuText, { color: theme.text, fontSize: 16, fontWeight: '700' }]}>
+                    <Text style={[styles.menuText, { color: CARD_TEXT, fontSize: 16, fontWeight: '700' }]}>
                       {isTrialActive ? 'Pro (Free Trial)' : 'Focussive Pro'}
                     </Text>
                     <View style={[styles.proBadge, { backgroundColor: '#D4AF37' }]}>
                       <Text style={styles.proBadgeText}>PRO</Text>
                     </View>
                   </View>
-                  <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
+                  <Text style={[styles.reminderSubtext, { color: CARD_TEXT_MUTED }]}>
                     {isTrialActive
                       ? `${trialDaysRemaining} days remaining in trial`
                       : 'Unlimited groups, apps, sites & lifetime history'}
@@ -754,18 +759,18 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   style={[
                     styles.upgradeBtn,
-                    { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' },
+                    { backgroundColor: 'rgba(255,255,255,0.12)' },
                   ]}
                   onPress={() => openPaywall('settings')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.upgradeBtnText, { color: theme.text }]}>
+                  <Text style={[styles.upgradeBtnText, { color: CARD_TEXT }]}>
                     Manage
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+              <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
               <TouchableOpacity
                 style={[styles.cardItem, { justifyContent: 'space-between', paddingVertical: 12 }]}
@@ -778,9 +783,9 @@ export default function SettingsScreen() {
                     style={{ width: 16, height: 16 }}
                     resizeMode="contain"
                   />
-                  <Text style={[styles.menuText, { color: theme.text, fontSize: 14 }]}>View Pro Benefits</Text>
+                  <Text style={[styles.menuText, { color: CARD_TEXT, fontSize: 14 }]}>View Pro Benefits</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                <Ionicons name="chevron-forward" size={16} color={CARD_ICON} />
               </TouchableOpacity>
             </>
           ) : (
@@ -793,12 +798,12 @@ export default function SettingsScreen() {
                 >
                   <Text style={[styles.upgradeBtnText, { color: '#4A3600' }]}>Upgrade</Text>
                 </TouchableOpacity>
-                <Text style={{ color: theme.text, fontSize: 13, fontWeight: '500', flex: 1, lineHeight: 18 }}>
+                <Text style={{ color: CARD_TEXT, fontSize: 13, fontWeight: '500', flex: 1, lineHeight: 18 }}>
                   Upgrade to pro for a more focussive experience!
                 </Text>
               </View>
 
-              <View style={[styles.cardDivider, { backgroundColor: theme.border, marginTop: 14, marginBottom: 10 }]} />
+              <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER, marginTop: 14, marginBottom: 10 }]} />
 
               <TouchableOpacity
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 }}
@@ -810,10 +815,10 @@ export default function SettingsScreen() {
                   style={{ width: 15, height: 15 }}
                   resizeMode="contain"
                 />
-                <Text style={{ color: theme.text, fontSize: 13, fontWeight: '600' }}>
+                <Text style={{ color: CARD_TEXT, fontSize: 13, fontWeight: '600' }}>
                   View Pro Benefits
                 </Text>
-                <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
+                <Ionicons name="chevron-forward" size={14} color={CARD_ICON} />
               </TouchableOpacity>
             </View>
           )}
@@ -824,16 +829,16 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>PREFERENCES</Text>
 
-        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+        <View style={[styles.sectionCard, { backgroundColor: CARD_BG }]}>
           <View style={styles.cardItem}>
-            <Text style={[styles.menuText, { color: theme.text }]}>Time Format</Text>
+            <Text style={[styles.menuText, { color: CARD_TEXT }]}>Time Format</Text>
             <TimeFormatToggle use24Hour={use24Hour} onToggle={toggleTimeFormat} theme={theme} />
           </View>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
-            <Text style={[styles.menuText, { color: theme.text }]}>Appearance</Text>
+            <Text style={[styles.menuText, { color: CARD_TEXT }]}>Appearance</Text>
             <ThemeModeToggle
               preference={themeCtx.preference}
               onSelect={(p) => themeCtx.setPreference(p)}
@@ -841,7 +846,7 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           {/* Session Reminder */}
           <TouchableOpacity
@@ -853,15 +858,15 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
           >
             <View>
-              <Text style={[styles.menuText, { color: theme.text }]}>Session Reminder</Text>
-              <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
+              <Text style={[styles.menuText, { color: CARD_TEXT }]}>Session Reminder</Text>
+              <Text style={[styles.reminderSubtext, { color: CARD_TEXT_MUTED }]}>
                 {reminderMinutes} min before session
               </Text>
             </View>
-            <Ionicons name="notifications-outline" size={20} color={theme.textSecondary} />
+            <Ionicons name="notifications-outline" size={20} color={CARD_ICON} />
           </TouchableOpacity>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           {/* Monthly Skip Limit */}
           <TouchableOpacity
@@ -873,52 +878,52 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
           >
             <View>
-              <Text style={[styles.menuText, { color: theme.text }]}>Monthly Skip Limit</Text>
-              <Text style={[styles.reminderSubtext, { color: theme.textSecondary }]}>
+              <Text style={[styles.menuText, { color: CARD_TEXT }]}>Monthly Skip Limit</Text>
+              <Text style={[styles.reminderSubtext, { color: CARD_TEXT_MUTED }]}>
                 {skipsRemaining} of {skipLimit} skips remaining this month
               </Text>
             </View>
-            <Ionicons name="play-forward-outline" size={20} color={theme.textSecondary} />
+            <Ionicons name="play-forward-outline" size={20} color={CARD_ICON} />
           </TouchableOpacity>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           {/* Block Screen Quotes */}
           <View style={styles.cardItem}>
             <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={[styles.menuText, { color: theme.text }]}>Block screen quotes</Text>
-              <Text style={[styles.reminderSubtext, { color: theme.textSecondary, marginTop: 2 }]}>
+              <Text style={[styles.menuText, { color: CARD_TEXT }]}>Block screen quotes</Text>
+              <Text style={[styles.reminderSubtext, { color: CARD_TEXT_MUTED, marginTop: 2 }]}>
                 Show inspirational quotes on blocker overlay
               </Text>
             </View>
             <Switch
               value={quoteEnabled}
               onValueChange={handleToggleQuote}
-              trackColor={{ false: theme.border, true: theme.accent }}
+              trackColor={{ false: 'rgba(255,255,255,0.2)', true: theme.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           {/* Block Screen Image */}
           <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 12 }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', borderBottomWidth: 0, justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={[styles.menuText, { color: theme.text }]}>Block screen image</Text>
+                  <Text style={[styles.menuText, { color: CARD_TEXT }]}>Block screen image</Text>
                   <View style={[styles.proBadge, { backgroundColor: '#D4AF37' }]}>
                     <Text style={styles.proBadgeText}>PRO</Text>
                   </View>
                 </View>
-                <Text style={[styles.reminderSubtext, { color: theme.textSecondary, marginTop: 2 }]}>
+                <Text style={[styles.reminderSubtext, { color: CARD_TEXT_MUTED, marginTop: 2 }]}>
                   Show preset or custom image on blocker overlay
                 </Text>
               </View>
               <Switch
                 value={gifEnabled}
                 onValueChange={handleToggleGif}
-                trackColor={{ false: theme.border, true: theme.accent }}
+                trackColor={{ false: 'rgba(255,255,255,0.2)', true: theme.accent }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -943,8 +948,8 @@ export default function SettingsScreen() {
                       style={[
                         styles.blockImageCard,
                         {
-                          borderColor: isSelected ? theme.accent : theme.border,
-                          backgroundColor: theme.card,
+                          borderColor: isSelected ? theme.accent : CARD_BORDER,
+                          backgroundColor: 'rgba(255,255,255,0.06)',
                           borderWidth: isSelected ? 2 : 1,
                         },
                       ]}
@@ -971,8 +976,8 @@ export default function SettingsScreen() {
                     style={[
                       styles.blockImageCard,
                       {
-                        borderColor: gifEnabled ? theme.accent : theme.border,
-                        backgroundColor: theme.card,
+                        borderColor: gifEnabled ? theme.accent : CARD_BORDER,
+                        backgroundColor: 'rgba(255,255,255,0.06)',
                         borderWidth: gifEnabled ? 2 : 1,
                       },
                     ]}
@@ -999,16 +1004,16 @@ export default function SettingsScreen() {
                     styles.blockImageCard,
                     styles.blockImageUploadCard,
                     {
-                      borderColor: theme.border,
+                      borderColor: CARD_BORDER,
                       borderStyle: 'dashed',
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
                     },
                   ]}
                 >
                   {uploadingGif ? (
                     <ActivityIndicator size="small" color={theme.accent} />
                   ) : (
-                    <Ionicons name="cloud-upload-outline" size={24} color={theme.accent} />
+                    <Ionicons name="cloud-upload-outline" size={24} color={CARD_TEXT} />
                   )}
                 </TouchableOpacity>
               </ScrollView>
@@ -1021,7 +1026,7 @@ export default function SettingsScreen() {
       <View style={styles.section} ref={permissionsRef}>
         <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>SYSTEM</Text>
 
-        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+        <View style={[styles.sectionCard, { backgroundColor: CARD_BG }]}>
           {/* App Permissions */}
           <TouchableOpacity
             style={styles.cardItem}
@@ -1029,7 +1034,7 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={[styles.menuText, { color: theme.text }]}>App permissions</Text>
+              <Text style={[styles.menuText, { color: CARD_TEXT }]}>App permissions</Text>
               {allPermsGranted ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Ionicons name="checkmark-circle" size={16} color="#1E9E44" />
@@ -1042,15 +1047,15 @@ export default function SettingsScreen() {
                 </View>
               ) : null}
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            <Ionicons name="chevron-forward" size={18} color={CARD_ICON} />
           </TouchableOpacity>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           {/* Extension */}
           <TouchableOpacity style={styles.cardItem} onPress={() => setShowExtensionModal(true)} activeOpacity={0.7}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={[styles.menuText, { color: theme.text }]}>Extension</Text>
+              <Text style={[styles.menuText, { color: CARD_TEXT }]}>Extension</Text>
               {extensionPaired ? (
                 extensionConnected ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -1064,27 +1069,27 @@ export default function SettingsScreen() {
                   </View>
                 )
               ) : (
-                <Text style={{ fontSize: 12, color: theme.textSecondary }}>Not Connected</Text>
+                <Text style={{ fontSize: 12, color: CARD_TEXT_MUTED }}>Not Connected</Text>
               )}
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            <Ionicons name="chevron-forward" size={18} color={CARD_ICON} />
           </TouchableOpacity>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           {/* Version */}
           <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 4 }]}>
             <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7}>
-              <Text style={[styles.menuText, { color: theme.text }]}>Version</Text>
-              <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>v1.0.0</Text>
+              <Text style={[styles.menuText, { color: CARD_TEXT }]}>Version</Text>
+              <Text style={{ fontSize: 13, color: CARD_TEXT_MUTED, marginTop: 2 }}>v1.0.0</Text>
             </TouchableOpacity>
 
             {backendStatus !== 'idle' && (
-              <View style={{ marginTop: 8, paddingTop: 8, borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth }}>
+              <View style={{ marginTop: 8, paddingTop: 8, borderTopColor: CARD_BORDER, borderTopWidth: StyleSheet.hairlineWidth }}>
                 {backendStatus === 'checking' && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ fontSize: 13, color: theme.textSecondary }}>Checking</Text>
-                    <Text style={{ fontSize: 14, color: theme.textSecondary, fontWeight: '600', fontFamily: 'monospace' }}>
+                    <Text style={{ fontSize: 13, color: CARD_TEXT_MUTED }}>Checking</Text>
+                    <Text style={{ fontSize: 14, color: CARD_TEXT_MUTED, fontWeight: '600', fontFamily: 'monospace' }}>
                       {spinnerChar}
                     </Text>
                   </View>
@@ -1097,7 +1102,7 @@ export default function SettingsScreen() {
                       <Text style={{ fontSize: 13, color: theme.accent, fontWeight: '600' }}>Server online</Text>
                     </View>
                     {lastCheckedTime && (
-                      <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>
+                      <Text style={{ fontSize: 11, color: CARD_TEXT_MUTED, marginTop: 4 }}>
                         Last checked: {lastCheckedTime}
                       </Text>
                     )}
@@ -1111,7 +1116,7 @@ export default function SettingsScreen() {
                       <Text style={{ fontSize: 13, color: theme.danger, fontWeight: '600' }}>Server offline</Text>
                     </View>
                     {lastCheckedTime && (
-                      <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>
+                      <Text style={{ fontSize: 11, color: CARD_TEXT_MUTED, marginTop: 4 }}>
                         Last checked: {lastCheckedTime}
                       </Text>
                     )}
@@ -1127,13 +1132,13 @@ export default function SettingsScreen() {
       <View style={[styles.section, { marginBottom: 12 }]}>
         <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>DATA</Text>
 
-        <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
+        <View style={[styles.sectionCard, { backgroundColor: CARD_BG }]}>
           <TouchableOpacity style={styles.cardItem} onPress={() => router.push('/history/manage' as never)} activeOpacity={0.7}>
-            <Text style={[styles.menuText, { color: theme.text }]}>Manage History</Text>
-            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            <Text style={[styles.menuText, { color: CARD_TEXT }]}>Manage History</Text>
+            <Ionicons name="chevron-forward" size={18} color={CARD_ICON} />
           </TouchableOpacity>
 
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
           <View style={{ padding: 12 }}>
             <TouchableOpacity style={[styles.deleteAccountBtn, { backgroundColor: theme.danger, borderWidth: 2, borderColor: theme.dangerBorder }]} onPress={handleDeleteAccount} activeOpacity={0.8}>
@@ -1425,10 +1430,10 @@ export default function SettingsScreen() {
         onRequestClose={() => setShowPermissionsModal(false)}
       >
         <View style={styles.sheetOverlay}>
-          <View style={[styles.sheetModalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.sheetModalCard, { backgroundColor: CARD_BG, borderColor: CARD_BORDER }]}>
             {/* Header */}
             <View style={styles.sheetHeader}>
-              <Text style={[styles.sheetHeaderTitle, { color: titleColor }]}>App Permissions</Text>
+              <Text style={[styles.sheetHeaderTitle, { color: '#FFFFFF' }]}>App Permissions</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity
                   onPress={handleRefreshPermissions}
@@ -1446,7 +1451,7 @@ export default function SettingsScreen() {
                       }],
                     }}
                   >
-                    <Ionicons name="refresh-outline" size={20} color={isDark ? theme.background : theme.textSecondary} />
+                    <Ionicons name="refresh-outline" size={20} color="#FFFFFF" />
                   </Animated.View>
                 </TouchableOpacity>
 
@@ -1455,7 +1460,7 @@ export default function SettingsScreen() {
                   style={styles.sheetCloseBtn}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
-                  <Ionicons name="close" size={22} color={isDark ? theme.background : theme.textSecondary} />
+                  <Ionicons name="close" size={22} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -1469,7 +1474,7 @@ export default function SettingsScreen() {
                     {allPermsGranted ? 'All Permissions Granted' : 'Permissions Setup Required'}
                   </Text>
                 </View>
-                <Text style={[styles.sheetStatusSubtitle, { color: theme.textSecondary }]}>
+                <Text style={[styles.sheetStatusSubtitle, { color: CARD_TEXT_MUTED }]}>
                   {allPermsGranted
                     ? 'All required system permissions are active. Focussive can detect apps, display the blocker overlay, and send reminders.'
                     : 'Focussive needs these permissions to detect apps in the foreground, display the block overlay, and deliver timely reminders.'}
@@ -1478,24 +1483,24 @@ export default function SettingsScreen() {
 
               {/* Permissions List */}
               <View style={styles.sheetDetailsSection}>
-                <Text style={[styles.sheetDetailsSectionTitle, { color: isDark ? theme.background : theme.textSecondary }]}>
+                <Text style={[styles.sheetDetailsSectionTitle, { color: CARD_TEXT_MUTED }]}>
                   REQUIRED PERMISSIONS
                 </Text>
 
                 {/* Usage Access */}
                 <TouchableOpacity
-                  style={[styles.sheetPermRow, { borderBottomColor: theme.border }]}
+                  style={[styles.sheetPermRow, { borderBottomColor: CARD_BORDER }]}
                   onPress={() => requestUsageStatsPermission()}
                   activeOpacity={0.7}
                 >
                   <View style={{ flex: 1, marginRight: 12 }}>
-                    <Text style={[styles.permTitle, { color: theme.text }]}>Usage Access</Text>
-                    <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                    <Text style={[styles.permTitle, { color: CARD_TEXT }]}>Usage Access</Text>
+                    <Text style={[styles.permDesc, { color: CARD_TEXT_MUTED }]}>
                       Required to detect which app is in the foreground
                     </Text>
                   </View>
                   {hasUsageStats === null ? (
-                    <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                    <Ionicons name="ellipse-outline" size={22} color={CARD_ICON} />
                   ) : hasUsageStats ? (
                     <Ionicons name="checkmark-circle" size={22} color="#1E9E44" />
                   ) : (
@@ -1505,18 +1510,18 @@ export default function SettingsScreen() {
 
                 {/* Overlay */}
                 <TouchableOpacity
-                  style={[styles.sheetPermRow, { borderBottomColor: theme.border }]}
+                  style={[styles.sheetPermRow, { borderBottomColor: CARD_BORDER }]}
                   onPress={() => requestOverlayPermission()}
                   activeOpacity={0.7}
                 >
                   <View style={{ flex: 1, marginRight: 12 }}>
-                    <Text style={[styles.permTitle, { color: theme.text }]}>Display Over Other Apps</Text>
-                    <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                    <Text style={[styles.permTitle, { color: CARD_TEXT }]}>Display Over Other Apps</Text>
+                    <Text style={[styles.permDesc, { color: CARD_TEXT_MUTED }]}>
                       Required to show the block overlay on top of apps
                     </Text>
                   </View>
                   {hasOverlay === null ? (
-                    <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                    <Ionicons name="ellipse-outline" size={22} color={CARD_ICON} />
                   ) : hasOverlay ? (
                     <Ionicons name="checkmark-circle" size={22} color="#1E9E44" />
                   ) : (
@@ -1526,18 +1531,18 @@ export default function SettingsScreen() {
 
                 {/* Exact Alarm */}
                 <TouchableOpacity
-                  style={[styles.sheetPermRow, { borderBottomColor: theme.border }]}
+                  style={[styles.sheetPermRow, { borderBottomColor: CARD_BORDER }]}
                   onPress={() => requestExactAlarmPermission()}
                   activeOpacity={0.7}
                 >
                   <View style={{ flex: 1, marginRight: 12 }}>
-                    <Text style={[styles.permTitle, { color: theme.text }]}>Allow Precise Alarms</Text>
-                    <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                    <Text style={[styles.permTitle, { color: CARD_TEXT }]}>Allow Precise Alarms</Text>
+                    <Text style={[styles.permDesc, { color: CARD_TEXT_MUTED }]}>
                       Required for accurate session reminder notifications
                     </Text>
                   </View>
                   {hasExactAlarm === null ? (
-                    <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                    <Ionicons name="ellipse-outline" size={22} color={CARD_ICON} />
                   ) : hasExactAlarm ? (
                     <Ionicons name="checkmark-circle" size={22} color="#1E9E44" />
                   ) : (
@@ -1564,27 +1569,19 @@ export default function SettingsScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={{ flex: 1, marginRight: 12 }}>
-                    <Text style={[styles.permTitle, { color: theme.text }]}>Allow Notifications</Text>
-                    <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                    <Text style={[styles.permTitle, { color: CARD_TEXT }]}>Allow Notifications</Text>
+                    <Text style={[styles.permDesc, { color: CARD_TEXT_MUTED }]}>
                       Required to send session reminders and alerts
                     </Text>
                   </View>
                   {hasNotifications === null ? (
-                    <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                    <Ionicons name="ellipse-outline" size={22} color={CARD_ICON} />
                   ) : hasNotifications ? (
                     <Ionicons name="checkmark-circle" size={22} color="#1E9E44" />
                   ) : (
                     <Ionicons name="warning" size={22} color={theme.danger} />
                   )}
                 </TouchableOpacity>
-              </View>
-
-              {/* Information Hint */}
-              <View style={[styles.sheetHintBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderColor: theme.border }]}>
-                <Ionicons name="information-circle-outline" size={16} color={theme.textSecondary} />
-                <Text style={[styles.sheetHintText, { color: theme.textSecondary }]}>
-                  Tap any permission above to open Android system settings. Focussive will automatically update the status when you return.
-                </Text>
               </View>
             </ScrollView>
           </View>
