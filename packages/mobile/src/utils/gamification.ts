@@ -229,7 +229,7 @@ export const MILESTONE_BADGES: Record<MilestoneKey, MilestoneBadge> = {
     key: 'the_realist',
     title: 'The Realist',
     quote: 'Sustainable rhythm beats burnout.',
-    requirement: 'Used breaks but still completed 90% of sessions for a total of 10 sessions within 7 days',
+    requirement: 'Used breaks on all 10 completed sessions with a ≥90% completion rate in 7 days',
     icon: 'cafe',
     color: '#14B8A6',
   },
@@ -404,7 +404,7 @@ export function evaluateMilestones(
     }
   }
 
-  // 7. The Realist: used breaks but completed >= 90% of sessions for total 10 sessions in 7 days
+  // 7. The Realist: used breaks on all 10 completed sessions with >= 90% completion rate in 7 days
   let realistUnlocked = false;
   let realistMax = 0;
   for (let i = 0; i < history.length; i++) {
@@ -414,16 +414,15 @@ export function evaluateMilestones(
       h => new Date(h.created_at).getTime() >= windowStart && new Date(h.created_at).getTime() <= windowEnd
     );
     const completedInWindow = inWindow.filter(h => h.status === 'completed');
-    const withBreaks = completedInWindow.filter(h => ((h as any).pause_count ?? 0) > 0);
+    const withBreaks = completedInWindow.filter(
+      h => (h.breaks_count ?? 0) > 0 || ((h as any).pause_count ?? 0) > 0 || (h.emergency_breaks_count ?? 0) > 0
+    );
 
-    if (completedInWindow.length >= 10 && withBreaks.length > 0) {
-      const completionRate = completedInWindow.length / inWindow.length;
-      if (completionRate >= 0.9) {
-        realistUnlocked = true;
-        realistMax = completedInWindow.length;
-      }
-    } else {
-      if (completedInWindow.length > realistMax) realistMax = completedInWindow.length;
+    const completionRate = inWindow.length > 0 ? completedInWindow.length / inWindow.length : 0;
+    if (withBreaks.length > realistMax) realistMax = withBreaks.length;
+
+    if (withBreaks.length >= 10 && completionRate >= 0.9) {
+      realistUnlocked = true;
     }
   }
 
