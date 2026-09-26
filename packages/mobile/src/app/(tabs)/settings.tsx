@@ -194,7 +194,7 @@ export default function SettingsScreen() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [use24Hour, setUse24Hour] = useState(true);
+  const [use24Hour, setUse24Hour] = useState(false);
   const isDark = themeCtx.isDark;
   const CARD_BG = '#2D2E46';
   const CARD_TEXT = '#FFFFFF';
@@ -361,9 +361,9 @@ export default function SettingsScreen() {
   async function loadTimeFormat() {
     try {
       const format = await AsyncStorage.getItem('time_format');
-      setUse24Hour(format !== '12');
+      setUse24Hour(format === '24');
     } catch {
-      // Default to 24-hour
+      setUse24Hour(false);
     }
   }
 

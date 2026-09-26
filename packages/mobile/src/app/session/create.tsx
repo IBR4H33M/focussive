@@ -45,7 +45,7 @@ export default function CreateSessionScreen() {
   const [timeSlots, setTimeSlots] = useState<SessionTimeSlot[]>([
     { start_time: '08:00', end_time: '09:00' },
   ]);
-  const [use24Hour, setUse24Hour] = useState(true);
+  const [use24Hour, setUse24Hour] = useState(false);
   const [schedule, setSchedule] = useState<ScheduleType>(ScheduleType.TODAY);
   const [recurringDays, setRecurringDays] = useState<Weekday[]>([]);   // for RECURRING
   const [scheduledDates, setScheduledDates] = useState<string[]>([]);   // for SCHEDULED
@@ -96,9 +96,9 @@ export default function CreateSessionScreen() {
   async function loadTimeFormat() {
     try {
       const format = await AsyncStorage.getItem('time_format');
-      setUse24Hour(format !== '12');
+      setUse24Hour(format === '24');
     } catch {
-      setUse24Hour(true);
+      setUse24Hour(false);
     }
   }
 

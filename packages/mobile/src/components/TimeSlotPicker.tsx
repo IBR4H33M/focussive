@@ -174,7 +174,7 @@ function WheelColumn({
 function TimeBox({
   timeStr,
   onChangeTime,
-  use24Hour = true,
+  use24Hour = false,
   theme,
 }: {
   timeStr: string;
@@ -297,7 +297,7 @@ function TimeBox({
 export default function TimeSlotPicker({
   slots,
   onChangeSlots,
-  use24Hour = true,
+  use24Hour = false,
   theme,
   maxSlots = 5,
 }: TimeSlotPickerProps) {

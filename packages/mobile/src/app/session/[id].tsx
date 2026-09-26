@@ -96,14 +96,14 @@ export default function SessionDetailScreen() {
   const [editWebsites, setEditWebsites] = useState<string[]>([]);
   const [appIconMap, setAppIconMap] = useState<Record<string, string>>({});
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
-  const [use24Hour, setUse24Hour] = useState(true);
+  const [use24Hour, setUse24Hour] = useState(false);
 
   async function loadTimeFormat() {
     try {
       const format = await AsyncStorage.getItem('time_format');
-      setUse24Hour(format !== '12');
+      setUse24Hour(format === '24');
     } catch {
-      setUse24Hour(true);
+      setUse24Hour(false);
     }
   }
 

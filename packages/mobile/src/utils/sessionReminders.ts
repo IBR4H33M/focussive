@@ -81,9 +81,9 @@ function parseSessionTime(startTime: string, referenceDate?: Date): Date {
 async function getUse24HourFormat(): Promise<boolean> {
   try {
     const fmt = await AsyncStorage.getItem('time_format');
-    return fmt !== '12';
+    return fmt === '24';
   } catch {
-    return true;
+    return false;
   }
 }
 
