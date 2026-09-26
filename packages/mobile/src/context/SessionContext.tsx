@@ -13,7 +13,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { sessionApi, appGroupApi, violationApi } from '@/utils/api';
-import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener } from '@focussive/app-blocker';
+import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener, takeBreak } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
 import { type Session, type AppGroup, ViolationAction, SessionStatus, isSessionInActiveWindow } from '@focussive/shared';
 import { scheduleSessionReminders } from '@/utils/sessionReminders';
@@ -397,23 +397,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     syncAppBlocker();
   }, [state.activeSessions]);
 
-  // handleBreak: suspend monitoring for break duration, then resume
+  // handleBreak: initiate break natively and via API, without killing foreground monitoring
   const handleBreak = useCallback(async (sessionId: string, minutes: number) => {
     try {
-      const breakRes = await sessionApi.startBreak(sessionId, 'manual', minutes);
-      stopMonitoring();
-
-      if (breakTimerRef.current) clearTimeout(breakTimerRef.current);
-
-      breakTimerRef.current = setTimeout(async () => {
-        try {
-          await sessionApi.endBreak(sessionId, breakRes.id);
-        } catch (e) {
-          console.error('Failed to end break:', e);
-        }
-        // Refresh will trigger syncAppBlocker which restarts monitoring
-        await refreshSessions();
-      }, minutes * 60 * 1000);
+      await sessionApi.startBreak(sessionId, 'manual', minutes);
+      takeBreak(minutes);
+      await refreshSessions();
     } catch (e) {
       console.error('Failed to start break:', e);
     }

@@ -196,12 +196,12 @@ export default function SettingsScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [use24Hour, setUse24Hour] = useState(false);
   const isDark = themeCtx.isDark;
-  const CARD_BG = '#2D2E46';
-  const CARD_TEXT = '#FFFFFF';
-  const CARD_TEXT_MUTED = 'rgba(255, 255, 255, 0.65)';
-  const CARD_BORDER = 'rgba(255, 255, 255, 0.1)';
-  const CARD_ICON = 'rgba(255, 255, 255, 0.5)';
-  const titleColor = '#FFFFFF';
+  const CARD_BG = isDark ? '#2D2E46' : theme.card;
+  const CARD_TEXT = isDark ? '#FFFFFF' : theme.text;
+  const CARD_TEXT_MUTED = isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary;
+  const CARD_BORDER = isDark ? 'rgba(255, 255, 255, 0.1)' : theme.border;
+  const CARD_ICON = isDark ? 'rgba(255, 255, 255, 0.5)' : theme.textSecondary;
+  const titleColor = isDark ? '#FFFFFF' : theme.text;
 
   // Quote and GIF preferences
   const [quoteEnabled, setQuoteEnabled] = useState(true);
@@ -1433,7 +1433,7 @@ export default function SettingsScreen() {
           <View style={[styles.sheetModalCard, { backgroundColor: CARD_BG, borderColor: CARD_BORDER }]}>
             {/* Header */}
             <View style={styles.sheetHeader}>
-              <Text style={[styles.sheetHeaderTitle, { color: '#FFFFFF' }]}>App Permissions</Text>
+              <Text style={[styles.sheetHeaderTitle, { color: CARD_TEXT }]}>App Permissions</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity
                   onPress={handleRefreshPermissions}
@@ -1451,7 +1451,7 @@ export default function SettingsScreen() {
                       }],
                     }}
                   >
-                    <Ionicons name="refresh-outline" size={20} color="#FFFFFF" />
+                    <Ionicons name="refresh-outline" size={20} color={CARD_TEXT} />
                   </Animated.View>
                 </TouchableOpacity>
 
@@ -1460,7 +1460,7 @@ export default function SettingsScreen() {
                   style={styles.sheetCloseBtn}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
-                  <Ionicons name="close" size={22} color="#FFFFFF" />
+                  <Ionicons name="close" size={22} color={CARD_TEXT} />
                 </TouchableOpacity>
               </View>
             </View>

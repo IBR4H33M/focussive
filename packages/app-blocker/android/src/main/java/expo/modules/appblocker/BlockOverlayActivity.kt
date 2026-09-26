@@ -100,18 +100,34 @@ class BlockOverlayActivity : Activity() {
         val container = verticalLayout(Gravity.CENTER, padDp = 32)
 
         // Title
-        container.addView(styledText("Distraction Detected", 24f, Color.WHITE, bold = true, bottomPadDp = 8))
+        container.addView(styledText("You are distracted!", 24f, Color.WHITE, bold = true, bottomPadDp = 8))
         container.addView(styledText(
             "You opened a blocked app\nduring your focus session.",
             14f, 0xCCFFFFFF.toInt(), bold = false, bottomPadDp = 20
         ))
 
-        // Motivational Quote
-        val quote = quotes.random()
+        // Motivational Quote — larger quote text, author preserved at 13f
+        val rawQuote = quotes.random()
+        val parts = when {
+            rawQuote.contains(" — ") -> rawQuote.split(" — ", limit = 2)
+            rawQuote.contains(" —") -> rawQuote.split(" —", limit = 2)
+            rawQuote.contains(" - ") -> rawQuote.split(" - ", limit = 2)
+            else -> listOf(rawQuote)
+        }
+        val quoteBody = parts[0].trim()
+        val author = if (parts.size > 1) "— " + parts[1].trim() else null
+
         container.addView(styledText(
-            quote,
-            13f, Color.parseColor("#FFD166"), bold = false, bottomPadDp = 30
+            quoteBody,
+            20f, Color.parseColor("#FFD166"), bold = true, bottomPadDp = if (author != null) 6 else 30
         ))
+
+        if (author != null) {
+            container.addView(styledText(
+                author,
+                13f, Color.parseColor("#FFD166"), bold = false, bottomPadDp = 30
+            ))
+        }
 
         // Exit — solid dark button
         container.addView(solidButton(
@@ -125,13 +141,13 @@ class BlockOverlayActivity : Activity() {
 
         container.addView(spacer(10))
 
-        // Take a break — only show if break time actually available
+        // Take a break — same color as exit app button, white text
         if (breakAvailable) {
             container.addView(solidButton(
                 label = "Take a break  (${breakMaxMinutes} min left)",
-                textColor = Color.parseColor("#90EE90"),
-                bgColor = Color.parseColor("#1A3A1A"),
-                borderColor = Color.parseColor("#90EE90")
+                textColor = Color.WHITE,
+                bgColor = Color.parseColor("#1A1A1A"),
+                borderColor = 0x40FFFFFF.toInt()
             ) {
                 breakMinutes = 1
                 screen = Screen.BREAK_PICK
@@ -140,10 +156,10 @@ class BlockOverlayActivity : Activity() {
             container.addView(spacer(10))
         }
 
-        // Allow anyway — solid dark-red tint
+        // Allow anyway — solid dark-red tint, white text
         container.addView(solidButton(
             label = "Allow anyway",
-            textColor = Color.parseColor("#FFAAAA"),
+            textColor = Color.WHITE,
             bgColor = Color.parseColor("#3A0A0A"),
             borderColor = Color.parseColor("#CC4444")
         ) {
@@ -195,11 +211,11 @@ class BlockOverlayActivity : Activity() {
 
         container.addView(spacer(28))
 
-        // Confirm
+        // Confirm — white text
         val confirmLabel = if (isBreak) "Start $current minute break" else "Allow $current min"
         val confirmBg = if (isBreak) Color.parseColor("#142217") else Color.parseColor("#3A0A0A")
         val confirmBorder = if (isBreak) Color.parseColor("#2E4233") else Color.parseColor("#FF6B6B")
-        val confirmText = if (isBreak) Color.parseColor("#90EE90") else Color.parseColor("#FF6B6B")
+        val confirmText = Color.WHITE
 
         container.addView(solidButton(confirmLabel, confirmText, confirmBg, confirmBorder) {
             if (isBreak) confirmBreak() else confirmAllow()
@@ -207,10 +223,10 @@ class BlockOverlayActivity : Activity() {
 
         container.addView(spacer(8))
 
-        // Back
+        // Back — white text
         val backBtn = Button(this).apply {
             text = "Back"
-            setTextColor(0x66FFFFFF.toInt())
+            setTextColor(Color.WHITE)
             setBackgroundColor(Color.TRANSPARENT)
             textSize = 14f
             setOnClickListener { screen = Screen.IDLE; renderScreen() }

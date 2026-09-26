@@ -97,7 +97,7 @@ export default function ViolationOverlay({
           {/* ── Idle Screen ── */}
           {screen === 'idle' && (
             <>
-              <Text style={styles.title}>Distraction Detected</Text>
+              <Text style={styles.title}>You are distracted!</Text>
               <Text style={[styles.subtitle, { marginBottom: 16 }]}>
                 You're using {name} during a focus session
               </Text>
@@ -112,9 +112,25 @@ export default function ViolationOverlay({
               ) : null}
 
               {/* Motivational Quote if enabled */}
-              {quoteEnabled && quote ? (
-                <Text style={styles.quoteText}>{quote}</Text>
-              ) : (
+              {quoteEnabled && quote ? (() => {
+                const parts = quote.includes(' — ')
+                  ? quote.split(' — ')
+                  : quote.includes(' —')
+                  ? quote.split(' —')
+                  : quote.includes(' - ')
+                  ? quote.split(' - ')
+                  : [quote];
+                const body = parts[0]?.trim() || '';
+                const author = parts.length > 1 ? `— ${parts[1]?.trim()}` : null;
+                return (
+                  <View style={styles.quoteContainer}>
+                    <Text style={styles.quoteBodyText}>{body}</Text>
+                    {author ? (
+                      <Text style={styles.quoteAuthorText}>{author}</Text>
+                    ) : null}
+                  </View>
+                );
+              })() : (
                 <View style={{ marginBottom: 16 }} />
               )}
 
@@ -178,7 +194,7 @@ export default function ViolationOverlay({
 
               <View style={styles.buttons}>
                 <TouchableOpacity
-                  style={[styles.breakBtn, { backgroundColor: '#1C281F', borderColor: '#2E4233' }]}
+                  style={[styles.breakBtn, { backgroundColor: '#1A1A1A', borderColor: 'rgba(255,255,255,0.25)' }]}
                   onPress={handleTakeBreakConfirm}
                   activeOpacity={0.8}
                 >
@@ -268,62 +284,73 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
   },
-  quoteText: {
-    fontSize: 13,
+  quoteContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  quoteBodyText: {
+    fontSize: 20,
+    fontWeight: '700',
     color: '#FFD166',
     textAlign: 'center',
     fontStyle: 'italic',
-    marginBottom: 24,
-    paddingHorizontal: 8,
-    lineHeight: 18,
+    lineHeight: 26,
+    marginBottom: 6,
+  },
+  quoteAuthorText: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#FFD166',
+    textAlign: 'center',
   },
   buttons: {
     width: '100%',
     gap: 12,
   },
-  // Break button (active)
+  // Break button (active) — same color as exit app button
   breakBtn: {
-    backgroundColor: 'rgba(144, 238, 144, 0.25)',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#90EE90',
-    alignItems: 'center',
-  },
-  breakBtnText: {
-    color: '#90EE90',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  breakSubtext: {
-    color: 'rgba(144,238,144,0.7)',
-    fontSize: 12,
-    marginTop: 3,
-  },
-  // Break button (disabled)
-  breakBtnDisabled: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-  },
-  breakBtnDisabledText: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 14,
-    fontWeight: '400',
-  },
-  // Allow anyway button
-  allowBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: '#1A1A1A',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+  },
+  breakBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  breakSubtext: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    marginTop: 3,
+  },
+  // Break button (disabled)
+  breakBtnDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+  },
+  breakBtnDisabledText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  // Allow anyway button
+  allowBtn: {
+    backgroundColor: '#3A0A0A',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#CC4444',
     alignItems: 'center',
   },
   allowText: {
@@ -337,7 +364,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backText: {
-    color: 'rgba(255,255,255,0.55)',
+    color: '#FFFFFF',
     fontSize: 14,
   },
   // Minute picker

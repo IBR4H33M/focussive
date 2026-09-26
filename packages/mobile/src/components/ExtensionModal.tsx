@@ -230,10 +230,10 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const POPUP_BG = '#2D2E46';
-  const POPUP_TEXT = '#FFFFFF';
-  const POPUP_MUTED = 'rgba(255, 255, 255, 0.65)';
-  const POPUP_BORDER = 'rgba(255, 255, 255, 0.1)';
+  const POPUP_BG = isDark ? '#2D2E46' : theme.card;
+  const POPUP_TEXT = isDark ? '#FFFFFF' : theme.text;
+  const POPUP_MUTED = isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary;
+  const POPUP_BORDER = isDark ? 'rgba(255, 255, 255, 0.1)' : theme.border;
 
   return (
     <Modal

@@ -136,6 +136,16 @@ class AppBlockerModule : Module() {
       return@Function null
     }
 
+    Function("takeBreak") { minutes: Int ->
+      val context = appContext.reactContext ?: return@Function null
+      val intent = Intent(context, AppBlockerService::class.java).apply {
+        action = "TAKE_BREAK"
+        putExtra("BREAK_MINUTES", minutes)
+      }
+      context.startService(intent)
+      return@Function null
+    }
+
     Function("requestUsageStatsPermission") {
       val context = appContext.reactContext ?: return@Function null
       try {

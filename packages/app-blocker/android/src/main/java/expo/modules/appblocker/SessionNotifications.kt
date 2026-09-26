@@ -203,9 +203,9 @@ object SessionNotifications {
      * without this the widget counts up from a future base and renders a leading
      * minus sign.
      */
-    private fun bindChronometer(views: RemoteViews, targetAtMillis: Long) {
+    private fun bindChronometer(views: RemoteViews, targetAtMillis: Long, isPaused: Boolean = false) {
         val base = SystemClock.elapsedRealtime() + (targetAtMillis - System.currentTimeMillis())
-        views.setChronometer(R.id.notif_chronometer, base, null, true)
+        views.setChronometer(R.id.notif_chronometer, base, null, !isPaused)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             views.setChronometerCountDown(R.id.notif_chronometer, true)
         }
@@ -242,19 +242,41 @@ object SessionNotifications {
         targetAtMillis: Long,
         isActive: Boolean,
         violationsText: String?,
+        isOnBreak: Boolean = false,
+        remainingBreakSeconds: Int = 0,
+        allowBreaks: Boolean = true,
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_active else R.layout.notification_reminder
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, formatTitle(title))
         views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
-        bindChronometer(views, targetAtMillis)
+        bindChronometer(views, targetAtMillis, isPaused = isOnBreak)
 
         if (isActive) {
             val skipIntent = sessionActionIntent(context, sessionId, "skip", id + 100)
             views.setOnClickPendingIntent(R.id.notif_skip_btn, skipIntent)
 
-            val breakIntent = sessionActionIntent(context, sessionId, "break", id + 200)
-            views.setOnClickPendingIntent(R.id.notif_break_btn, breakIntent)
+            val hasBreakBalance = allowBreaks && remainingBreakSeconds > 0
+            if (isOnBreak) {
+                views.setTextViewText(R.id.notif_label, "Break ongoing (timer paused)")
+                views.setTextViewText(R.id.notif_break_btn, "On break")
+                views.setTextColor(R.id.notif_break_btn, Color.parseColor("#80FFFFFF"))
+                views.setInt(R.id.notif_break_btn, "setBackgroundResource", R.drawable.notif_btn_disabled)
+                views.setOnClickPendingIntent(R.id.notif_break_btn, null)
+            } else if (!hasBreakBalance) {
+                views.setTextViewText(R.id.notif_label, "Remaining time")
+                views.setTextViewText(R.id.notif_break_btn, "Take a break")
+                views.setTextColor(R.id.notif_break_btn, Color.parseColor("#80FFFFFF"))
+                views.setInt(R.id.notif_break_btn, "setBackgroundResource", R.drawable.notif_btn_disabled)
+                views.setOnClickPendingIntent(R.id.notif_break_btn, null)
+            } else {
+                views.setTextViewText(R.id.notif_label, "Remaining time")
+                views.setTextViewText(R.id.notif_break_btn, "Take a break")
+                views.setTextColor(R.id.notif_break_btn, Color.WHITE)
+                views.setInt(R.id.notif_break_btn, "setBackgroundResource", R.drawable.notif_active_break_bg)
+                val breakIntent = sessionActionIntent(context, sessionId, "break", id + 200)
+                views.setOnClickPendingIntent(R.id.notif_break_btn, breakIntent)
+            }
         } else {
             val skipIntent = skipSessionPendingIntent(context, sessionId, id)
             views.setOnClickPendingIntent(R.id.notif_skip_btn, skipIntent)
@@ -268,12 +290,13 @@ object SessionNotifications {
         title: String,
         targetAtMillis: Long,
         isActive: Boolean,
+        isOnBreak: Boolean = false,
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_collapsed else R.layout.notification_collapsed_reminder
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, formatTitle(title))
         views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
-        bindChronometer(views, targetAtMillis)
+        bindChronometer(views, targetAtMillis, isPaused = isOnBreak)
         return views
     }
 
@@ -303,6 +326,9 @@ object SessionNotifications {
         timeoutAtMillis: Long,
         isActive: Boolean,
         violationsText: String? = null,
+        isOnBreak: Boolean = false,
+        remainingBreakSeconds: Int = 0,
+        allowBreaks: Boolean = true,
     ): Notification {
         ensureChannels(context)
         val channel = if (isActive) CHANNEL_ACTIVE else CHANNEL_REMINDER
@@ -355,8 +381,8 @@ object SessionNotifications {
         // Fully custom views so our custom surface fills the notification body edge-to-edge
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             builder.setPriority(Notification.PRIORITY_HIGH)
-            builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive))
-            builder.setCustomBigContentView(buildExpandedView(context, id, sessionId, title, targetAtMillis, isActive, violationsText))
+            builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive, isOnBreak))
+            builder.setCustomBigContentView(buildExpandedView(context, id, sessionId, title, targetAtMillis, isActive, violationsText, isOnBreak, remainingBreakSeconds, allowBreaks))
         }
 
         val timeoutMs = timeoutAtMillis - System.currentTimeMillis()
@@ -385,10 +411,21 @@ object SessionNotifications {
         timeoutAtMillis: Long,
         isActive: Boolean,
         violationsText: String? = null,
+        isOnBreak: Boolean? = null,
+        remainingBreakSeconds: Int? = null,
+        allowBreaks: Boolean? = null,
     ) {
+        val service = AppBlockerService.instance
+        val effectiveIsOnBreak = isOnBreak ?: (service?.isBreakActive() ?: false)
+        val effectiveRemainingBreak = remainingBreakSeconds ?: (service?.getRemainingBreakSeconds() ?: 0)
+        val effectiveAllowBreaks = allowBreaks ?: (service?.getAllowBreaks() ?: true)
+
         val targetId = if (isActive) ACTIVE_NOTIFICATION_ID else id
         val notification = buildNotification(
-            context, targetId, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText
+            context, targetId, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText,
+            isOnBreak = effectiveIsOnBreak,
+            remainingBreakSeconds = effectiveRemainingBreak,
+            allowBreaks = effectiveAllowBreaks
         )
         if (isActive) {
             latestActiveNotification = notification

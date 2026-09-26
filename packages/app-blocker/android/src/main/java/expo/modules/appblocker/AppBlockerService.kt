@@ -26,6 +26,7 @@ class AppBlockerService : Service() {
     private val temporarilyAllowed = mutableMapOf<String, Long>()
     /** True while a break is active — skip all violation detection */
     private var breakActive = false
+    private var breakEndsAtMillis: Long = 0L
     private var breakEndHandler: Handler? = null
     private var breakEndRunnable: Runnable? = null
 
@@ -40,11 +41,70 @@ class AppBlockerService : Service() {
     private var currentSessionName: String? = null
     private var currentTargetMillis: Long = 0L
 
+    fun isBreakActive(): Boolean = breakActive
+    fun getRemainingBreakSeconds(): Int = remainingBreakSeconds
+    fun getAllowBreaks(): Boolean = allowBreaks
+
+    fun updateActiveNotification() {
+        val rawName = currentSessionName ?: "Focus"
+        val titleText = if (rawName.endsWith(" is running")) rawName else "$rawName is running"
+        val sessionId = currentSessionId ?: ""
+        val targetMillis = if (currentTargetMillis > System.currentTimeMillis()) {
+            currentTargetMillis
+        } else {
+            System.currentTimeMillis() + 25 * 60 * 1000L
+        }
+
+        val notif = SessionNotifications.buildNotification(
+            context = this,
+            id = SessionNotifications.ACTIVE_NOTIFICATION_ID,
+            sessionId = sessionId,
+            title = titleText,
+            body = if (breakActive) "On break" else "In progress",
+            targetAtMillis = targetMillis,
+            timeoutAtMillis = targetMillis,
+            isActive = true,
+            violationsText = if (breakActive) "Break active" else "Monitoring active",
+            isOnBreak = breakActive,
+            remainingBreakSeconds = remainingBreakSeconds,
+            allowBreaks = allowBreaks
+        )
+        SessionNotifications.latestActiveNotification = notif
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.notify(SessionNotifications.ACTIVE_NOTIFICATION_ID, notif)
+    }
+
+    private fun endBreakInternal() {
+        if (!breakActive && breakEndsAtMillis == 0L) return
+        breakActive = false
+        breakEndsAtMillis = 0L
+        breakEndRunnable?.let { breakEndHandler?.removeCallbacks(it) }
+        breakEndRunnable = null
+        Log.d("AppBlocker", "Break ended; re-enforcing blocking immediately")
+
+        // Update notification: unpause timer & re-evaluate break button
+        updateActiveNotification()
+
+        // Check foreground app immediately! If user is in a blocked app, overlay appears instantly!
+        checkForegroundApp()
+
+        // Broadcast break-ended to JS
+        val broadcast = Intent("com.focussive.app.BREAK_ENDED")
+        LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast)
+    }
+
     private val monitorRunnable = object : Runnable {
         override fun run() {
             if (!isMonitoring) return
+            val now = System.currentTimeMillis()
+
+            // If a break is active, check if its time has expired!
+            if (breakActive && breakEndsAtMillis > 0L && now >= breakEndsAtMillis) {
+                endBreakInternal()
+            }
+
             // If session time elapsed, stop foreground service and clear ongoing notification
-            if (currentTargetMillis > 0L && System.currentTimeMillis() >= currentTargetMillis) {
+            if (currentTargetMillis > 0L && now >= currentTargetMillis) {
                 Log.d("AppBlocker", "Session time elapsed; dismissing active notification and stopping service")
                 isMonitoring = false
                 stopForeground(true)
@@ -78,6 +138,7 @@ class AppBlockerService : Service() {
                 if (pkgs != null) blockedPackages = pkgs
                 allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", false)
                 remainingBreakSeconds = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
+                updateActiveNotification()
                 return START_NOT_STICKY
             }
 
@@ -101,30 +162,33 @@ class AppBlockerService : Service() {
             "TAKE_BREAK" -> {
                 val packageName = intent.getStringExtra("PACKAGE_NAME")
                 val breakMinutes = intent.getIntExtra("BREAK_MINUTES", 1).coerceAtLeast(1)
+                val breakMs = breakMinutes * 60 * 1000L
                 Log.d("AppBlocker", "Break started: $breakMinutes min (requested by $packageName)")
 
                 // Deduct break time from remaining budget
                 remainingBreakSeconds = (remainingBreakSeconds - breakMinutes * 60).coerceAtLeast(0)
                 breakActive = true
+                breakEndsAtMillis = System.currentTimeMillis() + breakMs
+                if (currentTargetMillis > 0L) {
+                    currentTargetMillis += breakMs
+                }
+
+                // Update notification immediately: pause timer & grey out break button
+                updateActiveNotification()
 
                 // Cancel any previous break timer
                 breakEndRunnable?.let { breakEndHandler?.removeCallbacks(it) }
 
                 val runnable = Runnable {
-                    breakActive = false
-                    Log.d("AppBlocker", "Break ended")
-
-                    // Broadcast break-ended to JS
-                    val broadcast = Intent("com.focussive.app.BREAK_ENDED")
-                    LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast)
+                    endBreakInternal()
                 }
                 breakEndRunnable = runnable
-                breakEndHandler?.postDelayed(runnable, breakMinutes * 60 * 1000L)
+                breakEndHandler?.postDelayed(runnable, breakMs)
 
                 // Broadcast break-started to JS (JS will call the API endpoint)
                 val broadcast = Intent("com.focussive.app.BREAK_STARTED").apply {
                     putExtra("BREAK_MINUTES", breakMinutes)
-                    putExtra("PACKAGE_NAME", packageName)
+                    putExtra("PACKAGE_NAME", packageName ?: "")
                 }
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast)
 
@@ -133,7 +197,10 @@ class AppBlockerService : Service() {
 
             "STOP" -> {
                 isMonitoring = false
+                breakActive = false
+                breakEndsAtMillis = 0L
                 handler.removeCallbacks(monitorRunnable)
+                breakEndRunnable?.let { breakEndHandler?.removeCallbacks(it) }
                 stopForeground(true)
                 SessionNotifications.cancel(this, SessionNotifications.ACTIVE_NOTIFICATION_ID)
                 stopSelf()
@@ -277,11 +344,14 @@ class AppBlockerService : Service() {
             id = SessionNotifications.ACTIVE_NOTIFICATION_ID,
             sessionId = sessionId,
             title = titleText,
-            body = "In progress",
+            body = if (breakActive) "On break" else "In progress",
             targetAtMillis = targetMillis,
             timeoutAtMillis = targetMillis,
             isActive = true,
-            violationsText = "Monitoring active"
+            violationsText = if (breakActive) "Break active" else "Monitoring active",
+            isOnBreak = breakActive,
+            remainingBreakSeconds = remainingBreakSeconds,
+            allowBreaks = allowBreaks
         )
     }
 

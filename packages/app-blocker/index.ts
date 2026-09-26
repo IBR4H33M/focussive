@@ -30,6 +30,10 @@ export function stopMonitoring() {
   return AppBlockerModule.stopMonitoring();
 }
 
+export function takeBreak(minutes: number) {
+  return AppBlockerModule.takeBreak(minutes);
+}
+
 export function updateBlockedApps(blockedPackages: string[]) {
   return AppBlockerModule.updateBlockedApps(blockedPackages);
 }

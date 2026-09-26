@@ -337,9 +337,17 @@ export default function SessionDetailScreen() {
     if (session && action === 'break' && !breakHandledRef.current) {
       breakHandledRef.current = true;
       const onBreak = (session as any).is_on_break ?? false;
+      const remainingMinutes = Math.floor((session.break_used_seconds != null
+        ? Math.max(0, ((session.max_break_minutes ?? 0) * 60) - session.break_used_seconds)
+        : (session.max_break_minutes ?? 0) * 60) / 60);
+
       if (session.allow_breaks && !onBreak) {
-        setBreakPickerMinutes(1);
-        setBreakModalVisible(true);
+        if (remainingMinutes > 0) {
+          setBreakPickerMinutes(1);
+          setBreakModalVisible(true);
+        } else {
+          Alert.alert('No Break Available', 'You do not have any break time left for this session.');
+        }
       } else if (!session.allow_breaks) {
         Alert.alert('Breaks Not Allowed', 'Breaks are disabled for this session.');
       } else if (onBreak) {
