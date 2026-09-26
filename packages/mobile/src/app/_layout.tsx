@@ -3,9 +3,9 @@
 // ============================================================
 
 import React, { useEffect, useState } from 'react';
-import { Stack, useRouter, useSegments, useFocusEffect } from 'expo-router';
+import { Stack, useRouter, useSegments, useFocusEffect, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
+import { View, ActivityIndicator, Platform, TouchableOpacity, LogBox } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -38,6 +38,11 @@ const clerkPublishableKey =
   (Constants.expoConfig?.extra as Record<string, string> | undefined)?.clerkPublishableKey ||
   'pk_test_Zml0LXN0dXJnZW9uLTQwNC5jbGVyay5hY2NvdW50cy5kZXYk';
 
+// Ignore known upstream expo-router Android linking initialization warning (expo/expo #35224)
+LogBox.ignoreLogs([
+  "Can't perform a React state update on a component that hasn't mounted yet",
+]);
+
 // Configure foreground notification display once at module load
 setupNotificationHandler();
 // Intercept all alerts across the app to use custom app theme
@@ -49,6 +54,7 @@ function RootLayoutContent() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const rootNavigationState = useRootNavigationState();
   const { completedSessionTierData, dismissCompletedTierCard } = useSessions();
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [missingPermissions, setMissingPermissions] = useState<MissingPermissions>({
@@ -62,7 +68,9 @@ function RootLayoutContent() {
     const openSessionFromNotification = (response: Notifications.NotificationResponse) => {
       const sessionId = response.notification.request.content.data?.sessionId;
       if (typeof sessionId === 'string' && sessionId.length > 0) {
-        router.push(`/session/${sessionId}` as never);
+        setTimeout(() => {
+          router.push(`/session/${sessionId}` as never);
+        }, 100);
       }
     };
 
@@ -80,19 +88,25 @@ function RootLayoutContent() {
   }, [router]);
 
   useEffect(() => {
-    if (isLoading) return; // wait until auth state is known
+    if (isLoading || !rootNavigationState?.key) return; // wait until auth state is known and root navigation has mounted
 
     const inAuthGroup = segments[0] === '(auth)';
     const isExtensionScreen = (segments as string[]).includes('extension-qr');
 
     if (isAuthenticated && inAuthGroup && !isExtensionScreen) {
       // User just logged in — send them to the main app
-      router.replace('/(tabs)' as never);
+      const timer = setTimeout(() => {
+        router.replace('/(tabs)' as never);
+      }, 0);
+      return () => clearTimeout(timer);
     } else if (!isAuthenticated && !inAuthGroup) {
       // User logged out — send them to login
-      router.replace('/(auth)/login' as never);
+      const timer = setTimeout(() => {
+        router.replace('/(auth)/login' as never);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, segments, rootNavigationState?.key]);
 
   // Check all app permissions once the user is authenticated
   useFocusEffect(
