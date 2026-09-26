@@ -805,7 +805,7 @@ export default function SettingsScreen() {
                   onPress={() => openPaywall('settings')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.upgradeBtnText, { color: '#877023' }]}>Upgrade</Text>
+                  <Text style={[styles.upgradeBtnText, { color: '#4A3600' }]}>Upgrade</Text>
                 </TouchableOpacity>
                 <Text style={{ color: theme.text, fontSize: 13, fontWeight: '500', flex: 1, lineHeight: 18 }}>
                   Upgrade to pro for a more focussive experience!
@@ -1712,7 +1712,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D4AF37',
   },
   proBadgeText: {
-    color: '#877023',
+    color: '#4A3600',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -1728,7 +1728,7 @@ const styles = StyleSheet.create({
   upgradeBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#877023',
+    color: '#4A3600',
   },
   // Driving Forces row button in Edit Profile modal
   drivingForcesBtn: {

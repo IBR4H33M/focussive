@@ -95,7 +95,7 @@ export default function PaywallModal() {
                 style={{ width: 14, height: 14, marginRight: 6 }}
                 resizeMode="contain"
               />
-              <Text style={[styles.badgeText, { color: '#877023' }]}>FOCUSSIVE PRO</Text>
+              <Text style={[styles.badgeText, { color: '#4A3600' }]}>FOCUSSIVE PRO</Text>
             </View>
             <TouchableOpacity
               onPress={closePaywall}
@@ -293,13 +293,13 @@ export default function PaywallModal() {
               activeOpacity={0.85}
             >
               {isLoading ? (
-                <ActivityIndicator color="#877023" size="small" />
+                <ActivityIndicator color="#4A3600" size="small" />
               ) : (
                 <>
-                  <Text style={[styles.actionBtnText, { color: '#877023' }]}>
+                  <Text style={[styles.actionBtnText, { color: '#4A3600' }]}>
                     {!trialUsed ? 'Start 3-Week Free Trial' : 'Subscribe Now'}
                   </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#877023" style={{ marginLeft: 6 }} />
+                  <Ionicons name="arrow-forward" size={18} color="#4A3600" style={{ marginLeft: 6 }} />
                 </>
               )}
             </TouchableOpacity>
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   actionBtnText: {
-    color: '#877023',
+    color: '#4A3600',
     fontSize: 16,
     fontWeight: '800',
   },

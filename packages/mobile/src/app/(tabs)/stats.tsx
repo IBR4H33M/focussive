@@ -521,36 +521,24 @@ export default function StatsScreen() {
           {/* 4 Requested Metrics Grid (Borderless) */}
           <View style={styles.metricsGrid}>
             <View style={[styles.metricCard, { backgroundColor: containerBg }]}>
-              <View style={styles.metricIconRow}>
-                <Ionicons name="checkmark-done-circle-outline" size={17} color={theme.accent} />
-                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Sessions completed</Text>
-              </View>
+              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Sessions completed</Text>
               <Text style={[styles.metricValue, { color: theme.text }]}>{completedOnly.length}</Text>
             </View>
 
             <View style={[styles.metricCard, { backgroundColor: containerBg }]}>
-              <View style={styles.metricIconRow}>
-                <Ionicons name="time-outline" size={17} color="#3B82F6" />
-                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Hours focused</Text>
-              </View>
+              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Hours focused</Text>
               <Text style={[styles.metricValue, { color: theme.text }]}>{formattedFocusTime}</Text>
             </View>
 
             <View style={[styles.metricCard, { backgroundColor: containerBg }]}>
-              <View style={styles.metricIconRow}>
-                <Ionicons name="shield-outline" size={17} color={totalViolations > 0 ? theme.danger : '#10B981'} />
-                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Distraction attempts</Text>
-              </View>
+              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Distraction attempts</Text>
               <Text style={[styles.metricValue, { color: totalViolations > 0 ? theme.danger : theme.text }]}>
                 {totalViolations} blocked
               </Text>
             </View>
 
             <View style={[styles.metricCard, { backgroundColor: containerBg }]}>
-              <View style={styles.metricIconRow}>
-                <Ionicons name="flame-outline" size={17} color="#F59E0B" />
-                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Longest clean streak</Text>
-              </View>
+              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Longest clean streak</Text>
               <Text style={[styles.metricValue, { color: theme.text }]}>
                 {cleanStreak} session{cleanStreak !== 1 ? 's' : ''}
               </Text>
@@ -1210,7 +1198,6 @@ export default function StatsScreen() {
       {/* ── Archetype Selection Modal ── */}
       <Modal
         visible={archetypeModalVisible}
-        transparent
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setArchetypeModalVisible(false)}
@@ -1934,7 +1921,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D4AF37',
   },
   historyUpgradePillText: {
-    color: '#877023',
+    color: '#4A3600',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -1945,7 +1932,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D4AF37',
   },
   periodProText: {
-    color: '#877023',
+    color: '#4A3600',
     fontSize: 9,
     fontWeight: '800',
   },

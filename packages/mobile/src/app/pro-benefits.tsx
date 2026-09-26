@@ -178,7 +178,7 @@ export default function ProBenefitsScreen() {
                   style={styles.headerBadgeIcon}
                   resizeMode="contain"
                 />
-                <Text style={[styles.proHeaderText, { color: '#877023' }]}>PRO</Text>
+                <Text style={[styles.proHeaderText, { color: '#4A3600' }]}>PRO</Text>
               </View>
             </View>
           </View>
@@ -254,8 +254,8 @@ export default function ProBenefitsScreen() {
               style={{ width: 18, height: 18, marginRight: 6 }}
               resizeMode="contain"
             />
-            <Text style={[styles.upgradeCtaBtnText, { color: '#877023' }]}>Upgrade to Pro</Text>
-            <Ionicons name="arrow-forward" size={18} color="#877023" style={{ marginLeft: 4 }} />
+            <Text style={[styles.upgradeCtaBtnText, { color: '#4A3600' }]}>Upgrade to Pro</Text>
+            <Ionicons name="arrow-forward" size={18} color="#4A3600" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         )}
       </View>
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   proActiveBannerText: {
-    color: '#877023',
+    color: '#4A3600',
     fontSize: 14,
     fontWeight: '700',
   },
