@@ -33,6 +33,16 @@ const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.SUNDAY, label: 'Sun' },
 ];
 
+const ALL_WEEKDAYS: Weekday[] = [
+  Weekday.MONDAY,
+  Weekday.TUESDAY,
+  Weekday.WEDNESDAY,
+  Weekday.THURSDAY,
+  Weekday.FRIDAY,
+  Weekday.SATURDAY,
+  Weekday.SUNDAY,
+];
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function CreateSessionScreen() {
@@ -46,9 +56,9 @@ export default function CreateSessionScreen() {
     { start_time: '08:00', end_time: '09:00' },
   ]);
   const [use24Hour, setUse24Hour] = useState(false);
-  const [schedule, setSchedule] = useState<ScheduleType>(ScheduleType.TODAY);
-  const [recurringDays, setRecurringDays] = useState<Weekday[]>([]);   // for RECURRING
-  const [scheduledDates, setScheduledDates] = useState<string[]>([]);   // for SCHEDULED
+  const [scheduleTab, setScheduleTab] = useState<'everyday' | 'recurring' | 'scheduled'>('everyday');
+  const [recurringDays, setRecurringDays] = useState<Weekday[]>(ALL_WEEKDAYS);   // for EVERYDAY & RECURRING
+  const [scheduledDates, setScheduledDates] = useState<string[]>([]);   // for SCHEDULED (One time)
   const [mobileFocus, setMobileFocus] = useState(false);
   const [browserFocus, setBrowserFocus] = useState(false);
   const [appGroups, setAppGroups] = useState<AppGroup[]>([]);
@@ -102,8 +112,33 @@ export default function CreateSessionScreen() {
     }
   }
 
+  function handleSelectScheduleTab(tab: 'everyday' | 'recurring' | 'scheduled') {
+    setScheduleTab(tab);
+    if (tab === 'everyday') {
+      setRecurringDays(ALL_WEEKDAYS);
+    } else if (tab === 'recurring') {
+      if (recurringDays.length === 0) {
+        setRecurringDays(ALL_WEEKDAYS);
+      }
+    } else if (tab === 'scheduled') {
+      if (scheduledDates.length === 0) {
+        const today = new Date();
+        const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        setScheduledDates([todayISO]);
+      }
+    }
+  }
+
   function toggleRecurringDay(day: Weekday) {
-    setRecurringDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+    setRecurringDays(prev => {
+      const next = prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day];
+      if (next.length === 7) {
+        setScheduleTab('everyday');
+      } else {
+        setScheduleTab('recurring');
+      }
+      return next;
+    });
   }
   function toggleScheduledDate(iso: string) {
     setScheduledDates(prev => prev.includes(iso) ? prev.filter(d => d !== iso) : [...prev, iso]);
@@ -140,11 +175,11 @@ export default function CreateSessionScreen() {
     const duration = Math.max(1, slotMinutes);
     const startTime = primarySlot.start_time;
 
-    if (schedule === ScheduleType.RECURRING && recurringDays.length === 0) {
+    if (scheduleTab !== 'scheduled' && recurringDays.length === 0) {
       Alert.alert('Error', 'Select at least one day for recurring sessions');
       return;
     }
-    if (schedule === ScheduleType.SCHEDULED && scheduledDates.length === 0) {
+    if (scheduleTab === 'scheduled' && scheduledDates.length === 0) {
       Alert.alert('Error', 'Select at least one date');
       return;
     }
@@ -189,12 +224,10 @@ export default function CreateSessionScreen() {
       await sessionApi.create({
         name: name.trim(),
         duration,
-        schedule,
-        schedule_days: schedule === ScheduleType.RECURRING
-          ? recurringDays
-          : schedule === ScheduleType.SCHEDULED
+        schedule: scheduleTab === 'scheduled' ? ScheduleType.SCHEDULED : ScheduleType.RECURRING,
+        schedule_days: scheduleTab === 'scheduled'
           ? scheduledDates
-          : [],
+          : recurringDays,
         start_time: startTime,
         time_slots: timeSlots,
         mobile_focus: mobileFocus,
@@ -270,19 +303,19 @@ export default function CreateSessionScreen() {
       <Text style={[styles.label, { color: theme.textSecondary }]}>SCHEDULE</Text>
       <View style={styles.scheduleRow}>
         {([
-          { key: ScheduleType.TODAY, label: 'Today' },
-          { key: ScheduleType.RECURRING, label: 'Recurring' },
-          { key: ScheduleType.SCHEDULED, label: 'Later' },
+          { key: 'everyday', label: 'Everyday' },
+          { key: 'recurring', label: 'Recurring' },
+          { key: 'scheduled', label: 'One time' },
         ] as const).map(opt => {
-          const isSelected = schedule === opt.key;
+          const isSelected = scheduleTab === opt.key;
           return (
             <TouchableOpacity
-              key={String(opt.key)}
+              key={opt.key}
               style={[
                 styles.scheduleBtn,
                 { backgroundColor: isSelected ? theme.accent : theme.surface },
               ]}
-              onPress={() => setSchedule(opt.key)}
+              onPress={() => handleSelectScheduleTab(opt.key)}
               activeOpacity={0.8}
             >
               <Text
@@ -301,8 +334,8 @@ export default function CreateSessionScreen() {
         })}
       </View>
 
-      {/* Recurring: weekday picker */}
-      {schedule === ScheduleType.RECURRING && (
+      {/* Everyday / Recurring: weekday picker */}
+      {(scheduleTab === 'everyday' || scheduleTab === 'recurring') && (
         <View style={styles.daysRow}>
           {WEEKDAYS.map((day, index) => {
             const isSelected = recurringDays.includes(day.key);
@@ -342,8 +375,8 @@ export default function CreateSessionScreen() {
         </View>
       )}
 
-      {/* Scheduled: calendar date picker */}
-      {schedule === ScheduleType.SCHEDULED && (
+      {/* One time: calendar date picker */}
+      {scheduleTab === 'scheduled' && (
         <>
           <MiniCalendar selectedDates={scheduledDates} onToggleDate={toggleScheduledDate} theme={theme} />
           {scheduledDates.length > 0 && (

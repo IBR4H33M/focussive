@@ -38,6 +38,16 @@ const WEEKDAYS: { key: Weekday; label: string }[] = [
   { key: Weekday.SUNDAY, label: 'Sun' },
 ];
 
+const ALL_WEEKDAYS: Weekday[] = [
+  Weekday.MONDAY,
+  Weekday.TUESDAY,
+  Weekday.WEDNESDAY,
+  Weekday.THURSDAY,
+  Weekday.FRIDAY,
+  Weekday.SATURDAY,
+  Weekday.SUNDAY,
+];
+
 // Break accent. Raw Saffron sits at ~1.7:1 on the light Cosmic latte
 // background, so light mode uses a darkened variant of the same hue.
 const BREAK_ACCENT_DARK = '#F6C531';
@@ -87,7 +97,7 @@ export default function SessionDetailScreen() {
   const [editTimeSlots, setEditTimeSlots] = useState<SessionTimeSlot[]>([
     { start_time: '08:00', end_time: '09:00' },
   ]);
-  const [editSchedule, setEditSchedule] = useState<ScheduleType>(ScheduleType.TODAY);
+  const [editScheduleTab, setEditScheduleTab] = useState<'everyday' | 'recurring' | 'scheduled'>('everyday');
   const [editScheduleDays, setEditScheduleDays] = useState<Weekday[]>([]);
   const [editScheduledDates, setEditScheduledDates] = useState<string[]>([]);
   const [editMobileFocus, setEditMobileFocus] = useState(false);
@@ -178,13 +188,18 @@ export default function SessionDetailScreen() {
         },
       ]);
     }
-    const sched = (session.schedule as ScheduleType) || ScheduleType.TODAY;
-    setEditSchedule(sched);
+    const sched = (session.schedule as ScheduleType) || ScheduleType.RECURRING;
     if (sched === ScheduleType.RECURRING) {
-      setEditScheduleDays((session.schedule_days as Weekday[]) || []);
+      const days = (session.schedule_days as Weekday[]) || [];
+      setEditScheduleDays(days);
+      setEditScheduleTab(days.length === 7 ? 'everyday' : 'recurring');
       setEditScheduledDates([]);
-    } else if (sched === ScheduleType.SCHEDULED) {
-      setEditScheduledDates((session.schedule_days as string[]) || []);
+    } else if (sched === ScheduleType.SCHEDULED || sched === ScheduleType.TODAY) {
+      setEditScheduleTab('scheduled');
+      const dates = sched === ScheduleType.TODAY
+        ? [new Date().toISOString().split('T')[0]]
+        : ((session.schedule_days as string[]) || []);
+      setEditScheduledDates(dates);
       setEditScheduleDays([]);
     } else {
       setEditScheduleDays([]);
@@ -370,6 +385,14 @@ export default function SessionDetailScreen() {
       Alert.alert('Error', 'Please add at least one time duration');
       return;
     }
+    if (editScheduleTab !== 'scheduled' && editScheduleDays.length === 0) {
+      Alert.alert('Error', 'Select at least one day for recurring sessions');
+      return;
+    }
+    if (editScheduleTab === 'scheduled' && editScheduledDates.length === 0) {
+      Alert.alert('Error', 'Select at least one date');
+      return;
+    }
 
     const primarySlot = editTimeSlots[0];
     const [sh, sm] = primarySlot.start_time.split(':').map(Number);
@@ -385,13 +408,11 @@ export default function SessionDetailScreen() {
         duration,
         start_time: primarySlot.start_time,
         time_slots: editTimeSlots,
-        schedule: editSchedule,
+        schedule: editScheduleTab === 'scheduled' ? ScheduleType.SCHEDULED : ScheduleType.RECURRING,
         schedule_days:
-          editSchedule === ScheduleType.RECURRING
-            ? editScheduleDays
-            : editSchedule === ScheduleType.SCHEDULED
+          editScheduleTab === 'scheduled'
             ? editScheduledDates
-            : [],
+            : editScheduleDays,
         mobile_focus: editMobileFocus,
         browser_focus: editBrowserFocus,
         app_group_ids: editMobileFocus && editGroupId ? [editGroupId] : [],
@@ -407,8 +428,33 @@ export default function SessionDetailScreen() {
     }
   }
 
+  function handleSelectEditScheduleTab(tab: 'everyday' | 'recurring' | 'scheduled') {
+    setEditScheduleTab(tab);
+    if (tab === 'everyday') {
+      setEditScheduleDays(ALL_WEEKDAYS);
+    } else if (tab === 'recurring') {
+      if (editScheduleDays.length === 0) {
+        setEditScheduleDays(ALL_WEEKDAYS);
+      }
+    } else if (tab === 'scheduled') {
+      if (editScheduledDates.length === 0) {
+        const today = new Date();
+        const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        setEditScheduledDates([todayISO]);
+      }
+    }
+  }
+
   function toggleDay(day: Weekday) {
-    setEditScheduleDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+    setEditScheduleDays(prev => {
+      const next = prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day];
+      if (next.length === 7) {
+        setEditScheduleTab('everyday');
+      } else {
+        setEditScheduleTab('recurring');
+      }
+      return next;
+    });
   }
   function toggleWebsite(site: string) {
     setEditWebsites(prev => prev.includes(site) ? prev.filter(s => s !== site) : [...prev, site]);
@@ -468,7 +514,17 @@ export default function SessionDetailScreen() {
           <DetailRow
             icon="calendar-outline"
             label="Schedule"
-            value={session.schedule === 'scheduled' ? 'Later' : session.schedule.charAt(0).toUpperCase() + session.schedule.slice(1)}
+            value={
+              session.schedule === 'scheduled'
+                ? 'One time'
+                : session.schedule === 'recurring' && session.schedule_days && session.schedule_days.length === 7
+                ? 'Everyday'
+                : session.schedule === 'recurring'
+                ? 'Recurring'
+                : session.schedule === 'today'
+                ? 'One time'
+                : session.schedule.charAt(0).toUpperCase() + session.schedule.slice(1)
+            }
             theme={theme}
           />
 
@@ -510,7 +566,7 @@ export default function SessionDetailScreen() {
             </View>
           )}
 
-          {/* If scheduled (Later): show date pills */}
+          {/* If scheduled (One time): show date pills */}
           {session.schedule === 'scheduled' && Array.isArray(session.schedule_days) && session.schedule_days.length > 0 && (
             <View style={styles.detailDatesRow}>
               {session.schedule_days.map((d: string) => (
@@ -710,12 +766,12 @@ export default function SessionDetailScreen() {
 
           <Text style={[styles.label, { color: theme.textSecondary }]}>SCHEDULE</Text>
           <View style={styles.scheduleRow}>
-            {[
-              { key: ScheduleType.TODAY, label: 'Today' },
-              { key: ScheduleType.RECURRING, label: 'Recurring' },
-              { key: ScheduleType.SCHEDULED, label: 'Later' },
-            ].map(opt => {
-              const isSelected = editSchedule === opt.key;
+            {([
+              { key: 'everyday', label: 'Everyday' },
+              { key: 'recurring', label: 'Recurring' },
+              { key: 'scheduled', label: 'One time' },
+            ] as const).map(opt => {
+              const isSelected = editScheduleTab === opt.key;
               return (
                 <TouchableOpacity
                   key={opt.key}
@@ -723,7 +779,7 @@ export default function SessionDetailScreen() {
                     styles.scheduleBtn,
                     { backgroundColor: isSelected ? theme.accent : theme.surface },
                   ]}
-                  onPress={() => setEditSchedule(opt.key)}
+                  onPress={() => handleSelectEditScheduleTab(opt.key)}
                   activeOpacity={0.8}
                 >
                   <Text
@@ -742,8 +798,8 @@ export default function SessionDetailScreen() {
             })}
           </View>
 
-          {/* Recurring: weekday picker */}
-          {editSchedule === ScheduleType.RECURRING && (
+          {/* Everyday / Recurring: weekday picker */}
+          {(editScheduleTab === 'everyday' || editScheduleTab === 'recurring') && (
             <View style={styles.daysRow}>
               {WEEKDAYS.map((day, index) => {
                 const isSelected = editScheduleDays.includes(day.key);
@@ -783,8 +839,8 @@ export default function SessionDetailScreen() {
             </View>
           )}
 
-          {/* Later: calendar date picker */}
-          {editSchedule === ScheduleType.SCHEDULED && (
+          {/* One time: calendar date picker */}
+          {editScheduleTab === 'scheduled' && (
             <>
               <MiniCalendar
                 selectedDates={editScheduledDates}
