@@ -260,8 +260,8 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
               {/* Status Header (No container) */}
               <View style={styles.statusSection}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <View style={[styles.statusDot, { backgroundColor: connected ? '#10B981' : '#F59E0B' }]} />
-                  <Text style={[styles.statusTitle, { color: connected ? '#10B981' : '#F59E0B' }]}>
+                  <View style={[styles.statusDot, { backgroundColor: connected ? '#1E9E44' : '#F59E0B' }]} />
+                  <Text style={[styles.statusTitle, { color: connected ? '#1E9E44' : '#F59E0B' }]}>
                     {connected ? 'Connected & Actively Monitoring' : 'Paired (Browser Offline or Inactive)'}
                   </Text>
                 </View>

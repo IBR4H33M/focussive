@@ -17,6 +17,7 @@ import {
   Image,
   Switch,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
@@ -195,6 +196,7 @@ export default function SettingsScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [use24Hour, setUse24Hour] = useState(true);
   const isDark = themeCtx.isDark;
+  const titleColor = isDark ? theme.background : theme.text;
 
   // Quote and GIF preferences
   const [quoteEnabled, setQuoteEnabled] = useState(true);
@@ -215,13 +217,12 @@ export default function SettingsScreen() {
   const [skipLimitModalVisible, setSkipLimitModalVisible] = useState(false);
   const [skipLimitInputValue, setSkipLimitInputValue] = useState('5');
 
-  // Permission accordion state
-  const [permAccordionOpen, setPermAccordionOpen] = useState(params.expandPermissions === 'true');
+  // Permission modal state
+  const [showPermissionsModal, setShowPermissionsModal] = useState(params.expandPermissions === 'true');
   const [hasUsageStats, setHasUsageStats] = useState<boolean | null>(null);
   const [hasOverlay, setHasOverlay] = useState<boolean | null>(null);
   const [hasExactAlarm, setHasExactAlarm] = useState<boolean | null>(null);
   const [hasNotifications, setHasNotifications] = useState<boolean | null>(null);
-  const accordionAnim = useRef(new Animated.Value(params.expandPermissions === 'true' ? 1 : 0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
   const permissionsRef = useRef<View>(null);
 
@@ -250,14 +251,10 @@ export default function SettingsScreen() {
     fetchExtensionStatus();
   }, []);
 
-  // Scroll to permissions section if coming from permission modal
+  // Open permissions sheet if coming from permission modal
   useEffect(() => {
-    if (params.expandPermissions === 'true' && permissionsRef.current && scrollViewRef.current) {
-      setTimeout(() => {
-        permissionsRef.current?.measureInWindow((x, y) => {
-          scrollViewRef.current?.scrollTo({ y: y - 60, animated: true });
-        });
-      }, 100);
+    if (params.expandPermissions === 'true') {
+      setShowPermissionsModal(true);
     }
   }, [params.expandPermissions]);
 
@@ -354,17 +351,6 @@ export default function SettingsScreen() {
     // Reschedule reminders with new offset (fire and forget)
     scheduleSessionReminders(allSessions, activeSessions).catch(() => {});
     Alert.alert('Saved', `You'll be reminded ${parsed} minute${parsed !== 1 ? 's' : ''} before each session.`);
-  }
-
-  function togglePermAccordion() {
-    const toValue = permAccordionOpen ? 0 : 1;
-    setPermAccordionOpen(!permAccordionOpen);
-    Animated.spring(accordionAnim, {
-      toValue,
-      useNativeDriver: false,
-      tension: 120,
-      friction: 14,
-    }).start();
   }
 
   async function loadTimeFormat() {
@@ -1036,188 +1022,40 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionTitle, { color: theme.accent, fontWeight: isDark ? '700' : '800' }]}>SYSTEM</Text>
 
         <View style={[styles.sectionCard, { backgroundColor: theme.surface }]}>
-          {/* App Permissions Accordion */}
+          {/* App Permissions */}
           <TouchableOpacity
             style={styles.cardItem}
-            onPress={togglePermAccordion}
+            onPress={() => setShowPermissionsModal(true)}
             activeOpacity={0.7}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={[styles.menuText, { color: theme.text }]}>App permissions</Text>
-              {permsMissing && (
-                <Ionicons name="warning-outline" size={16} color={theme.danger} />
-              )}
-              {allPermsGranted && (
-                <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
-              )}
+              {allPermsGranted ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="checkmark-circle" size={16} color="#1E9E44" />
+                  <Text style={{ fontSize: 12, color: '#1E9E44', fontWeight: '500' }}>Granted</Text>
+                </View>
+              ) : permsMissing ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="warning-outline" size={16} color={theme.danger} />
+                  <Text style={{ fontSize: 12, color: theme.danger, fontWeight: '500' }}>Action required</Text>
+                </View>
+              ) : null}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <TouchableOpacity
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handleRefreshPermissions();
-                }}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                style={{ padding: 4 }}
-                activeOpacity={0.6}
-              >
-                <Animated.View
-                  style={{
-                    transform: [{
-                      rotate: refreshAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0deg', '360deg'],
-                      }),
-                    }],
-                  }}
-                >
-                  <Ionicons name="refresh-outline" size={20} color={theme.accent} />
-                </Animated.View>
-              </TouchableOpacity>
-
-              <Animated.View
-                style={{
-                  transform: [{
-                    rotate: accordionAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0deg', '180deg'],
-                    }),
-                  }],
-                }}
-              >
-                <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
-              </Animated.View>
-            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
           </TouchableOpacity>
-
-          {/* Accordion body */}
-          {permAccordionOpen && (
-            <View
-              style={[
-                styles.accordionBody,
-                { backgroundColor: theme.background, borderColor: theme.border, marginHorizontal: 14, marginBottom: 14 },
-              ]}
-            >
-              {/* Usage Access */}
-              <TouchableOpacity
-                style={styles.permRow}
-                onPress={() => {
-                  requestUsageStatsPermission();
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.permTitle, { color: theme.text }]}>Usage Access</Text>
-                  <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
-                    Required to detect which app is in the foreground
-                  </Text>
-                </View>
-                {hasUsageStats === null ? (
-                  <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
-                ) : hasUsageStats ? (
-                  <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
-                ) : (
-                  <Ionicons name="warning" size={22} color={theme.danger} />
-                )}
-              </TouchableOpacity>
-
-              <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
-
-              {/* Overlay */}
-              <TouchableOpacity
-                style={styles.permRow}
-                onPress={() => {
-                  requestOverlayPermission();
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.permTitle, { color: theme.text }]}>Display Over Other Apps</Text>
-                  <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
-                    Required to show the block overlay on top of apps
-                  </Text>
-                </View>
-                {hasOverlay === null ? (
-                  <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
-                ) : hasOverlay ? (
-                  <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
-                ) : (
-                  <Ionicons name="warning" size={22} color={theme.danger} />
-                )}
-              </TouchableOpacity>
-
-              <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
-
-              {/* Exact Alarm */}
-              <TouchableOpacity
-                style={styles.permRow}
-                onPress={() => {
-                  requestExactAlarmPermission();
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.permTitle, { color: theme.text }]}>Allow Precise Alarms</Text>
-                  <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
-                    Required for accurate session reminder notifications
-                  </Text>
-                </View>
-                {hasExactAlarm === null ? (
-                  <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
-                ) : hasExactAlarm ? (
-                  <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
-                ) : (
-                  <Ionicons name="warning" size={22} color={theme.danger} />
-                )}
-              </TouchableOpacity>
-
-              <View style={[styles.permDivider, { backgroundColor: theme.border }]} />
-
-              {/* Notifications */}
-              <TouchableOpacity
-                style={styles.permRow}
-                onPress={async () => {
-                  try {
-                    const current = await Notifications.getPermissionsAsync();
-                    if (!current.granted && current.canAskAgain) {
-                      const req = await Notifications.requestPermissionsAsync();
-                      if (req.granted) {
-                        checkPermissionStatuses();
-                        return;
-                      }
-                    }
-                  } catch {}
-                  requestNotificationPermission();
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.permTitle, { color: theme.text }]}>Allow Notifications</Text>
-                  <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
-                    Required to send session reminders and alerts
-                  </Text>
-                </View>
-                {hasNotifications === null ? (
-                  <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
-                ) : hasNotifications ? (
-                  <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
-                ) : (
-                  <Ionicons name="warning" size={22} color={theme.danger} />
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
 
           <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
 
+          {/* Extension */}
           <TouchableOpacity style={styles.cardItem} onPress={() => setShowExtensionModal(true)} activeOpacity={0.7}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={[styles.menuText, { color: theme.text }]}>Extension</Text>
               {extensionPaired ? (
                 extensionConnected ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
-                    <Text style={{ fontSize: 12, color: theme.accent, fontWeight: '500' }}>Connected</Text>
+                    <Ionicons name="checkmark-circle" size={16} color="#1E9E44" />
+                    <Text style={{ fontSize: 12, color: '#1E9E44', fontWeight: '500' }}>Connected</Text>
                   </View>
                 ) : (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -1579,6 +1417,180 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
+      {/* App Permissions Management Modal (matching ExtensionModal bottom sheet) */}
+      <Modal
+        visible={showPermissionsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPermissionsModal(false)}
+      >
+        <View style={styles.sheetOverlay}>
+          <View style={[styles.sheetModalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {/* Header */}
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetHeaderTitle, { color: titleColor }]}>App Permissions</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity
+                  onPress={handleRefreshPermissions}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={{ padding: 4 }}
+                  activeOpacity={0.6}
+                >
+                  <Animated.View
+                    style={{
+                      transform: [{
+                        rotate: refreshAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '360deg'],
+                        }),
+                      }],
+                    }}
+                  >
+                    <Ionicons name="refresh-outline" size={20} color={isDark ? theme.background : theme.textSecondary} />
+                  </Animated.View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setShowPermissionsModal(false)}
+                  style={styles.sheetCloseBtn}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons name="close" size={22} color={isDark ? theme.background : theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.sheetContentScroll} showsVerticalScrollIndicator={false}>
+              {/* Status Header */}
+              <View style={styles.sheetStatusSection}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <View style={[styles.sheetStatusDot, { backgroundColor: allPermsGranted ? '#1E9E44' : '#F59E0B' }]} />
+                  <Text style={[styles.sheetStatusTitle, { color: allPermsGranted ? '#1E9E44' : '#F59E0B' }]}>
+                    {allPermsGranted ? 'All Permissions Granted' : 'Permissions Setup Required'}
+                  </Text>
+                </View>
+                <Text style={[styles.sheetStatusSubtitle, { color: theme.textSecondary }]}>
+                  {allPermsGranted
+                    ? 'All required system permissions are active. Focussive can detect apps, display the blocker overlay, and send reminders.'
+                    : 'Focussive needs these permissions to detect apps in the foreground, display the block overlay, and deliver timely reminders.'}
+                </Text>
+              </View>
+
+              {/* Permissions List */}
+              <View style={styles.sheetDetailsSection}>
+                <Text style={[styles.sheetDetailsSectionTitle, { color: isDark ? theme.background : theme.textSecondary }]}>
+                  REQUIRED PERMISSIONS
+                </Text>
+
+                {/* Usage Access */}
+                <TouchableOpacity
+                  style={[styles.sheetPermRow, { borderBottomColor: theme.border }]}
+                  onPress={() => requestUsageStatsPermission()}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={[styles.permTitle, { color: theme.text }]}>Usage Access</Text>
+                    <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                      Required to detect which app is in the foreground
+                    </Text>
+                  </View>
+                  {hasUsageStats === null ? (
+                    <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                  ) : hasUsageStats ? (
+                    <Ionicons name="checkmark-circle" size={22} color="#1E9E44" />
+                  ) : (
+                    <Ionicons name="warning" size={22} color={theme.danger} />
+                  )}
+                </TouchableOpacity>
+
+                {/* Overlay */}
+                <TouchableOpacity
+                  style={[styles.sheetPermRow, { borderBottomColor: theme.border }]}
+                  onPress={() => requestOverlayPermission()}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={[styles.permTitle, { color: theme.text }]}>Display Over Other Apps</Text>
+                    <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                      Required to show the block overlay on top of apps
+                    </Text>
+                  </View>
+                  {hasOverlay === null ? (
+                    <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                  ) : hasOverlay ? (
+                    <Ionicons name="checkmark-circle" size={22} color="#1E9E44" />
+                  ) : (
+                    <Ionicons name="warning" size={22} color={theme.danger} />
+                  )}
+                </TouchableOpacity>
+
+                {/* Exact Alarm */}
+                <TouchableOpacity
+                  style={[styles.sheetPermRow, { borderBottomColor: theme.border }]}
+                  onPress={() => requestExactAlarmPermission()}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={[styles.permTitle, { color: theme.text }]}>Allow Precise Alarms</Text>
+                    <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                      Required for accurate session reminder notifications
+                    </Text>
+                  </View>
+                  {hasExactAlarm === null ? (
+                    <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                  ) : hasExactAlarm ? (
+                    <Ionicons name="checkmark-circle" size={22} color="#1E9E44" />
+                  ) : (
+                    <Ionicons name="warning" size={22} color={theme.danger} />
+                  )}
+                </TouchableOpacity>
+
+                {/* Notifications */}
+                <TouchableOpacity
+                  style={[styles.sheetPermRow, { borderBottomWidth: 0 }]}
+                  onPress={async () => {
+                    try {
+                      const current = await Notifications.getPermissionsAsync();
+                      if (!current.granted && current.canAskAgain) {
+                        const req = await Notifications.requestPermissionsAsync();
+                        if (req.granted) {
+                          checkPermissionStatuses();
+                          return;
+                        }
+                      }
+                    } catch {}
+                    requestNotificationPermission();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={[styles.permTitle, { color: theme.text }]}>Allow Notifications</Text>
+                    <Text style={[styles.permDesc, { color: theme.textSecondary }]}>
+                      Required to send session reminders and alerts
+                    </Text>
+                  </View>
+                  {hasNotifications === null ? (
+                    <Ionicons name="ellipse-outline" size={22} color={theme.textSecondary} />
+                  ) : hasNotifications ? (
+                    <Ionicons name="checkmark-circle" size={22} color="#1E9E44" />
+                  ) : (
+                    <Ionicons name="warning" size={22} color={theme.danger} />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Information Hint */}
+              <View style={[styles.sheetHintBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderColor: theme.border }]}>
+                <Ionicons name="information-circle-outline" size={16} color={theme.textSecondary} />
+                <Text style={[styles.sheetHintText, { color: theme.textSecondary }]}>
+                  Tap any permission above to open Android system settings. Focussive will automatically update the status when you return.
+                </Text>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Extension Management Popup Modal */}
       <ExtensionModal
         visible={showExtensionModal}
@@ -1670,24 +1682,92 @@ const styles = StyleSheet.create({
   },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   modalBtn: { flex: 1, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  // Accordion
-  accordionBody: {
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 4,
-    marginBottom: 8,
-    overflow: 'hidden',
+  // Permissions bottom sheet modal (matching ExtensionModal)
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
   },
-  permRow: {
+  sheetModalCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    maxHeight: '90%',
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+  },
+  sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(128,128,128,0.2)',
   },
-  permDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
+  sheetHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  sheetCloseBtn: {
+    padding: 4,
+  },
+  sheetContentScroll: {
+    padding: 20,
+    gap: 16,
+  },
+  sheetStatusSection: {
+    paddingVertical: 4,
+    gap: 4,
+  },
+  sheetStatusDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+  },
+  sheetStatusTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sheetStatusSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  sheetDetailsSection: {
+    gap: 2,
+    marginTop: 4,
+  },
+  sheetDetailsSectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  sheetPermRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   permTitle: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
   permDesc: { fontSize: 12, fontWeight: '300', lineHeight: 16 },
+  sheetHintBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  sheetHintText: {
+    fontSize: 12,
+    lineHeight: 16,
+    flex: 1,
+  },
   // Session reminder
   reminderSubtext: { fontSize: 12, fontWeight: '300', marginTop: 2 },
   reminderModalDesc: { fontSize: 14, fontWeight: '300', marginBottom: 16, lineHeight: 20 },
