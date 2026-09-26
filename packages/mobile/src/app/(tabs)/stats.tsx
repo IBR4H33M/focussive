@@ -456,13 +456,9 @@ export default function StatsScreen() {
                     style={[
                       styles.progressBarFill,
                       {
-                        width: `${Math.min(
-                          100,
-                          Math.max(
-                            4,
-                            (nearestMilestone.current / nearestMilestone.target) * 100
-                          )
-                        )}%`,
+                        width: nearestMilestone.current > 0
+                          ? `${Math.min(100, (nearestMilestone.current / nearestMilestone.target) * 100)}%`
+                          : '0%',
                         backgroundColor: nearestMilestone.badge.color,
                       },
                     ]}
@@ -732,13 +728,11 @@ export default function StatsScreen() {
                     style={[
                       styles.progressBarFill,
                       {
-                        width: `${Math.min(
-                          100,
-                          Math.max(
-                            item.isUnlocked ? 100 : 2,
-                            (item.current / item.target) * 100
-                          )
-                        )}%`,
+                        width: item.isUnlocked
+                          ? '100%'
+                          : item.current > 0
+                            ? `${Math.min(100, (item.current / item.target) * 100)}%`
+                            : '0%',
                         backgroundColor: item.badge.color,
                       },
                     ]}
