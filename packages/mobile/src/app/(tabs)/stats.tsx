@@ -279,7 +279,14 @@ export default function StatsScreen() {
     const formattedFocusTime = `${focusHours}h ${focusMins.toString().padStart(2, '0')}m`;
 
     return (
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.sectionContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          styles.sectionContent,
+          { paddingBottom: Math.max(insets.bottom, 24) + 120 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* Profile Header without container */}
         <View style={styles.cleanProfileRow}>
@@ -627,7 +634,10 @@ export default function StatsScreen() {
     return (
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.sectionContent}
+        contentContainerStyle={[
+          styles.sectionContent,
+          { paddingBottom: Math.max(insets.bottom, 24) + 120 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header Summary */}
@@ -824,7 +834,10 @@ export default function StatsScreen() {
       <FlatList
         data={history}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.sectionContent}
+        contentContainerStyle={[
+          styles.sectionContent,
+          { paddingBottom: Math.max(insets.bottom, 24) + 120 },
+        ]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           !isPremium ? (
@@ -1378,7 +1391,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  sectionContent: { padding: 16, paddingBottom: 48 },
+  sectionContent: { padding: 16, paddingBottom: 160 },
 
   // Profile row without container
   cleanProfileRow: {
