@@ -127,7 +127,7 @@ export default function SessionCard({ session, isActive, isUpcoming }: SessionCa
     ? (isDark ? ACTIVE_DARK_CARD_BG : ACTIVE_LIGHT_CARD_BG)
     : isUpcomingSession
       ? UPCOMING_CARD_BG
-      : '#565E9E';
+      : (isDark ? '#5F66A2' : theme.card);
 
   const cardBorderColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_BORDER : ACTIVE_LIGHT_CARD_BORDER)
@@ -139,13 +139,13 @@ export default function SessionCard({ session, isActive, isUpcoming }: SessionCa
     ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
     : isUpcomingSession
       ? UPCOMING_CARD_TEXT
-      : '#FFFFFF';
+      : (isDark ? '#FFFFFF' : theme.text);
 
   const secondaryTextColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_MUTED : ACTIVE_LIGHT_CARD_MUTED)
     : isUpcomingSession
       ? UPCOMING_CARD_MUTED
-      : 'rgba(255, 255, 255, 0.85)';
+      : (isDark ? 'rgba(255, 255, 255, 0.85)' : theme.textSecondary);
 
   const breakColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
@@ -155,19 +155,19 @@ export default function SessionCard({ session, isActive, isUpcoming }: SessionCa
     ? (isOnBreak ? breakColor : (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT))
     : isUpcomingSession
       ? '#D97706'
-      : '#FFFFFF';
+      : (isDark ? '#FFFFFF' : theme.text);
 
   const badgeBackgroundColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_SUBTLE : ACTIVE_LIGHT_CARD_SUBTLE)
     : isUpcomingSession
       ? UPCOMING_CARD_SUBTLE
-      : 'rgba(0, 0, 0, 0.2)';
+      : (isDark ? 'rgba(0, 0, 0, 0.2)' : theme.surface);
 
   const badgeForegroundColor = isActiveSession
     ? (isDark ? ACTIVE_DARK_CARD_TEXT : ACTIVE_LIGHT_CARD_TEXT)
     : isUpcomingSession
       ? UPCOMING_CARD_MUTED
-      : '#FFFFFF';
+      : (isDark ? '#FFFFFF' : theme.textSecondary);
 
   const breakRowBorderColor = isActiveSession
     ? 'rgba(0, 0, 0, 0.2)'

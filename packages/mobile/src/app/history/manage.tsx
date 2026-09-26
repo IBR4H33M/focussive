@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { historyApi } from '@/utils/api';
 import { formatDate, formatDuration } from '@focussive/shared';
 import type { SessionHistory } from '@focussive/shared';
@@ -21,6 +21,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export default function ManageHistoryScreen() {
   const theme = useTheme();
+  const isDark = useIsDark();
   const [history, setHistory] = useState<SessionHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -95,12 +96,12 @@ export default function ManageHistoryScreen() {
   function renderItem({ item }: { item: SessionHistory }) {
     const isDeleting = deletingId === item.id;
     return (
-      <View style={[styles.row, { backgroundColor: '#565E9E', borderColor: 'transparent' }]}>
+      <View style={[styles.row, { backgroundColor: isDark ? '#5F66A2' : theme.card, borderColor: isDark ? 'transparent' : theme.border }]}>
         <View style={styles.rowInfo}>
-          <Text style={[styles.rowName, { color: '#FFFFFF' }]} numberOfLines={1}>
+          <Text style={[styles.rowName, { color: isDark ? '#FFFFFF' : theme.text }]} numberOfLines={1}>
             {item.session_name}
           </Text>
-          <Text style={[styles.rowMeta, { color: 'rgba(255, 255, 255, 0.85)' }]}>
+          <Text style={[styles.rowMeta, { color: isDark ? 'rgba(255, 255, 255, 0.85)' : theme.textSecondary }]}>
             {formatDate(item.created_at)} · {formatDuration(item.scheduled_duration)}
           </Text>
         </View>

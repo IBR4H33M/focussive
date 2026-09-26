@@ -534,7 +534,7 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
               sortedSessions.map((session) => {
                 const isActive = session.status === SessionStatus.ACTIVE;
                 const badge = getStatusBadge(session.status);
-                const cardBg = isActive ? '#22B14C' : '#565E9E';
+                const cardBg = isActive ? '#22B14C' : (isDark ? '#5F66A2' : theme.card);
 
                 return (
                   <TouchableOpacity
@@ -545,7 +545,7 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                   >
                     {/* Card Header: Name + Status Badge (small active pill removed) */}
                     <View style={styles.sessionCardHeader}>
-                      <Text style={[styles.sessionName, { color: '#FFFFFF' }]} numberOfLines={1}>
+                      <Text style={[styles.sessionName, { color: isActive || isDark ? '#FFFFFF' : theme.text }]} numberOfLines={1}>
                         {session.name}
                       </Text>
                       {!isActive && (
@@ -560,8 +560,13 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
 
                     {/* Time & Duration */}
                     <View style={styles.sessionMetaRow}>
-                      <Ionicons name="time-outline" size={14} color="rgba(255, 255, 255, 0.85)" style={{ marginRight: 6 }} />
-                      <Text style={[styles.sessionMetaText, { color: '#FFFFFF' }]}>
+                      <Ionicons
+                        name="time-outline"
+                        size={14}
+                        color={isActive || isDark ? 'rgba(255, 255, 255, 0.85)' : theme.textSecondary}
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={[styles.sessionMetaText, { color: isActive || isDark ? '#FFFFFF' : theme.text }]}>
                         {formatTime(session.start_time)} · {formatDuration(session.duration)}
                       </Text>
                     </View>
@@ -580,8 +585,8 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                               styles.cardDayBtn,
                               {
                                 backgroundColor: isSelected
-                                  ? 'rgba(255, 255, 255, 0.28)'
-                                  : 'rgba(0, 0, 0, 0.16)',
+                                  ? (isActive || isDark ? 'rgba(255, 255, 255, 0.28)' : theme.accent)
+                                  : (isActive || isDark ? 'rgba(0, 0, 0, 0.16)' : theme.surface),
                                 borderTopLeftRadius: prevSelected ? 0 : 5,
                                 borderBottomLeftRadius: prevSelected ? 0 : 5,
                                 borderTopRightRadius: nextSelected ? 0 : 5,
@@ -593,7 +598,7 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                               style={[
                                 styles.cardDayBtnText,
                                 {
-                                  color: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
+                                  color: isSelected ? '#FFFFFF' : (isActive || isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary),
                                   fontWeight: isSelected ? '700' : '400',
                                 },
                               ]}
@@ -613,21 +618,21 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                             styles.focusPill,
                             {
                               backgroundColor: session.mobile_focus
-                                ? 'rgba(0, 0, 0, 0.22)'
-                                : 'rgba(255, 255, 255, 0.12)',
+                                ? (isActive || isDark ? 'rgba(0, 0, 0, 0.22)' : `${theme.accent}20`)
+                                : (isActive || isDark ? 'rgba(255, 255, 255, 0.12)' : theme.surface),
                             },
                           ]}
                         >
                           <Ionicons
                             name="phone-portrait-outline"
                             size={10}
-                            color={session.mobile_focus ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)'}
+                            color={session.mobile_focus ? (isActive || isDark ? '#FFFFFF' : theme.accent) : (isActive || isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary)}
                             style={{ marginRight: 3 }}
                           />
                           <Text
                             style={[
                               styles.focusPillText,
-                              { color: session.mobile_focus ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)' },
+                              { color: session.mobile_focus ? (isActive || isDark ? '#FFFFFF' : theme.accent) : (isActive || isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary) },
                             ]}
                           >
                             Mobile
@@ -639,28 +644,28 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                             styles.focusPill,
                             {
                               backgroundColor: session.browser_focus
-                                ? 'rgba(0, 0, 0, 0.22)'
-                                : 'rgba(255, 255, 255, 0.12)',
+                                ? (isActive || isDark ? 'rgba(0, 0, 0, 0.22)' : `${theme.accent}20`)
+                                : (isActive || isDark ? 'rgba(255, 255, 255, 0.12)' : theme.surface),
                             },
                           ]}
                         >
                           <Ionicons
                             name="globe-outline"
                             size={10}
-                            color={session.browser_focus ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)'}
+                            color={session.browser_focus ? (isActive || isDark ? '#FFFFFF' : theme.accent) : (isActive || isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary)}
                             style={{ marginRight: 3 }}
                           />
                           <Text
                             style={[
                               styles.focusPillText,
-                              { color: session.browser_focus ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)' },
+                              { color: session.browser_focus ? (isActive || isDark ? '#FFFFFF' : theme.accent) : (isActive || isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary) },
                             ]}
                           >
                             Browser
                           </Text>
                         </View>
                       </View>
-                      <Text style={[styles.sessionDateText, { color: 'rgba(255, 255, 255, 0.75)' }]}>
+                      <Text style={[styles.sessionDateText, { color: isActive || isDark ? 'rgba(255, 255, 255, 0.75)' : theme.textSecondary }]}>
                         Created {formatDate(session.created_at)}
                       </Text>
                     </View>

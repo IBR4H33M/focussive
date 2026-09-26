@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { historyApi } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
@@ -21,6 +21,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export default function HistoryScreen() {
   const theme = useTheme();
+  const isDark = useIsDark();
   const router = useRouter();
 
   const [history, setHistory] = useState<SessionHistory[]>([]);
@@ -61,30 +62,30 @@ export default function HistoryScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: '#565E9E' }]}
+        style={[styles.card, { backgroundColor: isDark ? '#5F66A2' : theme.card }]}
         onPress={() => router.push(`/history/${item.id}` as never)}
       >
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardName, { color: '#FFFFFF' }]} numberOfLines={1}>
+          <Text style={[styles.cardName, { color: isDark ? '#FFFFFF' : theme.text }]} numberOfLines={1}>
             {item.session_name}
           </Text>
           {isCancelled && (
-            <View style={[styles.cancelBadge, { backgroundColor: 'rgba(239, 68, 68, 0.25)' }]}>
-              <Text style={[styles.cancelBadgeText, { color: '#FFB4B4' }]}>Cancelled</Text>
+            <View style={[styles.cancelBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.25)' : theme.dangerBg }]}>
+              <Text style={[styles.cancelBadgeText, { color: isDark ? '#FFB4B4' : theme.danger }]}>Cancelled</Text>
             </View>
           )}
         </View>
 
         <View style={styles.cardDetails}>
-          <Text style={[styles.cardDate, { color: 'rgba(255, 255, 255, 0.85)' }]}>
+          <Text style={[styles.cardDate, { color: isDark ? 'rgba(255, 255, 255, 0.85)' : theme.textSecondary }]}>
             {formatDate(item.created_at)}
           </Text>
-          <Text style={[styles.cardDot, { color: 'rgba(255, 255, 255, 0.85)' }]}>·</Text>
-          <Text style={[styles.cardTime, { color: 'rgba(255, 255, 255, 0.85)' }]}>
+          <Text style={[styles.cardDot, { color: isDark ? 'rgba(255, 255, 255, 0.85)' : theme.textSecondary }]}>·</Text>
+          <Text style={[styles.cardTime, { color: isDark ? 'rgba(255, 255, 255, 0.85)' : theme.textSecondary }]}>
             {formatTime(item.start_time)}
           </Text>
-          <Text style={[styles.cardDot, { color: 'rgba(255, 255, 255, 0.85)' }]}>·</Text>
-          <Text style={[styles.cardDuration, { color: 'rgba(255, 255, 255, 0.85)' }]}>
+          <Text style={[styles.cardDot, { color: isDark ? 'rgba(255, 255, 255, 0.85)' : theme.textSecondary }]}>·</Text>
+          <Text style={[styles.cardDuration, { color: isDark ? 'rgba(255, 255, 255, 0.85)' : theme.textSecondary }]}>
             {formatDuration(item.actual_duration || item.scheduled_duration)}
           </Text>
         </View>
@@ -93,7 +94,7 @@ export default function HistoryScreen() {
           <Text
             style={[
               styles.violations,
-              { color: item.violations_count > 0 ? '#FFB4B4' : 'rgba(255, 255, 255, 0.85)' },
+              { color: item.violations_count > 0 ? (isDark ? '#FFB4B4' : theme.danger) : (isDark ? 'rgba(255, 255, 255, 0.85)' : theme.textSecondary) },
             ]}
           >
             {item.violations_count} violation{item.violations_count !== 1 ? 's' : ''}
