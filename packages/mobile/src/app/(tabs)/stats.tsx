@@ -420,7 +420,10 @@ export default function StatsScreen() {
                 >
                   <Image
                     source={nearestMilestone.badge.image}
-                    style={{ width: 36, height: 36 }}
+                    style={[
+                      { width: 36, height: 36 },
+                      isDark ? { tintColor: '#FFFFFF' } : null,
+                    ]}
                     resizeMode="contain"
                   />
                 </View>
@@ -607,7 +610,7 @@ export default function StatsScreen() {
         <View style={styles.milestonesHeaderBox}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.milestonesHeaderTitle, { color: theme.text }]}>
-              Collectible Milestones
+              Milestones
             </Text>
             <Text style={[styles.milestonesHeaderSubtitle, { color: theme.textSecondary }]}>
               Complete specific focus challenges to unlock and equip unique Archetypes.
@@ -640,7 +643,12 @@ export default function StatsScreen() {
         <View style={styles.milestonesList}>
           {Object.entries(milestones).map(([key, item]) => {
             const isEquipped = selectedArchetype === item.badge.title;
-            const activeGreen = isDark ? '#2D5A43' : '#587042';
+            const activeAccent = isDark ? '#636CB5' : '#587042';
+            const iconTintColor = item.isUnlocked
+              ? item.badge.color
+              : isDark
+                ? '#FFFFFF'
+                : undefined;
 
             return (
               <View
@@ -650,7 +658,7 @@ export default function StatsScreen() {
                   {
                     backgroundColor: containerBg,
                     borderWidth: isEquipped ? 2 : 0,
-                    borderColor: isEquipped ? activeGreen : 'transparent',
+                    borderColor: isEquipped ? activeAccent : 'transparent',
                   },
                 ]}
               >
@@ -663,7 +671,10 @@ export default function StatsScreen() {
                   >
                     <Image
                       source={item.badge.image}
-                      style={{ width: 36, height: 36 }}
+                      style={[
+                        { width: 36, height: 36 },
+                        iconTintColor ? { tintColor: iconTintColor } : null,
+                      ]}
                       resizeMode="contain"
                     />
                   </View>
@@ -676,7 +687,7 @@ export default function StatsScreen() {
                         <Ionicons
                           name="checkmark-circle"
                           size={18}
-                          color={isEquipped ? (isDark ? '#8BA794' : '#587042') : '#10B981'}
+                          color={isEquipped ? activeAccent : '#10B981'}
                         />
                       ) : (
                         <Text
@@ -739,7 +750,7 @@ export default function StatsScreen() {
                   <View
                     style={[
                       styles.currentArchetypeBanner,
-                      { backgroundColor: activeGreen },
+                      { backgroundColor: activeAccent },
                     ]}
                   >
                     <Text style={styles.currentArchetypeText}>Current Archetype</Text>
@@ -1216,7 +1227,16 @@ export default function StatsScreen() {
                   activeOpacity={0.8}
                 >
                   <View style={[styles.milestoneIconBox, { backgroundColor: 'transparent' }]}>
-                    <Image source={item.badge.image} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                    <Image
+                      source={item.badge.image}
+                      style={[
+                        { width: 32, height: 32 },
+                        (item.isUnlocked ? item.badge.color : (isDark ? '#FFFFFF' : undefined))
+                          ? { tintColor: item.isUnlocked ? item.badge.color : '#FFFFFF' }
+                          : null,
+                      ]}
+                      resizeMode="contain"
+                    />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
