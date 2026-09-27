@@ -10,14 +10,15 @@ import { sessionApi } from '../utils/api';
 interface UpcomingCardProps {
   session: StoredSession;
   onRefresh?: () => void;
+  nextOccurrence?: Date;
 }
 
-function formatTimeRange(startTime: string, durationMinutes: number): string {
+function formatTimeRange(startTime: string, durationMinutes: number, occurrenceDate?: Date): string {
   if (!startTime) return '';
   const [hStr, mStr] = startTime.split(':');
   const startH = parseInt(hStr || '0', 10);
   const startM = parseInt(mStr || '0', 10);
-  const startDate = new Date();
+  const startDate = occurrenceDate ? new Date(occurrenceDate) : new Date();
   startDate.setHours(startH, startM, 0, 0);
   const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
   const fmt = (d: Date) => {
@@ -27,15 +28,26 @@ function formatTimeRange(startTime: string, durationMinutes: number): string {
     h = h % 12 || 12;
     return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
   };
-  return `${fmt(startDate)} – ${fmt(endDate)}`;
+  const range = `${fmt(startDate)} – ${fmt(endDate)}`;
+  if (occurrenceDate) {
+    const now = new Date();
+    const isTomorrow =
+      occurrenceDate.getDate() !== now.getDate() ||
+      occurrenceDate.getMonth() !== now.getMonth() ||
+      occurrenceDate.getFullYear() !== now.getFullYear();
+    if (isTomorrow) {
+      return `Tomorrow, ${range}`;
+    }
+  }
+  return range;
 }
 
-export default function UpcomingCard({ session, onRefresh }: UpcomingCardProps) {
+export default function UpcomingCard({ session, onRefresh, nextOccurrence }: UpcomingCardProps) {
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
   const [skipError, setSkipError] = useState<string | null>(null);
 
-  const timeRange = formatTimeRange(session.start_time, session.duration);
+  const timeRange = formatTimeRange(session.start_time, session.duration, nextOccurrence ?? (session as any).nextOccurrence);
   const durationLabel = formatDuration(session.duration);
 
   async function handleConfirmSkip() {

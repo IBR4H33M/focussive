@@ -68,21 +68,20 @@ export default function DashboardScreen() {
     .sort((a, b) => a.nextOccurrence.getTime() - b.nextOccurrence.getTime());
 
   // Pick the single closest upcoming session
-  const nextUpcomingSession = validUpcomingSessions.length > 0 ? validUpcomingSessions[0].session : null;
+  const nextUpcoming = validUpcomingSessions.length > 0 ? validUpcomingSessions[0] : null;
+  const nextUpcomingSession = nextUpcoming ? nextUpcoming.session : null;
+  const nextUpcomingOccurrence = nextUpcoming ? nextUpcoming.nextOccurrence : undefined;
   const nextUpcomingId = nextUpcomingSession?.id ?? null;
 
-  // Remaining sessions scheduled later today (closest first, only today)
-  const isToday = (date: Date) => {
-    return (
-      date.getFullYear() === now.getFullYear() &&
-      date.getMonth() === now.getMonth() &&
-      date.getDate() === now.getDate()
-    );
+  // Remaining sessions scheduled within the next 24 hours (closest first, excluding nextUpcoming)
+  const isWithinNext24Hours = (date: Date) => {
+    const time = date.getTime();
+    const nowTime = now.getTime();
+    return time > nowTime && time <= nowTime + 24 * 60 * 60 * 1000;
   };
 
   const scheduledSessions = validUpcomingSessions
-    .filter((item) => item.session.id !== nextUpcomingId && isToday(item.nextOccurrence))
-    .map((item) => item.session);
+    .filter((item) => item.session.id !== nextUpcomingId && isWithinNext24Hours(item.nextOccurrence));
 
 
 
@@ -227,6 +226,7 @@ export default function DashboardScreen() {
               key={nextUpcomingSession.id}
               session={nextUpcomingSession as Session & { violations_count?: number; pause_count?: number }}
               isUpcoming
+              nextOccurrence={nextUpcomingOccurrence}
             />
             {/* Show skip button under upcoming ONLY if there is no active session */}
             {!currentActiveOrPaused && (
@@ -246,18 +246,19 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Scheduled Later Today Sessions — inside a clean rounded container with filled surface color, max 2 items, and View All button */}
+        {/* Scheduled Later Sessions — inside a clean rounded container with filled surface color, max 2 items, and View All button */}
         {scheduledSessions.length > 0 && (
           <View style={[styles.scheduledContainer, { backgroundColor: theme.surface }]}>
             <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-              SCHEDULED LATER TODAY
+              SCHEDULED LATER
             </Text>
 
             <View style={styles.scheduledList}>
-              {scheduledSessions.slice(0, 2).map((session) => (
+              {scheduledSessions.slice(0, 2).map((item) => (
                 <SessionCard
-                  key={session.id}
-                  session={session as Session & { violations_count?: number; pause_count?: number }}
+                  key={item.session.id}
+                  session={item.session as Session & { violations_count?: number; pause_count?: number }}
+                  nextOccurrence={item.nextOccurrence}
                 />
               ))}
             </View>

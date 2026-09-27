@@ -217,7 +217,7 @@ export default function Popup() {
               .map((s) => ({ session: s, nextOccurrence: getNextSessionOccurrence(s as any, now) }))
               .filter((item): item is { session: StoredSession; nextOccurrence: Date } => item.nextOccurrence !== null)
               .sort((a, b) => a.nextOccurrence.getTime() - b.nextOccurrence.getTime())
-              .map((item) => item.session);
+              .map((item) => ({ ...item.session, nextOccurrence: item.nextOccurrence }));
 
             setUpcomingSessions(validUpcoming);
           } catch {

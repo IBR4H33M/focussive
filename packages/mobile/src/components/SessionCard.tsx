@@ -20,13 +20,15 @@ interface SessionCardProps {
   };
   isActive?: boolean;
   isUpcoming?: boolean;
+  nextOccurrence?: Date;
 }
 
-function formatTimeRange(startTime: string, durationMinutes: number): string {
+function formatTimeRange(startTime: string, durationMinutes: number, occurrenceDate?: Date): string {
+  if (!startTime) return '';
   const [hStr, mStr] = startTime.split(':');
   const startH = parseInt(hStr, 10);
   const startM = parseInt(mStr, 10);
-  const startDate = new Date();
+  const startDate = occurrenceDate ? new Date(occurrenceDate) : new Date();
   startDate.setHours(startH, startM, 0, 0);
   const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
   const fmt = (d: Date) => {
@@ -36,7 +38,18 @@ function formatTimeRange(startTime: string, durationMinutes: number): string {
     h = h % 12 || 12;
     return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
   };
-  return `${fmt(startDate)} – ${fmt(endDate)}`;
+  const range = `${fmt(startDate)} – ${fmt(endDate)}`;
+  if (occurrenceDate) {
+    const now = new Date();
+    const isTomorrow =
+      occurrenceDate.getDate() !== now.getDate() ||
+      occurrenceDate.getMonth() !== now.getMonth() ||
+      occurrenceDate.getFullYear() !== now.getFullYear();
+    if (isTomorrow) {
+      return `Tomorrow, ${range}`;
+    }
+  }
+  return range;
 }
 
 function getBreakSecondsLeft(breakEndsAt: string | null | undefined): number {
@@ -71,7 +84,7 @@ const UPCOMING_CARD_TEXT = '#452C03';
 const UPCOMING_CARD_MUTED = '#78350F';
 const UPCOMING_CARD_SUBTLE = 'rgba(120, 53, 15, 0.12)';
 
-export default function SessionCard({ session, isActive, isUpcoming }: SessionCardProps) {
+export default function SessionCard({ session, isActive, isUpcoming, nextOccurrence }: SessionCardProps) {
   const theme = useTheme();
   const isDark = useIsDark();
   const router = useRouter();
@@ -118,7 +131,7 @@ export default function SessionCard({ session, isActive, isUpcoming }: SessionCa
     return () => clearInterval(interval);
   }, [isOnBreak, session.break_ends_at]);
 
-  const timeRange = formatTimeRange(session.start_time, session.duration);
+  const timeRange = formatTimeRange(session.start_time, session.duration, nextOccurrence);
   const durationLabel = formatDuration(session.duration);
 
   const isUpcomingSession = isUpcoming && !isActiveSession;
