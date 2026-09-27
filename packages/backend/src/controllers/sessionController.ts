@@ -511,7 +511,11 @@ export async function skipSession(req: AuthRequest, res: Response): Promise<void
     throw new AppError('Session not found', 404, 'NOT_FOUND');
   }
 
-  if (session.status !== SessionStatus.SCHEDULED && session.status !== SessionStatus.ACTIVE) {
+  if (
+    session.status !== SessionStatus.SCHEDULED &&
+    session.status !== SessionStatus.ACTIVE &&
+    (session.status as string) !== 'paused'
+  ) {
     throw new AppError('Only upcoming or active sessions can be skipped', 400, 'INVALID_STATUS');
   }
 
@@ -545,9 +549,8 @@ export async function skipSession(req: AuthRequest, res: Response): Promise<void
   const skipUntil = new Date(now);
   skipUntil.setHours(23, 59, 59, 999);
 
-  const nextStatus = (session.schedule === 'recurring' || session.schedule === 'scheduled')
-    ? SessionStatus.SCHEDULED
-    : SessionStatus.COMPLETED;
+  const isOneTime = session.schedule === 'today';
+  const nextStatus = isOneTime ? SessionStatus.COMPLETED : SessionStatus.SCHEDULED;
 
   // End any open breaks without recording violations
   await supabase

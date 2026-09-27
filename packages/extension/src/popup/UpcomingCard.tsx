@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import type { StoredSession } from '../utils/storage';
 import { formatDuration } from '@focussive/shared';
+import { sessionApi } from '../utils/api';
 
 interface UpcomingCardProps {
   session: StoredSession;
@@ -40,15 +41,17 @@ export default function UpcomingCard({ session, onRefresh }: UpcomingCardProps) 
   async function handleConfirmSkip() {
     setIsSkipping(true);
     setSkipError(null);
-    chrome.runtime.sendMessage({ type: 'SKIP_SESSION', sessionId: session.id }, (res) => {
+    try {
+      await sessionApi.skip(session.id);
+      // Trigger background cache re-sync
+      chrome.runtime.sendMessage({ type: 'SYNC_NOW' }, () => {});
       setIsSkipping(false);
-      if (res?.success) {
-        setShowSkipConfirm(false);
-        if (onRefresh) onRefresh();
-      } else {
-        setSkipError(res?.error || 'Failed to skip session');
-      }
-    });
+      setShowSkipConfirm(false);
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      setIsSkipping(false);
+      setSkipError(err.message || 'Failed to skip session');
+    }
   }
 
   return (
@@ -97,7 +100,7 @@ export default function UpcomingCard({ session, onRefresh }: UpcomingCardProps) 
             )}
             {session.allow_breaks && (
               <span style={styles.badge}>
-                ☕ Breaks: {session.max_break_minutes || 5}m
+                Breaks: {session.max_break_minutes || 5}m
               </span>
             )}
           </div>

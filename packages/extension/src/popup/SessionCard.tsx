@@ -6,6 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { StoredSession } from '../utils/storage';
 import { formatCountdown, getRemainingSeconds } from '@focussive/shared';
 import type { Session } from '@focussive/shared';
+import { sessionApi } from '../utils/api';
 
 interface SessionCardProps {
   session: StoredSession;
@@ -121,21 +122,19 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
   }, [session.id, onRefresh]);
 
 
-  const handleConfirmSkip = useCallback(() => {
+  const handleConfirmSkip = useCallback(async () => {
     setActionLoading(true);
     setActionError(null);
-    chrome.runtime.sendMessage({
-      type: 'SKIP_SESSION',
-      sessionId: session.id,
-    }, (res) => {
+    try {
+      await sessionApi.skip(session.id);
+      chrome.runtime.sendMessage({ type: 'SYNC_NOW' }, () => {});
       setActionLoading(false);
-      if (res?.success) {
-        setShowSkipModal(false);
-        if (onRefresh) onRefresh();
-      } else {
-        setActionError(res?.error || 'Failed to skip session');
-      }
-    });
+      setShowSkipModal(false);
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      setActionLoading(false);
+      setActionError(err.message || 'Failed to skip session');
+    }
   }, [session.id, onRefresh]);
 
   const timeRange = formatTimeRange(session.start_time, session.duration);

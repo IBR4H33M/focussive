@@ -339,23 +339,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         const res = await sessionApi.skip(message.sessionId);
-        await pollSessions();
         sendResponse({ success: true, res });
+        pollSessions().catch(() => {});
       } catch (err: any) {
         sendResponse({ success: false, error: err.message || 'Failed to skip' });
-      }
-    })();
-    return true;
-  }
-
-  if (message.type === 'CANCEL_SESSION') {
-    (async () => {
-      try {
-        await sessionApi.cancel(message.sessionId);
-        await pollSessions();
-        sendResponse({ success: true });
-      } catch (err: any) {
-        sendResponse({ success: false, error: err.message || 'Failed to cancel' });
       }
     })();
     return true;
