@@ -23,11 +23,16 @@ interface SessionCardProps {
   nextOccurrence?: Date;
 }
 
-function formatTimeRange(startTime: string, durationMinutes: number, occurrenceDate?: Date): string {
-  if (!startTime) return '';
+interface FormattedTimeRange {
+  dateLabel: string | null;
+  range: string;
+}
+
+function formatTimeRange(startTime: string, durationMinutes: number, occurrenceDate?: Date): FormattedTimeRange {
+  if (!startTime) return { dateLabel: null, range: '' };
   const [hStr, mStr] = startTime.split(':');
-  const startH = parseInt(hStr, 10);
-  const startM = parseInt(mStr, 10);
+  const startH = parseInt(hStr || '0', 10);
+  const startM = parseInt(mStr || '0', 10);
   const startDate = occurrenceDate ? new Date(occurrenceDate) : new Date();
   startDate.setHours(startH, startM, 0, 0);
   const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
@@ -39,17 +44,24 @@ function formatTimeRange(startTime: string, durationMinutes: number, occurrenceD
     return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
   };
   const range = `${fmt(startDate)} – ${fmt(endDate)}`;
+  let dateLabel: string | null = null;
   if (occurrenceDate) {
     const now = new Date();
-    const isTomorrow =
-      occurrenceDate.getDate() !== now.getDate() ||
-      occurrenceDate.getMonth() !== now.getMonth() ||
-      occurrenceDate.getFullYear() !== now.getFullYear();
-    if (isTomorrow) {
-      return `Tomorrow, ${range}`;
+    const occMidnight = new Date(occurrenceDate.getFullYear(), occurrenceDate.getMonth(), occurrenceDate.getDate());
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((occMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) {
+      dateLabel = 'Tomorrow';
+    } else if (diffDays > 1) {
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      if (diffDays < 7) {
+        dateLabel = days[occurrenceDate.getDay()];
+      } else {
+        dateLabel = occurrenceDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      }
     }
   }
-  return range;
+  return { dateLabel, range };
 }
 
 function getBreakSecondsLeft(breakEndsAt: string | null | undefined): number {
@@ -131,7 +143,7 @@ export default function SessionCard({ session, isActive, isUpcoming, nextOccurre
     return () => clearInterval(interval);
   }, [isOnBreak, session.break_ends_at]);
 
-  const timeRange = formatTimeRange(session.start_time, session.duration, nextOccurrence);
+  const { dateLabel, range: timeRange } = formatTimeRange(session.start_time, session.duration, nextOccurrence);
   const durationLabel = formatDuration(session.duration);
 
   const isUpcomingSession = isUpcoming && !isActiveSession;
@@ -221,7 +233,14 @@ export default function SessionCard({ session, isActive, isUpcoming, nextOccurre
 
       {/* Time row: range left, main countdown right */}
       <View style={styles.timeRow}>
-        <Text style={[styles.timeRange, { color: secondaryTextColor }]}>{timeRange}</Text>
+        <View style={styles.timeRangeContainer}>
+          {dateLabel ? (
+            <Text style={[styles.timeDate, { color: secondaryTextColor }]}>
+              {dateLabel}
+            </Text>
+          ) : null}
+          <Text style={[styles.timeRange, { color: secondaryTextColor }]}>{timeRange}</Text>
+        </View>
         <Text style={[styles.durationBig, { color: timerColor }]}>
           {isActiveSession ? formatCountdown(remaining) : durationLabel}
         </Text>
@@ -301,10 +320,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
+  timeRangeContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingRight: 8,
+  },
+  timeDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+    letterSpacing: 0.2,
+  },
   timeRange: {
     fontSize: 16,
     fontWeight: '500',
-    flex: 1,
   },
   durationBig: {
     fontSize: 40,

@@ -13,8 +13,13 @@ interface UpcomingCardProps {
   nextOccurrence?: Date;
 }
 
-function formatTimeRange(startTime: string, durationMinutes: number, occurrenceDate?: Date): string {
-  if (!startTime) return '';
+interface FormattedTimeRange {
+  dateLabel: string | null;
+  range: string;
+}
+
+function formatTimeRange(startTime: string, durationMinutes: number, occurrenceDate?: Date): FormattedTimeRange {
+  if (!startTime) return { dateLabel: null, range: '' };
   const [hStr, mStr] = startTime.split(':');
   const startH = parseInt(hStr || '0', 10);
   const startM = parseInt(mStr || '0', 10);
@@ -29,17 +34,24 @@ function formatTimeRange(startTime: string, durationMinutes: number, occurrenceD
     return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
   };
   const range = `${fmt(startDate)} – ${fmt(endDate)}`;
+  let dateLabel: string | null = null;
   if (occurrenceDate) {
     const now = new Date();
-    const isTomorrow =
-      occurrenceDate.getDate() !== now.getDate() ||
-      occurrenceDate.getMonth() !== now.getMonth() ||
-      occurrenceDate.getFullYear() !== now.getFullYear();
-    if (isTomorrow) {
-      return `Tomorrow, ${range}`;
+    const occMidnight = new Date(occurrenceDate.getFullYear(), occurrenceDate.getMonth(), occurrenceDate.getDate());
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((occMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) {
+      dateLabel = 'Tomorrow';
+    } else if (diffDays > 1) {
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      if (diffDays < 7) {
+        dateLabel = days[occurrenceDate.getDay()];
+      } else {
+        dateLabel = occurrenceDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      }
     }
   }
-  return range;
+  return { dateLabel, range };
 }
 
 export default function UpcomingCard({ session, onRefresh, nextOccurrence }: UpcomingCardProps) {
@@ -47,7 +59,7 @@ export default function UpcomingCard({ session, onRefresh, nextOccurrence }: Upc
   const [isSkipping, setIsSkipping] = useState(false);
   const [skipError, setSkipError] = useState<string | null>(null);
 
-  const timeRange = formatTimeRange(session.start_time, session.duration, nextOccurrence ?? (session as any).nextOccurrence);
+  const { dateLabel, range: timeRange } = formatTimeRange(session.start_time, session.duration, nextOccurrence ?? (session as any).nextOccurrence);
   const durationLabel = formatDuration(session.duration);
 
   async function handleConfirmSkip() {
@@ -81,11 +93,16 @@ export default function UpcomingCard({ session, onRefresh, nextOccurrence }: Upc
         {/* Time Row */}
         <div style={styles.timeRow}>
           <div style={styles.timeRangeBox}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#78350F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#78350F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: dateLabel ? 2 : 0 }}>
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
-            <span style={styles.timeRangeText}>{timeRange}</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {dateLabel && (
+                <span style={styles.timeDateText}>{dateLabel}</span>
+              )}
+              <span style={styles.timeRangeText}>{timeRange}</span>
+            </div>
           </div>
         </div>
 
@@ -236,6 +253,13 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: 6,
+  },
+  timeDateText: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#78350F',
+    lineHeight: 1.2,
+    marginBottom: 2,
   },
   timeRangeText: {
     fontSize: 14,
