@@ -74,9 +74,17 @@ export default function DashboardScreen() {
   const nextUpcomingSession = validUpcomingSessions.length > 0 ? validUpcomingSessions[0].session : null;
   const nextUpcomingId = nextUpcomingSession?.id ?? null;
 
-  // Remaining sessions scheduled later (closest first)
+  // Remaining sessions scheduled later today (closest first, only today)
+  const isToday = (date: Date) => {
+    return (
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate()
+    );
+  };
+
   const scheduledSessions = validUpcomingSessions
-    .filter((item) => item.session.id !== nextUpcomingId)
+    .filter((item) => item.session.id !== nextUpcomingId && isToday(item.nextOccurrence))
     .map((item) => item.session);
 
   function handleCancel(sessionId: string) {
@@ -260,11 +268,11 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Scheduled Later Sessions — inside a clean rounded container with filled surface color, max 2 items, and View All button */}
+        {/* Scheduled Later Today Sessions — inside a clean rounded container with filled surface color, max 2 items, and View All button */}
         {scheduledSessions.length > 0 && (
           <View style={[styles.scheduledContainer, { backgroundColor: theme.surface }]}>
             <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-              SCHEDULED LATER
+              SCHEDULED LATER TODAY
             </Text>
 
             <View style={styles.scheduledList}>
