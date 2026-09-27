@@ -636,10 +636,12 @@ export default function StatsScreen() {
           </Text>
         </View>
 
-        {/* Milestone Cards List (Containers without borders) */}
+        {/* Milestone Cards List */}
         <View style={styles.milestonesList}>
           {Object.entries(milestones).map(([key, item]) => {
             const isEquipped = selectedArchetype === item.badge.title;
+            const activeGreen = isDark ? '#2D5A43' : '#587042';
+
             return (
               <View
                 key={key}
@@ -647,7 +649,8 @@ export default function StatsScreen() {
                   styles.milestoneCard,
                   {
                     backgroundColor: containerBg,
-                    borderWidth: 0,
+                    borderWidth: isEquipped ? 2 : 0,
+                    borderColor: isEquipped ? activeGreen : 'transparent',
                   },
                 ]}
               >
@@ -670,19 +673,11 @@ export default function StatsScreen() {
                         {item.badge.title}
                       </Text>
                       {item.isUnlocked ? (
-                        <View
-                          style={[
-                            styles.unlockedBadge,
-                            { backgroundColor: '#10B98120' },
-                          ]}
-                        >
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={12}
-                            color="#10B981"
-                          />
-                          <Text style={styles.unlockedBadgeText}>Earned</Text>
-                        </View>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color={isEquipped ? (isDark ? '#8BA794' : '#587042') : '#10B981'}
+                        />
                       ) : (
                         <Text
                           style={[
@@ -739,15 +734,22 @@ export default function StatsScreen() {
                   />
                 </View>
 
-                {/* Equip / status button if unlocked */}
-                {item.isUnlocked && (
+                {/* Current Archetype sub-container banner or Equip button */}
+                {isEquipped ? (
+                  <View
+                    style={[
+                      styles.currentArchetypeBanner,
+                      { backgroundColor: activeGreen },
+                    ]}
+                  >
+                    <Text style={styles.currentArchetypeText}>Current Archetype</Text>
+                  </View>
+                ) : item.isUnlocked ? (
                   <TouchableOpacity
                     style={[
                       styles.equipBtn,
                       {
-                        backgroundColor: isEquipped
-                          ? `${item.badge.color}25`
-                          : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
                         borderWidth: 0,
                       },
                     ]}
@@ -755,20 +757,20 @@ export default function StatsScreen() {
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name={isEquipped ? 'checkmark' : 'sparkles'}
+                      name="sparkles"
                       size={14}
-                      color={isEquipped ? item.badge.color : theme.text}
+                      color={theme.text}
                     />
                     <Text
                       style={[
                         styles.equipBtnText,
-                        { color: isEquipped ? item.badge.color : theme.text },
+                        { color: theme.text },
                       ]}
                     >
-                      {isEquipped ? 'Active Archetype' : 'Set as Archetype'}
+                      Set as Archetype
                     </Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </View>
             );
           })}
@@ -1586,9 +1588,10 @@ const styles = StyleSheet.create({
   },
   milestoneCard: {
     borderRadius: 16,
-    borderWidth: 0, // Border removed!
+    borderWidth: 0,
     padding: 16,
     gap: 12,
+    overflow: 'hidden',
   },
   milestoneTopRow: {
     flexDirection: 'row',
@@ -1652,6 +1655,21 @@ const styles = StyleSheet.create({
   equipBtnText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  currentArchetypeBanner: {
+    marginHorizontal: -16,
+    marginBottom: -16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+  },
+  currentArchetypeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   progressBarBg: {
     height: 6,
