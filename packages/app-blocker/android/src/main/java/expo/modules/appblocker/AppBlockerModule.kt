@@ -101,6 +101,7 @@ class AppBlockerModule : Module() {
       registerReceivers(context)
 
       val intent = Intent(context, AppBlockerService::class.java).apply {
+        action = "START_ACTIVE"
         putStringArrayListExtra("BLOCKED_PACKAGES", ArrayList(blockedPackages))
         putExtra("ALLOW_BREAKS", allowBreaks ?: false)
         putExtra("REMAINING_BREAK_SECONDS", remainingBreakSec ?: 0)

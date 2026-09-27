@@ -212,7 +212,20 @@ async function scheduleAndroidNativeNotifications(
 
   // ── Currently running sessions — authoritative content, posted immediately ──
   for (const session of activeSessions) {
-    const startedAtMs = session.started_at ? new Date(session.started_at).getTime() : now.getTime();
+    let startedAtMs = now.getTime();
+    if (session.start_time && (session as any).schedule && (session as any).schedule !== 'adhoc') {
+      const [hStr, mStr] = session.start_time.split(':');
+      const startD = new Date(now);
+      startD.setHours(parseInt(hStr, 10) || 0, parseInt(mStr, 10) || 0, 0, 0);
+      const endD = new Date(startD.getTime() + session.duration * 60_000);
+      if (startD.getTime() <= now.getTime() && now.getTime() < endD.getTime()) {
+        startedAtMs = startD.getTime();
+      } else if (session.started_at) {
+        startedAtMs = new Date(session.started_at).getTime();
+      }
+    } else if (session.started_at) {
+      startedAtMs = new Date(session.started_at).getTime();
+    }
     const endAt = startedAtMs + session.duration * 60_000;
     const formattedEnd = formatClockTime(new Date(endAt), use24Hour);
     const violations = session.violations_count ?? 0;

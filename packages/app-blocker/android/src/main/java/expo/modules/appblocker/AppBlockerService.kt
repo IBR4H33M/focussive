@@ -54,7 +54,12 @@ class AppBlockerService : Service() {
         val targetMillis = if (currentTargetMillis > System.currentTimeMillis()) {
             currentTargetMillis
         } else {
-            System.currentTimeMillis() + 25 * 60 * 1000L
+            val savedEnd = getSharedPreferences("focussive_session", Context.MODE_PRIVATE).getLong("active_session_end", 0L)
+            if (savedEnd > System.currentTimeMillis()) {
+                savedEnd
+            } else {
+                System.currentTimeMillis() + 25 * 60 * 1000L
+            }
         }
 
         val notif = SessionNotifications.buildNotification(
@@ -408,16 +413,18 @@ class AppBlockerService : Service() {
     }
 
     private fun getForegroundNotification(): Notification {
-        val cached = SessionNotifications.latestActiveNotification
-        if (cached != null) return cached
-
         val rawName = currentSessionName ?: "Focus"
         val titleText = if (rawName.endsWith(" is running")) rawName else "$rawName is running"
         val sessionId = currentSessionId ?: ""
         val targetMillis = if (currentTargetMillis > System.currentTimeMillis()) {
             currentTargetMillis
         } else {
-            System.currentTimeMillis() + 25 * 60 * 1000L
+            val savedEnd = getSharedPreferences("focussive_session", Context.MODE_PRIVATE).getLong("active_session_end", 0L)
+            if (savedEnd > System.currentTimeMillis()) {
+                savedEnd
+            } else {
+                System.currentTimeMillis() + 25 * 60 * 1000L
+            }
         }
 
         return SessionNotifications.buildNotification(

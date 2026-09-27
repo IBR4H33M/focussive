@@ -93,17 +93,28 @@ export async function activateSessions() {
       return;
     }
 
-    const now = new Date().toISOString();
+    const now = new Date();
 
     // Check each session
     for (const session of sessions) {
       if (shouldSessionBeActive(session)) {
+        let startedAt = now.toISOString();
+        if (session.start_time) {
+          const [sh, sm] = session.start_time.split(':').map(Number);
+          const scheduledStart = new Date(now);
+          scheduledStart.setHours(sh, sm, 0, 0);
+          const scheduledEnd = new Date(scheduledStart.getTime() + (session.duration || 25) * 60_000);
+          if (scheduledStart <= now && now < scheduledEnd) {
+            startedAt = scheduledStart.toISOString();
+          }
+        }
+
         // Activate the session
         const { error: updateError } = await supabase
           .from('sessions')
           .update({
             status: SessionStatus.ACTIVE,
-            started_at: now,
+            started_at: startedAt,
             pause_count: 0,
           })
           .eq('id', session.id);
@@ -111,7 +122,7 @@ export async function activateSessions() {
         if (updateError) {
           console.error(`[Scheduler] Error activating session ${session.id}:`, updateError);
         } else {
-          console.log(`[Scheduler] Activated session: ${session.name} (${session.id})`);
+          console.log(`[Scheduler] Activated session: ${session.name} (${session.id}) started_at ${startedAt}`);
         }
       }
     }

@@ -136,16 +136,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const nowMs = now.getTime();
 
       // 1. Existing active sessions from backend that haven't elapsed
-      const activeSessionsFromApi = (activeRes.data as Session[]).filter((s) => {
-        if (s.started_at) {
-          const startedAtMs = new Date(s.started_at).getTime();
-          const endAtMs = startedAtMs + s.duration * 60_000;
-          if (nowMs >= endAtMs) {
-            return false; // Session time has elapsed
+      const activeSessionsFromApi = (activeRes.data as Session[])
+        .map((s) => {
+          if (s.start_time && (s as any).schedule && (s as any).schedule !== 'adhoc') {
+            const [hStr, mStr] = s.start_time.split(':');
+            const startD = new Date(now);
+            startD.setHours(parseInt(hStr, 10) || 0, parseInt(mStr, 10) || 0, 0, 0);
+            const endD = new Date(startD.getTime() + s.duration * 60_000);
+            if (startD.getTime() <= nowMs && nowMs < endD.getTime()) {
+              return {
+                ...s,
+                started_at: startD.toISOString(),
+              };
+            }
           }
-        }
-        return true;
-      });
+          return s;
+        })
+        .filter((s) => {
+          if (s.started_at) {
+            const startedAtMs = new Date(s.started_at).getTime();
+            const endAtMs = startedAtMs + s.duration * 60_000;
+            if (nowMs >= endAtMs) {
+              return false; // Session time has elapsed
+            }
+          }
+          return true;
+        });
 
       // 2. Evaluate all sessions to detect any scheduled sessions currently in their active window
       const activeIds = new Set(activeSessionsFromApi.map(s => s.id));
@@ -160,7 +176,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           const activeSession: Session = {
             ...s,
             status: SessionStatus.ACTIVE,
-            started_at: s.started_at || startD.toISOString(),
+            started_at: startD.toISOString(),
           };
           newlyActivated.push(activeSession);
           activeIds.add(s.id);
@@ -365,9 +381,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           : 0;
         const remainingBreakSec = Math.max(0, maxBreakSec - (mobileActiveSession.break_used_seconds ?? 0));
 
-        const startedAtMs = mobileActiveSession.started_at
-          ? new Date(mobileActiveSession.started_at).getTime()
-          : Date.now();
+        let startedAtMs = Date.now();
+        if (mobileActiveSession.start_time && (mobileActiveSession as any).schedule && (mobileActiveSession as any).schedule !== 'adhoc') {
+          const [hStr, mStr] = mobileActiveSession.start_time.split(':');
+          const startD = new Date();
+          startD.setHours(parseInt(hStr, 10) || 0, parseInt(mStr, 10) || 0, 0, 0);
+          const endD = new Date(startD.getTime() + mobileActiveSession.duration * 60_000);
+          if (startD.getTime() <= Date.now() && Date.now() < endD.getTime()) {
+            startedAtMs = startD.getTime();
+          } else if (mobileActiveSession.started_at) {
+            startedAtMs = new Date(mobileActiveSession.started_at).getTime();
+          }
+        } else if (mobileActiveSession.started_at) {
+          startedAtMs = new Date(mobileActiveSession.started_at).getTime();
+        }
         const endAtMs = startedAtMs + mobileActiveSession.duration * 60_000;
 
         startMonitoring(

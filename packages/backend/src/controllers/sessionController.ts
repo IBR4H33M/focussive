@@ -30,13 +30,24 @@ export async function startSession(req: AuthRequest, res: Response): Promise<voi
     throw new AppError('Only scheduled sessions can be started', 400, 'INVALID_STATUS');
   }
 
-  const now = new Date().toISOString();
+  const now = new Date();
+  let startedAt = now.toISOString();
+
+  if (session.start_time) {
+    const [sh, sm] = session.start_time.split(':').map(Number);
+    const scheduledStart = new Date(now);
+    scheduledStart.setHours(sh, sm, 0, 0);
+    const scheduledEnd = new Date(scheduledStart.getTime() + (session.duration || 25) * 60_000);
+    if (scheduledStart <= now && now < scheduledEnd) {
+      startedAt = scheduledStart.toISOString();
+    }
+  }
 
   const { data: updated, error } = await supabase
     .from('sessions')
     .update({
       status: SessionStatus.ACTIVE,
-      started_at: now,
+      started_at: startedAt,
     })
     .eq('id', id)
     .eq('user_id', userId)

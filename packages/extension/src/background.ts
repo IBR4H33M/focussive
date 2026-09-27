@@ -45,8 +45,20 @@ async function pollSessions() {
     const allSessions = (allRes.data as StoredSession[]) || [];
     const active = activeSessions.length > 0 ? activeSessions[0] : null;
 
+    let normalizedStartedAt = active?.started_at;
+    if (active?.start_time && (active as any).schedule && (active as any).schedule !== 'adhoc') {
+      const [hStr, mStr] = active.start_time.split(':');
+      const startD = new Date();
+      startD.setHours(parseInt(hStr, 10) || 0, parseInt(mStr, 10) || 0, 0, 0);
+      const endD = new Date(startD.getTime() + active.duration * 60_000);
+      if (startD.getTime() <= Date.now() && Date.now() < endD.getTime()) {
+        normalizedStartedAt = startD.toISOString();
+      }
+    }
+
     const storedSession: StoredSession | null = active ? {
       ...active,
+      started_at: normalizedStartedAt || active.started_at,
       mobile_focus: (active as any).mobile_focus ?? false,
       browser_focus: active.browser_focus ?? true,
       blocked_websites: active.blocked_websites || [],
