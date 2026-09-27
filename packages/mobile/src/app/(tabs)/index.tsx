@@ -31,9 +31,6 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { activeSessions, upcomingSessions, allSessions, isLoading, refreshSessions } = useSessions();
 
-  const [cancelModalVisible, setCancelModalVisible] = useState(false);
-  const [cancellingSession, setCancellingSession] = useState<Session | null>(null);
-  const [cancelReason, setCancelReason] = useState('');
   const [isSkippingUpcoming, setIsSkippingUpcoming] = useState(false);
 
   const now = new Date();
@@ -87,26 +84,7 @@ export default function DashboardScreen() {
     .filter((item) => item.session.id !== nextUpcomingId && isToday(item.nextOccurrence))
     .map((item) => item.session);
 
-  function handleCancel(sessionId: string) {
-    const session = [...effectiveActiveSessions, ...pausedSessions].find((s) => s.id === sessionId);
-    if (session) {
-      setCancellingSession(session);
-      setCancelModalVisible(true);
-    }
-  }
 
-  async function confirmCancel() {
-    if (!cancellingSession) return;
-    try {
-      await sessionApi.cancel(cancellingSession.id, cancelReason || undefined);
-      setCancelModalVisible(false);
-      setCancellingSession(null);
-      setCancelReason('');
-      await refreshSessions();
-    } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to cancel session');
-    }
-  }
 
   async function handleSkipSession(session: Session) {
     try {
@@ -346,35 +324,7 @@ export default function DashboardScreen() {
         )}
       </ScrollView>
 
-      {/* Cancel Confirmation Modal */}
-      <Modal visible={cancelModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Cancel Session?</Text>
-            <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
-              This will end &quot;{cancellingSession?.name}&quot; and move it to history.
-            </Text>
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalBtn, { borderColor: theme.border }]}
-                onPress={() => {
-                  setCancelModalVisible(false);
-                  setCancellingSession(null);
-                }}
-              >
-                <Text style={[styles.modalBtnText, { color: theme.textSecondary }]}>Keep Going</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: theme.danger }]}
-                onPress={confirmCancel}
-              >
-                <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>Cancel Session</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

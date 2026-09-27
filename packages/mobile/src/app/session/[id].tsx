@@ -356,33 +356,6 @@ export default function SessionDetailScreen() {
     }
   }, [session, action]);
 
-  function handleCancelSession() {
-    if (!session) return;
-    Alert.alert(
-      'Cancel Session',
-      `End "${session.name}" now? Your progress will be saved.`,
-      [
-        { text: 'Keep Going', style: 'cancel' },
-        {
-          text: 'Cancel Session',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await sessionApi.cancel(session.id);
-              await refreshSessions();
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(tabs)');
-              }
-            } catch (error) {
-              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to cancel session');
-            }
-          },
-        },
-      ]
-    );
-  }
 
   async function handleSave() {
     if (!editName.trim()) {
@@ -682,15 +655,15 @@ export default function SessionDetailScreen() {
           </View>
         )}
 
-        {/* Cancel Session button — active sessions only (Filled, Borderless) */}
+        {/* Skip Session button — active sessions only */}
         {isActive && (
           <TouchableOpacity
-            style={[styles.cancelSessionBtn, { backgroundColor: theme.danger, borderWidth: 0 }]}
-            onPress={handleCancelSession}
+            style={[styles.cancelSessionBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', borderWidth: 0 }]}
+            onPress={handleSkipSession}
             activeOpacity={0.8}
           >
-            <Ionicons name="stop-circle-outline" size={16} color="#FFFFFF" />
-            <Text style={[styles.cancelSessionBtnText, { color: '#FFFFFF' }]}>Cancel Session</Text>
+            <Ionicons name="play-forward-outline" size={16} color={theme.textSecondary} />
+            <Text style={[styles.cancelSessionBtnText, { color: theme.textSecondary }]}>Skip Session</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

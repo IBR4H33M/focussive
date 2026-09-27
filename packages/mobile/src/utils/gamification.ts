@@ -247,7 +247,7 @@ export const MILESTONE_BADGES: Record<MilestoneKey, MilestoneBadge> = {
     key: 'the_realist',
     title: 'The Realist',
     quote: 'Sustainable rhythm beats burnout.',
-    requirement: 'Used breaks on all 10 completed sessions with a ≥90% completion rate in 7 days',
+    requirement: 'Completed 10 sessions using permitted break times in 7 days',
     icon: 'cafe',
     image: MILESTONE_IMAGES.the_realist,
     color: '#14B8A6',
@@ -437,10 +437,9 @@ export function evaluateMilestones(
       h => (h.breaks_count ?? 0) > 0 || ((h as any).pause_count ?? 0) > 0 || (h.emergency_breaks_count ?? 0) > 0
     );
 
-    const completionRate = inWindow.length > 0 ? completedInWindow.length / inWindow.length : 0;
     if (withBreaks.length > realistMax) realistMax = withBreaks.length;
 
-    if (withBreaks.length >= 10 && completionRate >= 0.9) {
+    if (withBreaks.length >= 10) {
       realistUnlocked = true;
     }
   }
