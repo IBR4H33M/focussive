@@ -189,9 +189,16 @@ export default function SettingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ expandPermissions?: string }>();
 
-  const [profile, setProfile] = useState<{ name: string; email: string; age?: number } | null>(null);
+  const [profile, setProfile] = useState<{
+    name: string;
+    first_name?: string;
+    last_name?: string;
+    email: string;
+    age?: number;
+  } | null>(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editName, setEditName] = useState('');
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
   const [editAge, setEditAge] = useState('');
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -598,15 +605,25 @@ export default function SettingsScreen() {
   }
 
   function openEditModal() {
-    setEditName(profile?.name || user?.name || '');
+    setEditFirstName(profile?.first_name || profile?.name || user?.first_name || user?.name || '');
+    setEditLastName(profile?.last_name || user?.last_name || '');
     setEditAge(profile?.age?.toString() || '');
     setEditModalVisible(true);
   }
 
   async function handleSaveProfile() {
+    const fName = editFirstName.trim();
+    const lName = editLastName.trim();
+    if (!fName) {
+      Alert.alert('Validation Error', 'First name is required');
+      return;
+    }
+    const fullName = [fName, lName].filter(Boolean).join(' ');
     try {
       await userApi.updateProfile({
-        name: editName.trim() || undefined,
+        first_name: fName,
+        last_name: lName,
+        name: fullName,
         age: editAge ? parseInt(editAge, 10) : undefined,
       });
       setEditModalVisible(false);
@@ -705,14 +722,14 @@ export default function SettingsScreen() {
               ) : (
                 <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
                   <Text style={styles.avatarText}>
-                    {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
+                    {(profile?.first_name || profile?.name || user?.first_name || user?.name || 'U')[0]?.toUpperCase()}
                   </Text>
                 </View>
               )}
             </TouchableOpacity>
             <View style={styles.profileInfo}>
               <Text style={[styles.profileName, { color: CARD_TEXT }]}>
-                {profile?.name || user?.name}
+                {profile?.first_name ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') : (profile?.name || user?.name)}
               </Text>
               <Text style={[styles.profileEmail, { color: CARD_TEXT_MUTED }]}>
                 {profile?.email || user?.email}
@@ -1168,8 +1185,8 @@ export default function SettingsScreen() {
       {/* Edit Profile Modal */}
       <Modal visible={editModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Profile</Text>
+          <View style={[styles.modalContent, { backgroundColor: '#2F3456', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.12)' }]}>
+            <Text style={[styles.modalTitle, { color: '#FFFFFF' }]}>Edit Profile</Text>
 
             {/* Avatar & Change Picture Button */}
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
@@ -1180,15 +1197,15 @@ export default function SettingsScreen() {
                 style={{ position: 'relative', marginBottom: 10 }}
               >
                 {avatarUploading ? (
-                  <View style={[styles.avatar, { width: 80, height: 80, borderRadius: 40, backgroundColor: `${theme.accent}30`, justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityIndicator size="small" color={theme.accent} />
+                  <View style={[styles.avatar, { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(139, 167, 148, 0.3)', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="small" color="#8BA794" />
                   </View>
                 ) : (profile && (profile as any).avatar_url) || user?.avatar_url ? (
                   <Image source={{ uri: (profile as any)?.avatar_url || user?.avatar_url }} style={[styles.avatar, { width: 80, height: 80, borderRadius: 40 }]} />
                 ) : (
-                  <View style={[styles.avatar, { width: 80, height: 80, borderRadius: 40, backgroundColor: theme.accent, justifyContent: 'center', alignItems: 'center' }]}>
+                  <View style={[styles.avatar, { width: 80, height: 80, borderRadius: 40, backgroundColor: '#8BA794', justifyContent: 'center', alignItems: 'center' }]}>
                     <Text style={[styles.avatarText, { fontSize: 32 }]}>
-                      {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
+                      {(profile?.first_name || profile?.name || user?.first_name || user?.name || 'U')[0]?.toUpperCase()}
                     </Text>
                   </View>
                 )}
@@ -1200,9 +1217,9 @@ export default function SettingsScreen() {
                     width: 26,
                     height: 26,
                     borderRadius: 13,
-                    backgroundColor: theme.accent,
+                    backgroundColor: '#8BA794',
                     borderWidth: 2,
-                    borderColor: theme.card,
+                    borderColor: '#2F3456',
                     justifyContent: 'center',
                     alignItems: 'center',
                   }}
@@ -1217,11 +1234,11 @@ export default function SettingsScreen() {
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
               >
                 {avatarUploading ? (
-                  <ActivityIndicator size="small" color={theme.accent} />
+                  <ActivityIndicator size="small" color="#8BA794" />
                 ) : (
                   <>
-                    <Ionicons name="camera-outline" size={16} color={theme.accent} />
-                    <Text style={{ color: theme.accent, fontSize: 14, fontWeight: '600' }}>
+                    <Ionicons name="camera-outline" size={16} color="#8BA794" />
+                    <Text style={{ color: '#8BA794', fontSize: 14, fontWeight: '600' }}>
                       Change Profile Picture
                     </Text>
                   </>
@@ -1230,16 +1247,25 @@ export default function SettingsScreen() {
             </View>
 
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-              placeholder="Name"
-              placeholderTextColor={theme.textSecondary}
-              value={editName}
-              onChangeText={setEditName}
+              style={[styles.input, { color: '#FFFFFF', backgroundColor: '#242944', borderColor: 'rgba(255, 255, 255, 0.15)' }]}
+              placeholder="First Name *"
+              placeholderTextColor="rgba(255, 255, 255, 0.45)"
+              value={editFirstName}
+              onChangeText={setEditFirstName}
+              autoCapitalize="words"
             />
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              style={[styles.input, { color: '#FFFFFF', backgroundColor: '#242944', borderColor: 'rgba(255, 255, 255, 0.15)' }]}
+              placeholder="Last Name"
+              placeholderTextColor="rgba(255, 255, 255, 0.45)"
+              value={editLastName}
+              onChangeText={setEditLastName}
+              autoCapitalize="words"
+            />
+            <TextInput
+              style={[styles.input, { color: '#FFFFFF', backgroundColor: '#242944', borderColor: 'rgba(255, 255, 255, 0.15)' }]}
               placeholder="Age"
-              placeholderTextColor={theme.textSecondary}
+              placeholderTextColor="rgba(255, 255, 255, 0.45)"
               value={editAge}
               onChangeText={setEditAge}
               keyboardType="numeric"
@@ -1247,24 +1273,24 @@ export default function SettingsScreen() {
 
             {/* My Driving Forces */}
             <TouchableOpacity
-              style={styles.drivingForcesBtn}
+              style={[styles.drivingForcesBtn, { paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#3A4062', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.12)', marginBottom: 8 }]}
               onPress={() => {
                 setEditModalVisible(false);
                 router.push({ pathname: '/driving-forces', params: { from: 'settings' } } as never);
               }}
               activeOpacity={0.7}
             >
-              <Text style={[styles.drivingForcesBtnText, { color: theme.textSecondary }]}>
+              <Text style={[styles.drivingForcesBtnText, { color: 'rgba(255, 255, 255, 0.85)' }]}>
                 My Driving Forces
               </Text>
-              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+              <Ionicons name="chevron-forward" size={16} color="rgba(255, 255, 255, 0.6)" />
             </TouchableOpacity>
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.surface }]} onPress={() => setEditModalVisible(false)}>
-                <Text style={{ color: theme.textSecondary }}>Cancel</Text>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#3A4062', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.12)' }]} onPress={() => setEditModalVisible(false)}>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.75)' }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.accent }]} onPress={handleSaveProfile}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#8BA794' }]} onPress={handleSaveProfile}>
                 <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Save</Text>
               </TouchableOpacity>
             </View>

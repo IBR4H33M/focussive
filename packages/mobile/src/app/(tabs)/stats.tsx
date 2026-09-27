@@ -326,7 +326,7 @@ export default function StatsScreen() {
             ) : (
               <View style={[styles.profileAvatar, { backgroundColor: theme.accent }]}>
                 <Text style={styles.profileAvatarText}>
-                  {(profile?.name || user?.name || 'U')[0]?.toUpperCase()}
+                  {(profile?.first_name || profile?.name || user?.first_name || user?.name || 'U')[0]?.toUpperCase()}
                 </Text>
               </View>
             )}
@@ -339,7 +339,7 @@ export default function StatsScreen() {
               activeOpacity={0.7}
             >
               <Text style={[styles.profileNameText, { color: theme.text }]} numberOfLines={1}>
-                {profile?.name || user?.name || 'Focus User'}
+                {profile?.first_name ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') : (profile?.name || user?.name || 'Focus User')}
               </Text>
               {equippedMilestone && (
                 <View style={styles.archetypeIconWrapper}>
@@ -349,8 +349,8 @@ export default function StatsScreen() {
                   <Image
                     source={equippedMilestone.badge.image}
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 24,
+                      height: 24,
                       tintColor: equippedMilestone.badge.color,
                     }}
                     resizeMode="contain"
@@ -358,14 +358,33 @@ export default function StatsScreen() {
                 </View>
               )}
             </TouchableOpacity>
+
+            {/* Archetype name in small under username */}
+            {selectedArchetype ? (
+              <TouchableOpacity
+                onPress={() => setArchetypeModalVisible(true)}
+                activeOpacity={0.7}
+                style={{ marginTop: 2 }}
+              >
+                <Text
+                  style={[
+                    styles.profileArchetypeSubText,
+                    { color: equippedMilestone?.badge.color || (isDark ? '#8BA794' : '#587042') },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {selectedArchetype}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
         {/* ── Earned Badges Section ── */}
         <View style={styles.badgesSectionContainer}>
           <View style={styles.badgesSectionHeader}>
-            <Text style={[styles.badgesSectionTitle, { color: theme.text }]}>
-              Earned badges
+            <Text style={[styles.overviewSectionHeaderTitle, { color: theme.textSecondary }]}>
+              EARNED BADGES
             </Text>
           </View>
 
@@ -420,7 +439,7 @@ export default function StatsScreen() {
         {nearestMilestone && (
           <View style={styles.progressionSection}>
             <View style={styles.progressionHeaderRow}>
-              <Text style={[styles.badgeSubheading, { color: theme.textSecondary, marginBottom: 0 }]}>
+              <Text style={[styles.overviewSectionHeaderTitle, { color: theme.textSecondary }]}>
                 MILESTONE PROGRESSION
               </Text>
               <TouchableOpacity
@@ -512,8 +531,8 @@ export default function StatsScreen() {
         {/* ── Period Stats Section ── */}
         <View style={styles.periodStatsSection}>
           <View style={styles.periodHeaderRow}>
-            <Text style={[styles.periodSectionTitle, { color: theme.text }]}>
-              {getPeriodSectionTitle(activePeriod)}
+            <Text style={[styles.overviewSectionHeaderTitle, { color: theme.textSecondary }]}>
+              {getPeriodSectionTitle(activePeriod).toUpperCase()}
             </Text>
             <TouchableOpacity
               style={[styles.periodBtnClean, { backgroundColor: containerBg }]}
@@ -1475,10 +1494,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  badgeSubheading: {
-    fontSize: 10,
+  overviewSectionHeaderTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
+  },
+  profileArchetypeSubText: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  badgeSubheading: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1.2,
     marginBottom: 10,
   },
   tiersOuterContainer: {

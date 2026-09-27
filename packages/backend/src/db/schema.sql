@@ -287,3 +287,12 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS revenuecat_customer_id VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS driving_forces TEXT[] DEFAULT '{}';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS big_why TEXT;
 
+-- ============================================================
+-- MIGRATION: First Name & Last Name
+-- ============================================================
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+
+-- For current users, their full names are set as first name
+UPDATE users SET first_name = name WHERE first_name IS NULL AND name IS NOT NULL;
+

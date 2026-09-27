@@ -17,6 +17,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
   avatar_url?: string;
 }
 
@@ -43,7 +45,9 @@ export interface AuthContextType extends AuthState {
   resendSecondFactorCode: (strategy?: string) => Promise<void>;
   signup: (data: {
     email: string;
-    name: string;
+    first_name: string;
+    last_name?: string;
+    name?: string;
     password: string;
     passwordConfirm?: string;
     age?: number;
@@ -81,10 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clerkUser.emailAddresses[0]?.emailAddress ||
       '';
     const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ');
+    const effectiveFirstName = clerkUser.firstName || fullName || clerkUser.username || email.split('@')[0] || 'User';
+    const effectiveLastName = clerkUser.lastName || '';
     return {
       id: clerkUser.id,
       email,
       name: fullName || clerkUser.username || email.split('@')[0] || 'User',
+      first_name: effectiveFirstName,
+      last_name: effectiveLastName,
       avatar_url: clerkUser.imageUrl || undefined,
     };
   }, [isSignedIn, clerkUser]);
@@ -218,7 +226,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signup(data: {
     email: string;
-    name: string;
+    first_name: string;
+    last_name?: string;
+    name?: string;
     password: string;
     passwordConfirm?: string;
     age?: number;
@@ -227,9 +237,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Sign-up service is not ready. Please try again.');
     }
 
-    const names = data.name.trim().split(' ');
-    const firstName = names[0] || data.name;
-    const lastName = names.slice(1).join(' ') || undefined;
+    const firstName = data.first_name ? data.first_name.trim() : (data.name ? data.name.trim().split(' ')[0] : 'User');
+    const lastName = data.last_name ? data.last_name.trim() : (data.name ? data.name.trim().split(' ').slice(1).join(' ') || undefined : undefined);
 
     await signUp.create({
       emailAddress: data.email.trim(),

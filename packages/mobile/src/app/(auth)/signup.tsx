@@ -23,7 +23,8 @@ export default function SignupScreen() {
   const router = useRouter();
   const { signup } = useAuth();
 
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [age, setAge] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +32,7 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
 
   async function handleSignup() {
-    if (!name.trim() || !email.trim() || !password || !passwordConfirm) {
+    if (!firstName.trim() || !email.trim() || !password || !passwordConfirm) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
@@ -43,8 +44,13 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
+      const fName = firstName.trim();
+      const lName = lastName.trim();
+      const fullName = [fName, lName].filter(Boolean).join(' ');
       const res = await signup({
-        name: name.trim(),
+        first_name: fName,
+        last_name: lName || undefined,
+        name: fullName,
         email: email.trim(),
         password,
         passwordConfirm,
@@ -84,12 +90,22 @@ export default function SignupScreen() {
         <View style={styles.form}>
           <TextInput
             style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-            placeholder="Full Name *"
+            placeholder="First Name *"
             placeholderTextColor={theme.textSecondary}
-            value={name}
-            onChangeText={setName}
+            value={firstName}
+            onChangeText={setFirstName}
             autoCapitalize="words"
-            autoComplete="name"
+            autoComplete="name-given"
+          />
+
+          <TextInput
+            style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+            placeholder="Last Name"
+            placeholderTextColor={theme.textSecondary}
+            value={lastName}
+            onChangeText={setLastName}
+            autoCapitalize="words"
+            autoComplete="name-family"
           />
 
           <TextInput

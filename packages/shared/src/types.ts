@@ -51,6 +51,8 @@ export interface User {
   clerk_id?: string;
   email: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
   password_hash?: string;
   age?: number;
   avatar_url?: string;
@@ -280,6 +282,8 @@ export interface UpdateAppGroupRequest extends Partial<CreateAppGroupRequest> {}
 
 export interface UpdateProfileRequest {
   name?: string;
+  first_name?: string;
+  last_name?: string;
   age?: number;
 }
 

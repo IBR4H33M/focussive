@@ -111,11 +111,15 @@ function generateTokens(userId: string) {
 
 // POST /auth/signup
 export async function signup(req: Request, res: Response): Promise<void> {
-  const { email, name, password, passwordConfirm, age } = req.body;
+  const { email, name, first_name, last_name, password, passwordConfirm, age } = req.body;
+
+  const effectiveFirstName = (first_name || name || '').trim();
+  const effectiveLastName = (last_name || '').trim();
+  const effectiveName = (name || [effectiveFirstName, effectiveLastName].filter(Boolean).join(' ')).trim();
 
   // Validation
-  if (!email || !name || !password || !passwordConfirm) {
-    throw new AppError('All fields are required', 400, 'VALIDATION_ERROR');
+  if (!email || !effectiveFirstName || !password || !passwordConfirm) {
+    throw new AppError('All required fields must be filled', 400, 'VALIDATION_ERROR');
   }
 
   if (!isValidEmail(email)) {
@@ -151,7 +155,9 @@ export async function signup(req: Request, res: Response): Promise<void> {
       await supabase
         .from('users')
         .update({
-          name,
+          name: effectiveName,
+          first_name: effectiveFirstName,
+          last_name: effectiveLastName || null,
           password_hash,
           age: age || null,
           verification_code: verificationCode,
@@ -183,14 +189,16 @@ export async function signup(req: Request, res: Response): Promise<void> {
     .insert({
       id: userId,
       email: email.toLowerCase(),
-      name,
+      name: effectiveName,
+      first_name: effectiveFirstName,
+      last_name: effectiveLastName || null,
       password_hash,
       age: age || null,
       email_verified: false,
       verification_code: verificationCode,
       verification_expires_at: verificationExpiresAt,
     })
-    .select('id, email, name, age, email_verified, created_at, updated_at')
+    .select('id, email, name, first_name, last_name, age, email_verified, created_at, updated_at')
     .single();
 
   if (error || !user) {

@@ -22,7 +22,7 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, email, name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, subscription_tier, subscription_status, trial_used, trial_ends_at, driving_forces, big_why, created_at, updated_at')
+    .select('id, email, name, first_name, last_name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, subscription_tier, subscription_status, trial_used, trial_ends_at, driving_forces, big_why, created_at, updated_at')
     .eq('id', userId)
     .single();
 
@@ -44,8 +44,14 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
 
   const subStatus = await getSubscriptionStatus(userId);
 
+  // Fallback for first_name: if not set, default to user's full name
+  const effectiveFirstName = user.first_name || user.name || '';
+  const effectiveLastName = user.last_name || '';
+
   res.json({
     ...user,
+    first_name: effectiveFirstName,
+    last_name: effectiveLastName,
     ...subStatus,
     monthly_skip_limit: monthlyLimit,
     skips_used_this_month: skipsUsed,
@@ -58,6 +64,8 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
   const userId = req.userId!;
   const {
     name,
+    first_name,
+    last_name,
     age,
     avatar_url,
     active_archetype,
@@ -71,7 +79,18 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
   } = req.body;
 
   const updates: Record<string, unknown> = {};
-  if (name !== undefined) updates.name = name;
+  if (first_name !== undefined) updates.first_name = first_name;
+  if (last_name !== undefined) updates.last_name = last_name;
+
+  if (name !== undefined) {
+    updates.name = name;
+  } else if (first_name !== undefined || last_name !== undefined) {
+    const formattedFullName = [first_name, last_name].filter(Boolean).join(' ').trim();
+    if (formattedFullName) {
+      updates.name = formattedFullName;
+    }
+  }
+
   if (age !== undefined) updates.age = age;
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
   if (active_archetype !== undefined) updates.active_archetype = active_archetype;
@@ -102,7 +121,7 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
     .from('users')
     .update(updates)
     .eq('id', userId)
-    .select('id, email, name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, driving_forces, big_why, created_at, updated_at')
+    .select('id, email, name, first_name, last_name, age, avatar_url, active_archetype, earned_badges, overlay_quote_enabled, overlay_gif_enabled, overlay_gif_url, monthly_skip_limit, driving_forces, big_why, created_at, updated_at')
     .single();
 
   if (error || !user) {

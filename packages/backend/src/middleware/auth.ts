@@ -70,6 +70,8 @@ export async function authMiddleware(
       // If not found by clerk_id, fetch Clerk user details
       let email = `${clerkUserId}@clerk.user`;
       let name = 'Focussive User';
+      let firstName: string | null = null;
+      let lastName: string | null = null;
       let avatarUrl: string | null = null;
 
       try {
@@ -78,6 +80,8 @@ export async function authMiddleware(
         if (user.emailAddresses && user.emailAddresses.length > 0) {
           email = user.emailAddresses[0].emailAddress;
         }
+        firstName = user.firstName || null;
+        lastName = user.lastName || null;
         const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
         if (fullName) {
           name = fullName;
@@ -85,6 +89,9 @@ export async function authMiddleware(
           name = user.username;
         } else {
           name = email.split('@')[0];
+        }
+        if (!firstName) {
+          firstName = name;
         }
         if (user.imageUrl) {
           avatarUrl = user.imageUrl;
@@ -96,7 +103,7 @@ export async function authMiddleware(
       // Check if user exists by email (link existing account)
       const { data: userByEmail } = await supabase
         .from('users')
-        .select('id')
+        .select('id, first_name')
         .eq('email', email.toLowerCase())
         .single();
 
@@ -105,6 +112,8 @@ export async function authMiddleware(
           .from('users')
           .update({
             clerk_id: clerkUserId,
+            first_name: userByEmail.first_name || firstName || undefined,
+            last_name: lastName || undefined,
             avatar_url: avatarUrl || undefined,
             email_verified: true,
           })
@@ -123,6 +132,8 @@ export async function authMiddleware(
           clerk_id: clerkUserId,
           email: email.toLowerCase(),
           name,
+          first_name: firstName,
+          last_name: lastName,
           avatar_url: avatarUrl,
           email_verified: true,
         })

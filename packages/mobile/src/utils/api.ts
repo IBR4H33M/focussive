@@ -277,6 +277,8 @@ export const userApi = {
 
   updateProfile: (body: {
     name?: string;
+    first_name?: string;
+    last_name?: string;
     age?: number;
     avatar_url?: string;
     active_archetype?: string | null;
