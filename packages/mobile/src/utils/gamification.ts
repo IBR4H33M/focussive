@@ -51,7 +51,7 @@ export const QUALITY_TIERS: Record<QualityTierKey, QualityTierInfo> = {
     heroImage: TIER_HERO_BADGES.legendary,
     listImage: TIER_LIST_BADGES.legendary,
     tagline: 'Flawless Masterclass',
-    description: 'Zero distractions, no emergency breaks, 60+ minutes on schedule.',
+    description: 'Zero distractions, zero breaks used, 60+ minutes on schedule.',
   },
   epic: {
     key: 'epic',
@@ -63,7 +63,7 @@ export const QUALITY_TIERS: Record<QualityTierKey, QualityTierInfo> = {
     heroImage: TIER_HERO_BADGES.epic,
     listImage: TIER_LIST_BADGES.epic,
     tagline: 'Iron Discipline',
-    description: 'Zero distraction attempts and zero emergency breaks used.',
+    description: 'Zero distraction attempts and zero breaks used in a 30+ min session.',
   },
   rare: {
     key: 'rare',
@@ -75,7 +75,7 @@ export const QUALITY_TIERS: Record<QualityTierKey, QualityTierInfo> = {
     heroImage: TIER_HERO_BADGES.rare,
     listImage: TIER_LIST_BADGES.rare,
     tagline: 'Clean Focus',
-    description: 'Zero distraction attempts throughout the entire session.',
+    description: 'Zero distraction attempts throughout the completed session.',
   },
   uncommon: {
     key: 'uncommon',
@@ -129,20 +129,21 @@ export function evaluateSessionQualityTier(params: {
 
   const zeroViolations = violationsCount === 0;
   const noBreaks = breaksUsedCount === 0;
-  const duration60Plus = actualDuration >= 60 || scheduledDuration >= 60;
+  const duration60Plus = actualDuration >= 60 && scheduledDuration >= 60;
+  const duration30Plus = actualDuration >= 30 && scheduledDuration >= 30;
   const onSchedule = isOnSchedule !== undefined ? isOnSchedule : actualDuration >= scheduledDuration;
 
-  // Legendary: Epic + 60+ minutes + on schedule
+  // Legendary: Zero distractions + zero breaks + 60+ minutes on schedule
   if (zeroViolations && noBreaks && duration60Plus && onSchedule) {
     return QUALITY_TIERS.legendary;
   }
 
-  // Epic: Zero attempts + no emergency break
-  if (zeroViolations && noBreaks) {
+  // Epic (Iron Discipline): Zero distractions + zero breaks + at least 30 minutes duration
+  if (zeroViolations && noBreaks && duration30Plus) {
     return QUALITY_TIERS.epic;
   }
 
-  // Rare: Zero distraction attempts
+  // Rare: Zero distraction attempts throughout completed session
   if (zeroViolations) {
     return QUALITY_TIERS.rare;
   }
@@ -152,7 +153,7 @@ export function evaluateSessionQualityTier(params: {
     return QUALITY_TIERS.uncommon;
   }
 
-  // Common: Session completed
+  // Common: Session completed with 2+ distraction attempts
   return QUALITY_TIERS.common;
 }
 
@@ -167,12 +168,23 @@ export type MilestoneKey =
   | 'the_comeback'
   | 'the_realist';
 
+export const MILESTONE_IMAGES: Record<MilestoneKey, any> = {
+  the_sprinter: require('../../assets/images/milestones/sprinter.png'),
+  the_marathoner: require('../../assets/images/milestones/marathoner.png'),
+  the_dawn_patrol: require('../../assets/images/milestones/dawnpatrol.png'),
+  the_night_shift: require('../../assets/images/milestones/nightpatrol.png'),
+  the_unbreakable: require('../../assets/images/milestones/unbreakable.png'),
+  the_comeback: require('../../assets/images/milestones/comeback.png'),
+  the_realist: require('../../assets/images/milestones/realist.png'),
+};
+
 export interface MilestoneBadge {
   key: MilestoneKey;
   title: string;
   quote: string;
   requirement: string;
   icon: string;
+  image: any;
   color: string;
 }
 
@@ -183,6 +195,7 @@ export const MILESTONE_BADGES: Record<MilestoneKey, MilestoneBadge> = {
     quote: "You work in bursts and that's fine.",
     requirement: '20+ short sessions (<60m) completed within 7 days',
     icon: 'flash',
+    image: MILESTONE_IMAGES.the_sprinter,
     color: '#F59E0B',
   },
   the_marathoner: {
@@ -191,6 +204,7 @@ export const MILESTONE_BADGES: Record<MilestoneKey, MilestoneBadge> = {
     quote: 'Deep work is your natural mode.',
     requirement: '15+ sessions of over 60m in one week',
     icon: 'infinite',
+    image: MILESTONE_IMAGES.the_marathoner,
     color: '#3B82F6',
   },
   the_dawn_patrol: {
@@ -199,6 +213,7 @@ export const MILESTONE_BADGES: Record<MilestoneKey, MilestoneBadge> = {
     quote: 'Own the morning, own the day.',
     requirement: '15+ sessions of ≥60m in one week completed before 9am',
     icon: 'sunny',
+    image: MILESTONE_IMAGES.the_dawn_patrol,
     color: '#F97316',
   },
   the_night_shift: {
@@ -207,6 +222,7 @@ export const MILESTONE_BADGES: Record<MilestoneKey, MilestoneBadge> = {
     quote: 'The world sleeps, you build.',
     requirement: '15+ sessions of ≥60m in one week completed after 9pm',
     icon: 'moon',
+    image: MILESTONE_IMAGES.the_night_shift,
     color: '#6366F1',
   },
   the_unbreakable: {
@@ -215,6 +231,7 @@ export const MILESTONE_BADGES: Record<MilestoneKey, MilestoneBadge> = {
     quote: 'Focus forged in steel.',
     requirement: '25 consecutive clean sessions of ≥60m duration',
     icon: 'shield',
+    image: MILESTONE_IMAGES.the_unbreakable,
     color: '#10B981',
   },
   the_comeback: {
@@ -223,6 +240,7 @@ export const MILESTONE_BADGES: Record<MilestoneKey, MilestoneBadge> = {
     quote: 'Resilience defined.',
     requirement: 'Returned after a 7+ day gap and completed 5 sessions of ≥60m in 3 days',
     icon: 'flame',
+    image: MILESTONE_IMAGES.the_comeback,
     color: '#EF4444',
   },
   the_realist: {
@@ -231,6 +249,7 @@ export const MILESTONE_BADGES: Record<MilestoneKey, MilestoneBadge> = {
     quote: 'Sustainable rhythm beats burnout.',
     requirement: 'Used breaks on all 10 completed sessions with a ≥90% completion rate in 7 days',
     icon: 'cafe',
+    image: MILESTONE_IMAGES.the_realist,
     color: '#14B8A6',
   },
 };

@@ -200,14 +200,14 @@ export async function completeExpiredSessions() {
 
         const actualMins = Math.floor(elapsedMinutes);
         const totalViolations = violationsCount || 0;
-        const totalEmergencyBreaks = emergencyBreaksCount || 0;
-        const isOnSchedule = true; // Activated by scheduled chron job
+        const totalBreaks = (breaksCount || 0) + (emergencyBreaksCount || 0);
+        const isOnSchedule = true; // Activated by scheduled cron job
 
         // Roll quality tier
         let qualityTier: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' = 'common';
-        if (totalViolations === 0 && totalEmergencyBreaks === 0 && actualMins >= 60 && isOnSchedule) {
+        if (totalViolations === 0 && totalBreaks === 0 && actualMins >= 60 && session.duration >= 60 && isOnSchedule) {
           qualityTier = 'legendary';
-        } else if (totalViolations === 0 && totalEmergencyBreaks === 0) {
+        } else if (totalViolations === 0 && totalBreaks === 0 && actualMins >= 30 && session.duration >= 30) {
           qualityTier = 'epic';
         } else if (totalViolations === 0) {
           qualityTier = 'rare';
@@ -251,7 +251,7 @@ export async function completeExpiredSessions() {
           web_violations_count: webViolationsCount || 0,
           quality_tier: qualityTier,
           breaks_count: breaksCount || 0,
-          emergency_breaks_count: totalEmergencyBreaks,
+          emergency_breaks_count: emergencyBreaksCount || 0,
           is_on_schedule: isOnSchedule,
           blocked_apps: blockedApps,
           apps_count: blockedApps.length,

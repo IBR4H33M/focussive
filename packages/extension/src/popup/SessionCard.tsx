@@ -45,7 +45,6 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
   const [remaining, setRemaining] = useState(0);
   const [breakModalOpen, setBreakModalOpen] = useState(false);
   const [breakMinutes, setBreakMinutes] = useState(1);
-  const [showCancelModal, setShowCancelModal] = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -121,22 +120,6 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
     }
   }, [session.id, onRefresh]);
 
-  const handleConfirmCancel = useCallback(() => {
-    setActionLoading(true);
-    setActionError(null);
-    chrome.runtime.sendMessage({
-      type: 'CANCEL_SESSION',
-      sessionId: session.id,
-    }, (res) => {
-      setActionLoading(false);
-      if (res?.success) {
-        setShowCancelModal(false);
-        if (onRefresh) onRefresh();
-      } else {
-        setActionError(res?.error || 'Failed to cancel session');
-      }
-    });
-  }, [session.id, onRefresh]);
 
   const handleConfirmSkip = useCallback(() => {
     setActionLoading(true);
@@ -161,18 +144,11 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        {/* Header: Session Name + Cancel button */}
+        {/* Header: Session Name */}
         <div style={styles.header}>
           <div style={styles.nameRow}>
             <span style={styles.name} title={session.name}>{session.name}</span>
           </div>
-          <button
-            style={styles.cancelBtn}
-            onClick={() => { setActionError(null); setShowCancelModal(true); }}
-            title="Cancel session"
-          >
-            ✕
-          </button>
         </div>
 
         {/* Time row: range on left, main countdown on right (just like in mobile) */}
@@ -362,38 +338,6 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
         </div>
       )}
 
-      {/* Cancel Session Confirmation Modal */}
-      {showCancelModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <div style={styles.modalHeaderTitle}>Cancel Session?</div>
-            <div style={styles.modalSubtitle}>
-              This will end <strong>&ldquo;{session.name}&rdquo;</strong> and move it to history. Your progress will be saved.
-            </div>
-
-            {actionError && (
-              <div style={styles.errorBanner}>{actionError}</div>
-            )}
-
-            <div style={styles.modalBtnRow}>
-              <button
-                style={styles.modalCancelBtn}
-                onClick={() => setShowCancelModal(false)}
-                disabled={actionLoading}
-              >
-                Keep Going
-              </button>
-              <button
-                style={styles.modalDestructiveDangerBtn}
-                onClick={handleConfirmCancel}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Cancelling...' : 'Cancel Session'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Skip Active Session Confirmation Modal */}
       {showSkipModal && (

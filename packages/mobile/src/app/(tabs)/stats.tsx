@@ -415,13 +415,13 @@ export default function StatsScreen() {
                 <View
                   style={[
                     styles.milestoneIconBox,
-                    { backgroundColor: `${nearestMilestone.badge.color}20` },
+                    { backgroundColor: 'transparent' },
                   ]}
                 >
-                  <Ionicons
-                    name={nearestMilestone.badge.icon as any}
-                    size={22}
-                    color={nearestMilestone.badge.color}
+                  <Image
+                    source={nearestMilestone.badge.image}
+                    style={{ width: 36, height: 36 }}
+                    resizeMode="contain"
                   />
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
@@ -655,13 +655,13 @@ export default function StatsScreen() {
                   <View
                     style={[
                       styles.milestoneIconBox,
-                      { backgroundColor: `${item.badge.color}20` },
+                      { backgroundColor: 'transparent' },
                     ]}
                   >
-                    <Ionicons
-                      name={item.badge.icon as any}
-                      size={20}
-                      color={item.badge.color}
+                    <Image
+                      source={item.badge.image}
+                      style={{ width: 36, height: 36 }}
+                      resizeMode="contain"
                     />
                   </View>
                   <View style={styles.milestoneInfo}>
@@ -1213,8 +1213,8 @@ export default function StatsScreen() {
                   disabled={!item.isUnlocked}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.milestoneIconBox, { backgroundColor: `${item.badge.color}20` }]}>
-                    <Ionicons name={item.badge.icon as any} size={20} color={item.badge.color} />
+                  <View style={[styles.milestoneIconBox, { backgroundColor: 'transparent' }]}>
+                    <Image source={item.badge.image} style={{ width: 32, height: 32 }} resizeMode="contain" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/expo": "^4.7.1",
     "@expo/vector-icons": "latest",
     "@focussive/app-blocker": "workspace:*",
     "@focussive/installed-apps": "workspace:*",

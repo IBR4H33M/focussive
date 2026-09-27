@@ -12,7 +12,7 @@ import React, {
   useRef,
   type ReactNode,
 } from 'react';
-import { sessionApi, appGroupApi, violationApi } from '@/utils/api';
+import { sessionApi, appGroupApi, violationApi, historyApi } from '@/utils/api';
 import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener, takeBreak } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
 import { type Session, type AppGroup, ViolationAction, SessionStatus, isSessionInActiveWindow } from '@focussive/shared';
@@ -180,23 +180,50 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (prevActiveSessionsRef.current.length > 0) {
         for (const prev of prevActiveSessionsRef.current) {
           if (!activeIds.has(prev.id)) {
-            // Session completed!
-            const violationsCount = (prev as any).violations_count ?? 0;
-            const breaksCount = (prev as any).pause_count ?? 0;
-            const tier = evaluateSessionQualityTier({
-              actualDuration: prev.duration,
-              scheduledDuration: prev.duration,
-              violationsCount,
-              breaksUsedCount: breaksCount,
-              status: 'completed',
+            // Check if session was skipped or cancelled
+            const currentSession = allSessions.find(s => s.id === prev.id);
+            const isSkipped = currentSession?.skipped_until && new Date(currentSession.skipped_until).getTime() > Date.now();
+            const isCancelled = currentSession?.status === SessionStatus.CANCELLED;
+
+            if (isSkipped || isCancelled) {
+              // Skipped or cancelled sessions do NOT earn quality tier badges or show celebration modal
+              continue;
+            }
+
+            // Verify in history that backend actually recorded a 'completed' session
+            historyApi.getAll(1, 5).then((historyRes: any) => {
+              const historyList = historyRes?.data || historyRes || [];
+              const completedRecord = Array.isArray(historyList)
+                ? historyList.find((h: any) => h.session_id === prev.id && h.status === 'completed')
+                : null;
+
+              if (completedRecord) {
+                const actualDuration = completedRecord.actual_duration ?? prev.duration;
+                const scheduledDuration = completedRecord.scheduled_duration ?? prev.duration;
+                const violationsCount = completedRecord.violations_count ?? 0;
+                const breaksCount = (completedRecord.breaks_count ?? 0) + (completedRecord.emergency_breaks_count ?? 0);
+
+                const tier = evaluateSessionQualityTier({
+                  actualDuration,
+                  scheduledDuration,
+                  violationsCount,
+                  breaksUsedCount: breaksCount,
+                  status: 'completed',
+                  isOnSchedule: completedRecord.is_on_schedule ?? true,
+                });
+
+                recordEarnedTier(tier.key);
+                setCompletedSessionTierData({
+                  tier,
+                  sessionName: completedRecord.session_name || prev.name,
+                  durationMinutes: actualDuration,
+                  violationsBlocked: violationsCount,
+                });
+              }
+            }).catch((err) => {
+              console.warn('[SessionContext] Could not verify completed session in history:', err);
             });
-            recordEarnedTier(tier.key);
-            setCompletedSessionTierData({
-              tier,
-              sessionName: prev.name,
-              durationMinutes: prev.duration,
-              violationsBlocked: violationsCount,
-            });
+
             break;
           }
         }
