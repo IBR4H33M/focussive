@@ -117,10 +117,18 @@ export function scheduleActiveNotification(
   allowBreaks?: boolean,
   remainingBreakSeconds?: number,
 ) {
-  return AppBlockerModule.scheduleActiveNotification(
-    id, sessionId, title, body, targetAtMillis, timeoutAtMillis, fireAtMillis, violationsText,
-    allowBreaks ?? true, remainingBreakSeconds ?? 0,
-  );
+  return AppBlockerModule.scheduleActiveNotification({
+    id,
+    sessionId,
+    title,
+    body,
+    targetAtMillis,
+    timeoutAtMillis,
+    fireAtMillis,
+    violationsText,
+    allowBreaks: allowBreaks ?? true,
+    remainingBreakSeconds: remainingBreakSeconds ?? 0,
+  });
 }
 
 /** Silently refresh an already-posted running notification (e.g. violation count changed). */
@@ -136,10 +144,18 @@ export function updateActiveNotification(
   remainingBreakSeconds?: number,
   allowBreaks?: boolean,
 ) {
-  return AppBlockerModule.updateActiveNotification(
-    id, sessionId, title, body, targetAtMillis, timeoutAtMillis, violationsText,
-    isOnBreak ?? null, remainingBreakSeconds ?? null, allowBreaks ?? null,
-  );
+  return AppBlockerModule.updateActiveNotification({
+    id,
+    sessionId,
+    title,
+    body,
+    targetAtMillis,
+    timeoutAtMillis,
+    violationsText,
+    isOnBreak: isOnBreak ?? null,
+    remainingBreakSeconds: remainingBreakSeconds ?? null,
+    allowBreaks: allowBreaks ?? null,
+  });
 }
 
 /** Post session completed notification immediately with tone and vibration. */

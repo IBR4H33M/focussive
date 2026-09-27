@@ -259,30 +259,46 @@ class AppBlockerModule : Module() {
      * Schedule a green, non-dismissible "session running" notification with a
      * native chronometer counting down to `targetAtMillis` (the session end).
      */
-    Function("scheduleActiveNotification") {
-        id: Int, sessionId: String, title: String, body: String,
-        targetAtMillis: Double, timeoutAtMillis: Double, fireAtMillis: Double, violationsText: String?,
-        allowBreaks: Boolean?, remainingBreakSeconds: Int? ->
+    Function("scheduleActiveNotification") { options: Map<String, Any?> ->
       val context = appContext.reactContext ?: return@Function null
+      val id = (options["id"] as? Number)?.toInt() ?: 0
+      val sessionId = options["sessionId"] as? String ?: ""
+      val title = options["title"] as? String ?: ""
+      val body = options["body"] as? String ?: ""
+      val targetAtMillis = (options["targetAtMillis"] as? Number)?.toLong() ?: 0L
+      val timeoutAtMillis = (options["timeoutAtMillis"] as? Number)?.toLong() ?: 0L
+      val fireAtMillis = (options["fireAtMillis"] as? Number)?.toLong() ?: 0L
+      val violationsText = options["violationsText"] as? String
+      val allowBreaks = options["allowBreaks"] as? Boolean ?: true
+      val remainingBreakSeconds = (options["remainingBreakSeconds"] as? Number)?.toInt() ?: 0
+
       SessionNotifications.schedule(
         context, id, sessionId, title, body,
-        targetAtMillis.toLong(), timeoutAtMillis.toLong(), fireAtMillis.toLong(), isActive = true,
+        targetAtMillis, timeoutAtMillis, fireAtMillis, isActive = true,
         violationsText = violationsText,
-        allowBreaks = allowBreaks ?: true,
-        remainingBreakSeconds = remainingBreakSeconds ?: 0,
+        allowBreaks = allowBreaks,
+        remainingBreakSeconds = remainingBreakSeconds,
       )
       return@Function null
     }
 
     /** Silently refresh an already-posted running notification (e.g. new violation count). */
-    Function("updateActiveNotification") {
-        id: Int, sessionId: String, title: String, body: String,
-        targetAtMillis: Double, timeoutAtMillis: Double, violationsText: String?,
-        isOnBreak: Boolean?, remainingBreakSeconds: Int?, allowBreaks: Boolean? ->
+    Function("updateActiveNotification") { options: Map<String, Any?> ->
       val context = appContext.reactContext ?: return@Function null
+      val id = (options["id"] as? Number)?.toInt() ?: 0
+      val sessionId = options["sessionId"] as? String ?: ""
+      val title = options["title"] as? String ?: ""
+      val body = options["body"] as? String ?: ""
+      val targetAtMillis = (options["targetAtMillis"] as? Number)?.toLong() ?: 0L
+      val timeoutAtMillis = (options["timeoutAtMillis"] as? Number)?.toLong() ?: 0L
+      val violationsText = options["violationsText"] as? String
+      val isOnBreak = options["isOnBreak"] as? Boolean
+      val remainingBreakSeconds = (options["remainingBreakSeconds"] as? Number)?.toInt()
+      val allowBreaks = options["allowBreaks"] as? Boolean
+
       SessionNotifications.post(
         context, id, sessionId, title, body,
-        targetAtMillis.toLong(), timeoutAtMillis.toLong(), isActive = true,
+        targetAtMillis, timeoutAtMillis, isActive = true,
         violationsText = violationsText,
         isOnBreak = isOnBreak,
         remainingBreakSeconds = remainingBreakSeconds,
