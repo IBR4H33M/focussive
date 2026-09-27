@@ -57,19 +57,29 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
   const remainingBreakMin = Math.floor((session.remaining_break_seconds || 0) / 60);
   const hasBreakTime = session.allow_breaks && (session.remaining_break_seconds || 0) > 0 && !isOnBreak;
 
-  // Session countdown
+  // Session countdown — paused while on break, continues when break finishes
   useEffect(() => {
     const sessionLike = {
       started_at: session.started_at,
       duration: session.duration,
-    } as Session;
+      break_used_seconds: session.break_used_seconds,
+      is_on_break: session.is_on_break,
+      break_started_at: session.break_started_at,
+      break_ends_at: session.break_ends_at,
+    } as any;
 
     setRemaining(getRemainingSeconds(sessionLike));
+
+    // When on break, session timer is paused!
+    if (isOnBreak) {
+      return;
+    }
+
     const interval = setInterval(() => {
       setRemaining(getRemainingSeconds(sessionLike));
     }, 1000);
     return () => clearInterval(interval);
-  }, [session]);
+  }, [session, isOnBreak]);
 
   // Break countdown derived from break_ends_at
   useEffect(() => {
@@ -154,7 +164,6 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
         {/* Header: Session Name + Cancel button */}
         <div style={styles.header}>
           <div style={styles.nameRow}>
-            <span style={styles.liveIndicator}>●</span>
             <span style={styles.name} title={session.name}>{session.name}</span>
           </div>
           <button
@@ -184,7 +193,6 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
         {isOnBreak && (
           <div style={styles.breakRow}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>☕</span>
               <span style={styles.breakLabel}>Break ongoing</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

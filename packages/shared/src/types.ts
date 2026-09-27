@@ -113,6 +113,9 @@ export interface Session {
   allow_breaks: boolean;
   max_break_minutes?: number;
   break_used_seconds: number;
+  is_on_break?: boolean;
+  break_started_at?: string | null;
+  break_ends_at?: string | null;
   status: SessionStatus | string;
   started_at?: string;
   completed_at?: string;

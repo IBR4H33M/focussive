@@ -55,7 +55,9 @@ async function pollSessions() {
       allow_breaks: active.allow_breaks || false,
       max_break_minutes: active.max_break_minutes,
       remaining_break_seconds: active.remaining_break_seconds ?? 0,
+      break_used_seconds: (active as any).break_used_seconds ?? 0,
       is_on_break: active.is_on_break ?? false,
+      break_started_at: (active as any).break_started_at ?? null,
       break_ends_at: active.break_ends_at ?? null,
     } : null;
 

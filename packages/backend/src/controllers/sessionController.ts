@@ -778,6 +778,7 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
       // Check for an active (open) break
       let isOnBreak = false;
       let breakEndsAt: string | null = null;
+      let breakStartedAt: string | null = null;
       if (session.allow_breaks) {
         const { data: openBreak } = await supabase
           .from('session_breaks')
@@ -790,6 +791,7 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
 
         if (openBreak) {
           isOnBreak = true;
+          breakStartedAt = openBreak.started_at;
           // If we know the planned duration, compute end time
           if (openBreak.duration_seconds) {
             const endsMs = new Date(openBreak.started_at).getTime() + openBreak.duration_seconds * 1000;
@@ -804,6 +806,7 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
         allowlist: allowlist || [],
         remaining_break_seconds: remainingBreakSeconds,
         is_on_break: isOnBreak,
+        break_started_at: breakStartedAt,
         break_ends_at: breakEndsAt,
       };
     })

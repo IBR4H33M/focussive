@@ -153,12 +153,34 @@ export const formatCountdown = (totalSeconds: number): string => {
   return `${pad(mins)}:${pad(secs)}`;
 };
 
-/** Seconds remaining until an active session (by `started_at` + `duration`) ends. */
-export const getRemainingSeconds = (session: { started_at?: string; duration: number }): number => {
+/** Seconds remaining until an active session ends, pausing during breaks and extending by break duration. */
+export const getRemainingSeconds = (session: {
+  started_at?: string;
+  duration: number;
+  break_used_seconds?: number;
+  is_on_break?: boolean;
+  break_started_at?: string | null;
+  break_ends_at?: string | null;
+}): number => {
   if (!session.started_at) return session.duration * 60;
   const startedAtMs = new Date(session.started_at).getTime();
-  const endAtMs = startedAtMs + session.duration * 60_000;
-  return Math.max(0, Math.floor((endAtMs - Date.now()) / 1000));
+  const totalDurationMs = session.duration * 60_000;
+  const breakUsedMs = (session.break_used_seconds || 0) * 1000;
+
+  // When a break is currently active, freeze / pause the countdown!
+  if (session.is_on_break) {
+    let breakStartMs = Date.now();
+    if (session.break_started_at) {
+      breakStartMs = new Date(session.break_started_at).getTime();
+    }
+    const focusElapsedMs = Math.max(0, breakStartMs - startedAtMs - breakUsedMs);
+    return Math.max(0, Math.floor((totalDurationMs - focusElapsedMs) / 1000));
+  }
+
+  // Active session running (or resumed after break):
+  // Target end time is extended by any completed break time.
+  const effectiveEndMs = startedAtMs + totalDurationMs + breakUsedMs;
+  return Math.max(0, Math.floor((effectiveEndMs - Date.now()) / 1000));
 };
 
 /** Whether a URL's hostname matches (or is a subdomain of) an entry in `blockedList`. */

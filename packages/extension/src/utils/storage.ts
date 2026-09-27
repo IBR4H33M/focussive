@@ -16,8 +16,11 @@ export interface StoredSession {
   allow_breaks: boolean;
   max_break_minutes?: number;
   remaining_break_seconds: number;
+  break_used_seconds?: number;
   /** True if a break is currently in progress (may have been started from mobile) */
   is_on_break: boolean;
+  /** ISO timestamp when the current break started (null if not on break) */
+  break_started_at?: string | null;
   /** ISO timestamp when the current break will end (null if not on break) */
   break_ends_at: string | null;
 }
