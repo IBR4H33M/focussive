@@ -216,6 +216,15 @@ class AppBlockerService : Service() {
                 return START_STICKY
             }
 
+            "STOP_REMINDER" -> {
+                if (!isMonitoring) {
+                    stopForeground(true)
+                    SessionNotifications.cancelAllReminders(this)
+                    stopSelf()
+                }
+                return START_STICKY
+            }
+
             "START_REMINDER" -> {
                 val notifId = intent.getIntExtra("NOTIF_ID", 2001)
                 val sId = intent.getStringExtra("SESSION_ID")
@@ -228,11 +237,25 @@ class AppBlockerService : Service() {
                 val notification = SessionNotifications.latestReminderNotification
                     ?: SessionNotifications.buildNotification(
                         this, notifId, currentSessionId ?: "", currentSessionName ?: "Upcoming Session",
-                        "", currentTargetMillis, 0L, false
+                        "", currentTargetMillis, currentTargetMillis, false
                     )
                 startForeground(notifId, notification)
                 // In reminder state, app blocker does NOT block apps yet
                 isMonitoring = false
+
+                // Safety: Automatically teardown reminder if session start time passes
+                val delayMs = currentTargetMillis - System.currentTimeMillis()
+                if (delayMs > 0) {
+                    handler.postDelayed({
+                        if (!isMonitoring) {
+                            Log.d("AppBlocker", "Reminder time elapsed; dismissing reminder notification")
+                            SessionNotifications.cancel(this, notifId)
+                            SessionNotifications.cancelAllReminders(this)
+                            stopForeground(true)
+                            stopSelf()
+                        }
+                    }, delayMs)
+                }
                 return START_STICKY
             }
 

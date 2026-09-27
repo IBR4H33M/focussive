@@ -25,6 +25,23 @@ class SessionAlarmReceiver : BroadcastReceiver() {
             return
         }
 
+        if (intent.action == "ACTION_REMINDER_TEARDOWN") {
+            // Reminder period expired; dismiss reminder notification
+            val notifId = intent.getIntExtra("id", -1)
+            if (notifId != -1) {
+                SessionNotifications.cancel(context, notifId)
+            } else {
+                SessionNotifications.cancelAllReminders(context)
+            }
+            try {
+                val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
+                    action = "STOP_REMINDER"
+                }
+                context.startService(serviceIntent)
+            } catch (_: Exception) {}
+            return
+        }
+
         if (intent.action == "ACTION_SESSION_SKIP") {
             // Dismiss upcoming notification immediately
             val notifId = intent.getIntExtra("id", -1)

@@ -131,6 +131,28 @@ object SessionNotifications {
         }
     }
 
+    /** Schedule automatic dismissal of the reminder notification when session starts. */
+    fun scheduleReminderTeardown(context: Context, id: Int, timeoutAtMillis: Long) {
+        if (timeoutAtMillis <= System.currentTimeMillis()) {
+            cancel(context, id)
+            return
+        }
+        val intent = Intent(context, SessionAlarmReceiver::class.java).apply {
+            action = "ACTION_REMINDER_TEARDOWN"
+            putExtra("id", id)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, id + 40000, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        try {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeoutAtMillis, pendingIntent)
+        } catch (_: SecurityException) {
+            alarmManager.set(AlarmManager.RTC_WAKEUP, timeoutAtMillis, pendingIntent)
+        }
+    }
+
     /**
      * Formats notification titles so that the session name is in bold.
      * Handles both HTML-tagged strings (e.g. <b>...</b>) and standard patterns:
@@ -204,7 +226,8 @@ object SessionNotifications {
      * minus sign.
      */
     private fun bindChronometer(views: RemoteViews, targetAtMillis: Long, isPaused: Boolean = false) {
-        val base = SystemClock.elapsedRealtime() + (targetAtMillis - System.currentTimeMillis())
+        val diff = (targetAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+        val base = SystemClock.elapsedRealtime() + diff
         views.setChronometer(R.id.notif_chronometer, base, null, !isPaused)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             views.setChronometerCountDown(R.id.notif_chronometer, true)
@@ -450,6 +473,10 @@ object SessionNotifications {
                 return
             }
         } else {
+            // Schedule teardown when session start time is reached so reminder never stays past start time
+            if (timeoutAtMillis > System.currentTimeMillis()) {
+                scheduleReminderTeardown(context, targetId, timeoutAtMillis)
+            }
             val service = AppBlockerService.instance
             if (service != null) {
                 service.startForeground(targetId, notification)
