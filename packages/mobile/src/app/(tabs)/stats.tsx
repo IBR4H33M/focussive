@@ -186,6 +186,25 @@ export default function StatsScreen() {
   // Milestone evaluations
   const milestones = useMemo(() => evaluateMilestones(history, appGroups), [history, appGroups]);
 
+  // Sorted milestones: Current / Equipped Archetype at top, remaining sorted by completion percentage descending
+  const sortedMilestones = useMemo(() => {
+    return Object.entries(milestones).sort(([, itemA], [, itemB]) => {
+      const isEquippedA = selectedArchetype === itemA.badge.title;
+      const isEquippedB = selectedArchetype === itemB.badge.title;
+
+      if (isEquippedA && !isEquippedB) return -1;
+      if (!isEquippedA && isEquippedB) return 1;
+
+      const pctA = itemA.isUnlocked ? 1 : (itemA.target > 0 ? itemA.current / itemA.target : 0);
+      const pctB = itemB.isUnlocked ? 1 : (itemB.target > 0 ? itemB.current / itemB.target : 0);
+
+      if (pctB !== pctA) {
+        return pctB - pctA;
+      }
+      return itemB.current - itemA.current;
+    });
+  }, [milestones, selectedArchetype]);
+
   // Milestone nearest to completion (uncompleted only)
   const nearestMilestone = useMemo(() => {
     const list = Object.values(milestones);
@@ -641,7 +660,7 @@ export default function StatsScreen() {
 
         {/* Milestone Cards List */}
         <View style={styles.milestonesList}>
-          {Object.entries(milestones).map(([key, item]) => {
+          {sortedMilestones.map(([key, item]) => {
             const isEquipped = selectedArchetype === item.badge.title;
             const activeAccent = isDark ? '#636CB5' : '#587042';
             const iconTintColor = item.isUnlocked
