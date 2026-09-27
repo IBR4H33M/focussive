@@ -204,14 +204,14 @@ export default function DashboardScreen() {
               <TouchableOpacity
                 style={[
                   styles.skipUpcomingBtn,
-                  { backgroundColor: theme.card },
+                  { backgroundColor: '#187834' },
                 ]}
                 onPress={() => handleSkipSession(currentActiveOrPaused)}
                 disabled={isSkippingUpcoming}
                 activeOpacity={0.7}
               >
-                <Ionicons name="play-forward-outline" size={15} color={theme.textSecondary} />
-                <Text style={[styles.skipUpcomingBtnText, { color: theme.text }]}>Skip this session</Text>
+                <Ionicons name="play-forward-outline" size={15} color="#FFFFFF" />
+                <Text style={[styles.skipUpcomingBtnText, { color: '#FFFFFF' }]}>Skip this session</Text>
               </TouchableOpacity>
             )}
           </View>

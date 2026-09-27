@@ -277,7 +277,7 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
         }}
         title="Skip this active session"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E9E4DC" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="5 4 15 12 5 20 5 4" />
           <line x1="19" y1="5" x2="19" y2="19" />
         </svg>
@@ -601,9 +601,9 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: 8,
     padding: '10px 14px',
-    backgroundColor: '#3A4062',
-    color: '#E9E4DC',
-    border: '1.5px solid #5D6E75',
+    backgroundColor: '#187834',
+    color: '#FFFFFF',
+    border: 'none',
     borderRadius: 10,
     fontSize: 13,
     fontWeight: 600,

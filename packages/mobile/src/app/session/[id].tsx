@@ -658,12 +658,12 @@ export default function SessionDetailScreen() {
         {/* Skip Session button — active sessions only */}
         {isActive && (
           <TouchableOpacity
-            style={[styles.cancelSessionBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', borderWidth: 0 }]}
+            style={[styles.cancelSessionBtn, { backgroundColor: '#187834', borderWidth: 0 }]}
             onPress={handleSkipSession}
             activeOpacity={0.8}
           >
-            <Ionicons name="play-forward-outline" size={16} color={theme.textSecondary} />
-            <Text style={[styles.cancelSessionBtnText, { color: theme.textSecondary }]}>Skip Session</Text>
+            <Ionicons name="play-forward-outline" size={16} color="#FFFFFF" />
+            <Text style={[styles.cancelSessionBtnText, { color: '#FFFFFF' }]}>Skip this session</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
