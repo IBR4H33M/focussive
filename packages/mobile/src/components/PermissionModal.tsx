@@ -116,13 +116,7 @@ export default function PermissionModal({
 
           <View style={styles.buttonRow}>
             <TouchableOpacity
-              style={[
-                styles.buttonGrant,
-                isDark && {
-                  backgroundColor: '#374145',
-                  borderColor: '#374145',
-                },
-              ]}
+              style={styles.buttonGrant}
               onPress={handleGrantPermissions}
               activeOpacity={0.8}
             >
@@ -132,13 +126,7 @@ export default function PermissionModal({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.buttonLater,
-                isDark && {
-                  borderColor: '#374145',
-                  backgroundColor: 'transparent',
-                },
-              ]}
+              style={styles.buttonLater}
               onPress={onDismiss}
               activeOpacity={0.8}
             >
@@ -245,9 +233,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 10,
-    backgroundColor: '#115926',
-    borderWidth: 2.5,
-    borderColor: '#115926',
+    backgroundColor: '#595F8E',
+    borderWidth: 2,
+    borderColor: '#595F8E',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
@@ -256,23 +244,23 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 10,
-    backgroundColor: '#DCFCE7',
-    borderWidth: 2.5,
-    borderColor: '#115926',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#595F8E',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
   buttonTextGrant: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: '#FFFFFF',
     textAlign: 'center',
   },
   buttonTextLater: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#115926',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#595F8E',
     textAlign: 'center',
   },
 });
