@@ -42,6 +42,8 @@ import {
   hasExactAlarmPermission,
   requestExactAlarmPermission,
   requestNotificationPermission,
+  isIgnoringBatteryOptimization,
+  requestIgnoreBatteryOptimization,
 } from '@focussive/app-blocker';
 import { useThemeContext, type ThemePreference } from '@/utils/theme';
 import { getReminderMinutes, setReminderMinutes, scheduleSessionReminders } from '@/utils/sessionReminders';
@@ -229,6 +231,7 @@ export default function SettingsScreen() {
   const [hasOverlay, setHasOverlay] = useState<boolean | null>(null);
   const [hasExactAlarm, setHasExactAlarm] = useState<boolean | null>(null);
   const [hasNotifications, setHasNotifications] = useState<boolean | null>(null);
+  const [hasBatteryOpt, setHasBatteryOpt] = useState<boolean | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const permissionsRef = useRef<View>(null);
 
@@ -245,9 +248,9 @@ export default function SettingsScreen() {
   const [showExtensionModal, setShowExtensionModal] = useState(false);
 
   const allPermsGranted =
-    hasUsageStats === true && hasOverlay === true && hasExactAlarm === true && hasNotifications === true;
+    hasUsageStats === true && hasOverlay === true && hasExactAlarm === true && hasNotifications === true && (Platform.OS !== 'android' || hasBatteryOpt === true);
   const permsMissing =
-    hasUsageStats === false || hasOverlay === false || hasExactAlarm === false || hasNotifications === false;
+    hasUsageStats === false || hasOverlay === false || hasExactAlarm === false || hasNotifications === false || (Platform.OS === 'android' && hasBatteryOpt === false);
 
   useEffect(() => {
     fetchProfile();
@@ -307,7 +310,7 @@ export default function SettingsScreen() {
 
   async function checkPermissionStatuses() {
     try {
-      const [usage, overlay, exactAlarm, notifPerm] = await Promise.all([
+      const [usage, overlay, exactAlarm, notifPerm, batteryOpt] = await Promise.all([
         hasUsageStatsPermission(),
         hasOverlayPermission(),
         hasExactAlarmPermission(),
@@ -319,11 +322,13 @@ export default function SettingsScreen() {
             return null;
           }
         })(),
+        Platform.OS === 'android' ? isIgnoringBatteryOptimization() : Promise.resolve(true),
       ]);
       setHasUsageStats(usage);
       setHasOverlay(overlay);
       setHasExactAlarm(exactAlarm);
       setHasNotifications(notifPerm);
+      setHasBatteryOpt(batteryOpt);
     } catch {
       // Not Android or module unavailable
     }
@@ -1553,7 +1558,7 @@ export default function SettingsScreen() {
 
                 {/* Notifications */}
                 <TouchableOpacity
-                  style={[styles.sheetPermRow, { borderBottomWidth: 0 }]}
+                  style={[styles.sheetPermRow, { borderBottomColor: CARD_BORDER }]}
                   onPress={async () => {
                     try {
                       const current = await Notifications.getPermissionsAsync();
@@ -1583,6 +1588,32 @@ export default function SettingsScreen() {
                     <Ionicons name="warning" size={22} color={theme.danger} />
                   )}
                 </TouchableOpacity>
+
+                {/* Unrestricted Battery */}
+                {Platform.OS === 'android' && (
+                  <TouchableOpacity
+                    style={[styles.sheetPermRow, { borderBottomWidth: 0 }]}
+                    onPress={async () => {
+                      await requestIgnoreBatteryOptimization();
+                      setTimeout(checkPermissionStatuses, 1000);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1, marginRight: 12 }}>
+                      <Text style={[styles.permTitle, { color: CARD_TEXT }]}>Unrestricted Battery</Text>
+                      <Text style={[styles.permDesc, { color: CARD_TEXT_MUTED }]}>
+                        Required to keep sessions active when the app is in the background
+                      </Text>
+                    </View>
+                    {hasBatteryOpt === null ? (
+                      <Ionicons name="ellipse-outline" size={22} color={CARD_ICON} />
+                    ) : hasBatteryOpt ? (
+                      <Ionicons name="checkmark-circle" size={22} color="#1E9E44" />
+                    ) : (
+                      <Ionicons name="warning" size={22} color={theme.danger} />
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             </ScrollView>
           </View>

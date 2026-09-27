@@ -364,46 +364,51 @@ export default function StatsScreen() {
             </Text>
           </View>
 
-          {/* Session Quality Tiers */}
-          <Text style={[styles.badgeSubheading, { color: theme.textSecondary }]}>
-            SESSION QUALITY TIERS
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tiersScrollRow}
+          {/* Session Quality Tiers — Container extending outside screen edges */}
+          <View
+            style={[
+              styles.tiersOuterContainer,
+              { backgroundColor: isDark ? '#2D2E46' : (theme.surface || '#EDEBD8') },
+            ]}
           >
-            {Object.values(QUALITY_TIERS).map(tier => {
-              const count = tierCounts[tier.key] || 0;
-              return (
-                <TouchableOpacity
-                  key={tier.key}
-                  style={[
-                    styles.tierCard,
-                    {
-                      opacity: count > 0 ? 1 : 0.45,
-                    },
-                  ]}
-                  onPress={() => setSelectedTierDetail(tier)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.tierIconBox}>
-                    <Image
-                      source={tier.heroImage || TIER_HERO_BADGES[tier.key]}
-                      style={styles.tierIconImage}
-                      resizeMode="contain"
-                    />
-                  </View>
-                  <Text style={[styles.tierCardTitle, { color: theme.text }]}>
-                    {tier.name}
-                  </Text>
-                  <Text style={[styles.tierCountText, { color: count > 0 ? theme.text : theme.textSecondary }]}>
-                    {count > 0 ? `×${count}` : '0'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tiersScrollRow}
+            >
+              {Object.values(QUALITY_TIERS).map(tier => {
+                const count = tierCounts[tier.key] || 0;
+                return (
+                  <TouchableOpacity
+                    key={tier.key}
+                    style={[
+                      styles.tierSubContainer,
+                      {
+                        backgroundColor: isDark ? '#202236' : theme.card,
+                        opacity: count > 0 ? 1 : 0.45,
+                      },
+                    ]}
+                    onPress={() => setSelectedTierDetail(tier)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.tierIconBox}>
+                      <Image
+                        source={tier.heroImage || TIER_HERO_BADGES[tier.key]}
+                        style={styles.tierIconImage}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <Text style={[styles.tierCardTitle, { color: theme.text }]}>
+                      {tier.name}
+                    </Text>
+                    <Text style={[styles.tierCountText, { color: count > 0 ? theme.text : theme.textSecondary }]}>
+                      {count > 0 ? `×${count}` : '0'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
 
         {/* ── Milestone Progression Section (Nearest to completion) ── */}
@@ -1471,11 +1476,23 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 10,
   },
+  tiersOuterContainer: {
+    marginHorizontal: -16,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
   tiersScrollRow: {
     flexDirection: 'row',
-    gap: 16,
-    paddingBottom: 8,
-    paddingHorizontal: 2,
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  tierSubContainer: {
+    width: 90,
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    gap: 4,
   },
   tierCard: {
     width: 86,

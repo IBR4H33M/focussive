@@ -15,6 +15,7 @@ export interface MissingPermissions {
   overlay?: boolean;
   exactAlarm?: boolean;
   notifications?: boolean;
+  batteryOptimization?: boolean;
 }
 
 interface PermissionModalProps {
@@ -50,6 +51,7 @@ export default function PermissionModal({
   const showOverlay = missingPermissions ? missingPermissions.overlay : true;
   const showAlarm = missingPermissions ? missingPermissions.exactAlarm : (Platform.OS === 'android');
   const showNotif = missingPermissions ? missingPermissions.notifications : true;
+  const showBattery = missingPermissions ? missingPermissions.batteryOptimization : (Platform.OS === 'android');
 
   const items: { name: string; description: string }[] = [];
   if (showUsage) {
@@ -74,6 +76,12 @@ export default function PermissionModal({
     items.push({
       name: Platform.OS === 'android' ? 'Post Notifications' : 'Notifications',
       description: 'To send session alerts and reminders',
+    });
+  }
+  if (Platform.OS === 'android' && showBattery) {
+    items.push({
+      name: 'Unrestricted Battery',
+      description: 'To keep sessions active when the app is in the background',
     });
   }
 

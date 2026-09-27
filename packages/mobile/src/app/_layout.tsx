@@ -20,6 +20,8 @@ import {
   hasExactAlarmPermission,
   requestExactAlarmPermission,
   requestNotificationPermission,
+  isIgnoringBatteryOptimization,
+  requestIgnoreBatteryOptimization,
 } from '@focussive/app-blocker';
 import { setupNotificationHandler } from '@/utils/sessionReminders';
 import PermissionModal, { MissingPermissions } from '@/components/PermissionModal';
@@ -62,6 +64,7 @@ function RootLayoutContent() {
     overlay: false,
     exactAlarm: false,
     notifications: false,
+    batteryOptimization: false,
   });
 
   useEffect(() => {
@@ -114,11 +117,12 @@ function RootLayoutContent() {
       if (isLoading || !isAuthenticated) return;
       (async () => {
         try {
-          const [usage, overlay, exactAlarm, notifStatus] = await Promise.all([
+          const [usage, overlay, exactAlarm, notifStatus, batteryIgnoring] = await Promise.all([
             hasUsageStatsPermission(),
             hasOverlayPermission(),
             Platform.OS === 'android' ? hasExactAlarmPermission() : Promise.resolve(true),
             Notifications.getPermissionsAsync(),
+            Platform.OS === 'android' ? isIgnoringBatteryOptimization() : Promise.resolve(true),
           ]);
 
           const notifGranted = notifStatus.granted;
@@ -126,8 +130,9 @@ function RootLayoutContent() {
           const missingOverlay = !overlay;
           const missingAlarm = Platform.OS === 'android' && !exactAlarm;
           const missingNotif = !notifGranted;
+          const missingBattery = Platform.OS === 'android' && !batteryIgnoring;
 
-          const anyMissing = missingUsage || missingOverlay || missingAlarm || missingNotif;
+          const anyMissing = missingUsage || missingOverlay || missingAlarm || missingNotif || missingBattery;
 
           if (anyMissing) {
             setMissingPermissions({
@@ -135,6 +140,7 @@ function RootLayoutContent() {
               overlay: missingOverlay,
               exactAlarm: missingAlarm,
               notifications: missingNotif,
+              batteryOptimization: missingBattery,
             });
             setShowPermissionModal(true);
           } else {
@@ -153,6 +159,7 @@ function RootLayoutContent() {
       if (missingPermissions.overlay) await requestOverlayPermission();
       if (missingPermissions.exactAlarm && Platform.OS === 'android') await requestExactAlarmPermission();
       if (missingPermissions.notifications) await requestNotificationPermission();
+      if (missingPermissions.batteryOptimization && Platform.OS === 'android') await requestIgnoreBatteryOptimization();
     } catch {
       // Ignore errors
     }

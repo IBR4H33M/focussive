@@ -147,3 +147,11 @@ export async function hasExactAlarmPermission(): Promise<boolean> {
 export function requestExactAlarmPermission() {
   return AppBlockerModule.requestExactAlarmPermission();
 }
+
+export async function isIgnoringBatteryOptimization(): Promise<boolean> {
+  return await AppBlockerModule.isIgnoringBatteryOptimization();
+}
+
+export async function requestIgnoreBatteryOptimization(): Promise<boolean> {
+  return await AppBlockerModule.requestIgnoreBatteryOptimization();
+}

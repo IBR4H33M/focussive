@@ -1,8 +1,10 @@
 package expo.modules.appblocker
 
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
@@ -106,6 +108,7 @@ class AppBlockerService : Service() {
             // If session time elapsed, stop foreground service and clear ongoing notification
             if (currentTargetMillis > 0L && now >= currentTargetMillis) {
                 Log.d("AppBlocker", "Session time elapsed; dismissing active notification and stopping service")
+                clearSavedSession()
                 isMonitoring = false
                 stopForeground(true)
                 SessionNotifications.cancel(this@AppBlockerService, SessionNotifications.ACTIVE_NOTIFICATION_ID)
@@ -132,14 +135,19 @@ class AppBlockerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        if (intent == null) {
+            restoreSessionStateIfNeeded()
+            return START_STICKY
+        }
+
+        when (intent.action) {
             "UPDATE_PACKAGES" -> {
                 val pkgs = intent.getStringArrayListExtra("BLOCKED_PACKAGES")
                 if (pkgs != null) blockedPackages = pkgs
                 allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", false)
                 remainingBreakSeconds = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
                 updateActiveNotification()
-                return START_NOT_STICKY
+                return START_STICKY
             }
 
             "ALLOW_APP" -> {
@@ -156,7 +164,7 @@ class AppBlockerService : Service() {
                     }
                     LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast)
                 }
-                return START_NOT_STICKY
+                return START_STICKY
             }
 
             "TAKE_BREAK" -> {
@@ -192,10 +200,11 @@ class AppBlockerService : Service() {
                 }
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast)
 
-                return START_NOT_STICKY
+                return START_STICKY
             }
 
             "STOP" -> {
+                clearSavedSession()
                 isMonitoring = false
                 breakActive = false
                 breakEndsAtMillis = 0L
@@ -204,7 +213,7 @@ class AppBlockerService : Service() {
                 stopForeground(true)
                 SessionNotifications.cancel(this, SessionNotifications.ACTIVE_NOTIFICATION_ID)
                 stopSelf()
-                return START_NOT_STICKY
+                return START_STICKY
             }
 
             "START_REMINDER" -> {
@@ -224,7 +233,7 @@ class AppBlockerService : Service() {
                 startForeground(notifId, notification)
                 // In reminder state, app blocker does NOT block apps yet
                 isMonitoring = false
-                return START_NOT_STICKY
+                return START_STICKY
             }
 
             "START_ACTIVE" -> {
@@ -237,6 +246,10 @@ class AppBlockerService : Service() {
                 val endMs = intent.getLongExtra("END_AT_MILLIS", 0L)
                 if (endMs > 0L) currentTargetMillis = endMs
 
+                if (sId != null && sName != null) {
+                    saveSessionState(sId, sName, currentTargetMillis)
+                }
+
                 val notification = getForegroundNotification()
                 startForeground(SessionNotifications.ACTIVE_NOTIFICATION_ID, notification)
 
@@ -244,26 +257,30 @@ class AppBlockerService : Service() {
                     isMonitoring = true
                     handler.post(monitorRunnable)
                 }
-                return START_NOT_STICKY
+                return START_STICKY
             }
 
             null, "" -> { /* fall through to start/update */ }
         }
 
         // Normal start — update blocked packages if provided
-        val newBlockedPackages = intent?.getStringArrayListExtra("BLOCKED_PACKAGES")
+        val newBlockedPackages = intent.getStringArrayListExtra("BLOCKED_PACKAGES")
         if (newBlockedPackages != null) {
             blockedPackages = newBlockedPackages
         }
-        allowBreaks = intent?.getBooleanExtra("ALLOW_BREAKS", false) ?: allowBreaks
-        remainingBreakSeconds = intent?.getIntExtra("REMAINING_BREAK_SECONDS", 0) ?: remainingBreakSeconds
+        allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", false)
+        remainingBreakSeconds = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
 
-        val sId = intent?.getStringExtra("SESSION_ID")
+        val sId = intent.getStringExtra("SESSION_ID")
         if (sId != null) currentSessionId = sId
-        val sName = intent?.getStringExtra("SESSION_NAME")
+        val sName = intent.getStringExtra("SESSION_NAME")
         if (sName != null) currentSessionName = sName
-        val endMs = intent?.getLongExtra("END_AT_MILLIS", 0L) ?: 0L
+        val endMs = intent.getLongExtra("END_AT_MILLIS", 0L)
         if (endMs > 0L) currentTargetMillis = endMs
+
+        if (currentSessionId != null && currentSessionName != null) {
+            saveSessionState(currentSessionId!!, currentSessionName!!, currentTargetMillis)
+        }
 
         val notification = getForegroundNotification()
         startForeground(SessionNotifications.ACTIVE_NOTIFICATION_ID, notification)
@@ -273,7 +290,48 @@ class AppBlockerService : Service() {
             handler.post(monitorRunnable)
         }
 
-        return START_NOT_STICKY
+        return START_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+
+        // Only schedule restart if a session is genuinely active
+        if (!isSessionActive()) return
+
+        val sessionId = currentSessionId ?: return
+        val sessionName = currentSessionName ?: return
+        val endAtMillis = currentTargetMillis
+
+        val restartIntent = Intent(this, ServiceRestartReceiver::class.java).apply {
+            action = "ACTION_RESTART_BLOCKER_SERVICE"
+            putExtra("SESSION_ID", sessionId)
+            putExtra("SESSION_NAME", sessionName)
+            putExtra("END_AT_MILLIS", endAtMillis)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            99998,
+            restartIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        // Fire 500ms after kill — fast enough to be nearly imperceptible
+        val restartAt = System.currentTimeMillis() + 500
+
+        try {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                restartAt,
+                pendingIntent
+            )
+        } catch (e: SecurityException) {
+            // Exact alarm permission not granted — fall back to inexact
+            alarmManager.set(AlarmManager.RTC_WAKEUP, restartAt, pendingIntent)
+        }
     }
 
     override fun onDestroy() {
@@ -355,7 +413,56 @@ class AppBlockerService : Service() {
         )
     }
 
+    private fun saveSessionState(
+        sessionId: String,
+        sessionName: String,
+        endAtMillis: Long
+    ) {
+        getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
+            .edit()
+            .putString("active_session_id", sessionId)
+            .putString("active_session_name", sessionName)
+            .putLong("active_session_end", endAtMillis)
+            .apply()
+    }
+
+    private fun clearSavedSession(
+        prefs: android.content.SharedPreferences? = null
+    ) {
+        (prefs ?: getSharedPreferences("focussive_session", Context.MODE_PRIVATE))
+            .edit()
+            .remove("active_session_id")
+            .remove("active_session_name")
+            .remove("active_session_end")
+            .apply()
+    }
+
+    private fun restoreSessionStateIfNeeded() {
+        val prefs = getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
+        val sessionId = prefs.getString("active_session_id", null) ?: return
+        val sessionName = prefs.getString("active_session_name", null) ?: return
+        val endAtMillis = prefs.getLong("active_session_end", 0L)
+
+        // Do not restore if the session has already expired
+        if (endAtMillis > 0 && System.currentTimeMillis() >= endAtMillis) {
+            clearSavedSession(prefs)
+            return
+        }
+
+        // Re-post the active notification and resume blocking
+        val restoreIntent = Intent(this, AppBlockerService::class.java).apply {
+            action = "START_ACTIVE"
+            putExtra("SESSION_ID", sessionId)
+            putExtra("SESSION_NAME", sessionName)
+            putExtra("END_AT_MILLIS", endAtMillis)
+            putExtra("IS_RESTART", true)
+        }
+        onStartCommand(restoreIntent, 0, 0)
+    }
+
     fun isSessionActive(): Boolean {
-        return isMonitoring && currentSessionId != null
+        val hasSession = currentSessionId != null
+        val notExpired = currentTargetMillis == 0L || System.currentTimeMillis() < currentTargetMillis
+        return hasSession && notExpired
     }
 }

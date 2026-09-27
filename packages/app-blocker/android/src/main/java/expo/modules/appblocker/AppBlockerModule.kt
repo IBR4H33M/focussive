@@ -314,6 +314,28 @@ class AppBlockerModule : Module() {
       }
       return@Function null
     }
+
+    AsyncFunction("isIgnoringBatteryOptimization") { ->
+      val context = appContext.reactContext ?: return@AsyncFunction false
+      val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+      return@AsyncFunction pm.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    AsyncFunction("requestIgnoreBatteryOptimization") { ->
+      val context = appContext.reactContext ?: return@AsyncFunction false
+      try {
+        val intent = Intent(
+          Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+        ).apply {
+          data = android.net.Uri.parse("package:${context.packageName}")
+          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+        return@AsyncFunction true
+      } catch (e: Exception) {
+        return@AsyncFunction false
+      }
+    }
   }
 
   private fun hasUsageStatsPermission(context: Context): Boolean {
