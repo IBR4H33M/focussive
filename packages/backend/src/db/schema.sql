@@ -296,3 +296,34 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
 -- For current users, their full names are set as first name
 UPDATE users SET first_name = name WHERE first_name IS NULL AND name IS NOT NULL;
 
+-- ============================================================
+-- MIGRATION: Row Level Security (RLS) Hardening
+-- ============================================================
+ALTER TABLE public.app_group_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS app_group_items_policy ON public.app_group_items;
+CREATE POLICY app_group_items_policy ON public.app_group_items
+  FOR ALL
+  USING (
+    app_group_id IN (
+      SELECT id FROM public.app_groups WHERE user_id = auth.uid()
+    )
+  );
+
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS activity_logs_policy ON public.activity_logs;
+CREATE POLICY activity_logs_policy ON public.activity_logs
+  FOR ALL
+  USING (user_id = auth.uid());
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS notifications_policy ON public.notifications;
+CREATE POLICY notifications_policy ON public.notifications
+  FOR ALL
+  USING (user_id = auth.uid());
+
+ALTER TABLE public.session_skips ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS session_skips_policy ON public.session_skips;
+CREATE POLICY session_skips_policy ON public.session_skips
+  FOR ALL
+  USING (user_id = auth.uid());
+
