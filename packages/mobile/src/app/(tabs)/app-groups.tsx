@@ -498,7 +498,7 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
               style={[
                 styles.createSessionTopBtn,
                 {
-                  borderColor: isDark ? theme.accent : theme.accentDark,
+                  borderColor: '#686EA7',
                   backgroundColor: 'transparent',
                 },
               ]}
@@ -508,13 +508,13 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
               <Ionicons
                 name="add-circle-outline"
                 size={18}
-                color={isDark ? theme.accent : theme.accentDark}
+                color="#686EA7"
                 style={{ marginRight: 8 }}
               />
               <Text
                 style={[
                   styles.createSessionTopBtnText,
-                  { color: isDark ? theme.accent : theme.accentDark },
+                  { color: '#686EA7' },
                 ]}
               >
                 Create new session

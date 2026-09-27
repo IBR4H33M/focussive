@@ -126,6 +126,7 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
     setActionLoading(true);
     setActionError(null);
     try {
+      chrome.runtime.sendMessage({ type: 'SESSION_SKIPPED', sessionId: session.id }, () => {});
       await sessionApi.skip(session.id);
       chrome.runtime.sendMessage({ type: 'SYNC_NOW' }, () => {});
       setActionLoading(false);
@@ -219,44 +220,17 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
             {hasBreakTime ? (
               <div style={styles.breakActionGroup}>
                 <button
+                  className="take-break-btn"
                   style={styles.primaryBreakBtn}
                   onClick={() => {
                     setBreakMinutes(1);
                     setBreakModalOpen(true);
                   }}
+                  title="Take a break from this session"
                 >
                   <span style={styles.primaryBreakBtnText}>Take a break</span>
                   <span style={styles.primaryBreakBtnSub}>{remainingBreakMin} min remaining</span>
                 </button>
-
-                {/* Quick break shortcuts */}
-                <div style={styles.quickBreakRow}>
-                  <button
-                    style={styles.quickBreakPill}
-                    onClick={() => handleStartBreak(1)}
-                    title="Take 1 minute break"
-                  >
-                    +1 min
-                  </button>
-                  {remainingBreakMin >= 5 && (
-                    <button
-                      style={styles.quickBreakPill}
-                      onClick={() => handleStartBreak(5)}
-                      title="Take 5 minutes break"
-                    >
-                      +5 min
-                    </button>
-                  )}
-                  {remainingBreakMin >= 10 && (
-                    <button
-                      style={styles.quickBreakPill}
-                      onClick={() => handleStartBreak(10)}
-                      title="Take 10 minutes break"
-                    >
-                      +10 min
-                    </button>
-                  )}
-                </div>
               </div>
             ) : (
               <div style={styles.breakBtnDisabled}>
@@ -270,6 +244,7 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
 
       {/* Skip Button under the running container (matching mobile dashboard) */}
       <button
+        className="skip-active-btn"
         style={styles.skipActiveBtn}
         onClick={() => {
           setActionError(null);
@@ -283,6 +258,17 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
         </svg>
         <span>Skip this session</span>
       </button>
+
+      <style>{`
+        .take-break-btn:hover {
+          background-color: #1c7c37 !important;
+          filter: brightness(1.08);
+        }
+        .skip-active-btn:hover {
+          background-color: #1e8f3e !important;
+          filter: brightness(1.08);
+        }
+      `}</style>
 
       {/* Take a Break Picker Modal (Identical to Mobile Experience) */}
       {breakModalOpen && (

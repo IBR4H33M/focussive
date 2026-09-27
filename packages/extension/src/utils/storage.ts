@@ -23,6 +23,7 @@ export interface StoredSession {
   break_started_at?: string | null;
   /** ISO timestamp when the current break will end (null if not on break) */
   break_ends_at: string | null;
+  skipped_until?: string | null;
 }
 
 export async function getActiveSession(): Promise<StoredSession | null> {

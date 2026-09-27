@@ -23,6 +23,8 @@ import type { ViolationResponseMessage } from './utils/messaging';
 const POLL_INTERVAL_MS = 5000;
 let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 let lastSessionId: string | null = null;
+let lastSessionName: string | null = null;
+const skippedSessionIds = new Set<string>();
 
 // Active break timer: { sessionId, breakId, endsAt }
 let activeBreakTimer: { sessionId: string; breakId: string; timeoutId: ReturnType<typeof setTimeout> } | null = null;
@@ -84,6 +86,7 @@ async function pollSessions() {
     // Notify on new active session
     if (storedSession && storedSession.id !== lastSessionId) {
       lastSessionId = storedSession.id;
+      lastSessionName = storedSession.name;
       const settings = await getExtensionSettings();
       if (settings.desktop_notifications) {
         chrome.notifications.create({
@@ -95,17 +98,58 @@ async function pollSessions() {
         });
       }
     } else if (!storedSession && lastSessionId) {
+      let isSkipped = skippedSessionIds.has(lastSessionId);
+      let sessionName = lastSessionName;
+
+      // 1. Check allSessions list
+      const prevSession = allSessions.find((s) => s.id === lastSessionId);
+      if (prevSession) {
+        if (!sessionName) sessionName = prevSession.name;
+        if (prevSession.skipped_until && new Date(prevSession.skipped_until).getTime() > Date.now()) {
+          isSkipped = true;
+        }
+      }
+
+      // 2. If not found or not marked yet, fetch single session detail to confirm
+      if (!isSkipped) {
+        try {
+          const detailRes = await sessionApi.getById(lastSessionId);
+          const detail = (detailRes as any)?.data || detailRes;
+          if (detail) {
+            if (!sessionName) sessionName = detail.name;
+            if (detail.skipped_until && new Date(detail.skipped_until).getTime() > Date.now()) {
+              isSkipped = true;
+            }
+          }
+        } catch {}
+      }
+
       const settings = await getExtensionSettings();
       if (settings.desktop_notifications) {
-        chrome.notifications.create({
-          type: 'basic',
-          iconUrl: chrome.runtime.getURL('icons/icon-48.png'),
-          title: 'Session Completed',
-          message: 'Your focus session has finished. Great job!',
-          priority: 2,
-        });
+        if (isSkipped) {
+          chrome.notifications.create({
+            type: 'basic',
+            iconUrl: chrome.runtime.getURL('icons/icon-48.png'),
+            title: 'Session Skipped',
+            message: sessionName
+              ? `Focus session "${sessionName}" was skipped.`
+              : 'Your focus session was skipped.',
+            priority: 2,
+          });
+        } else {
+          chrome.notifications.create({
+            type: 'basic',
+            iconUrl: chrome.runtime.getURL('icons/icon-48.png'),
+            title: 'Session Completed',
+            message: 'Your focus session has finished. Great job!',
+            priority: 2,
+          });
+        }
       }
+
+      skippedSessionIds.delete(lastSessionId);
       lastSessionId = null;
+      lastSessionName = null;
     }
 
     await setActiveSession(storedSession);
@@ -350,6 +394,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'SKIP_SESSION') {
     (async () => {
       try {
+        if (message.sessionId) {
+          skippedSessionIds.add(message.sessionId);
+        }
         const res = await sessionApi.skip(message.sessionId);
         sendResponse({ success: true, res });
         pollSessions().catch(() => {});
@@ -357,6 +404,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, error: err.message || 'Failed to skip' });
       }
     })();
+    return true;
+  }
+
+  if (message.type === 'SESSION_SKIPPED') {
+    if (message.sessionId) {
+      skippedSessionIds.add(message.sessionId);
+    }
+    pollSessions().catch(() => {});
+    sendResponse?.({ success: true });
+    return true;
+  }
+
+  if (message.type === 'SYNC_NOW') {
+    pollSessions().catch(() => {});
+    sendResponse?.({ success: true });
     return true;
   }
 

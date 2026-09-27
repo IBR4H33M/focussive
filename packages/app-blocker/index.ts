@@ -114,9 +114,12 @@ export function scheduleActiveNotification(
   timeoutAtMillis: number,
   fireAtMillis: number,
   violationsText: string,
+  allowBreaks?: boolean,
+  remainingBreakSeconds?: number,
 ) {
   return AppBlockerModule.scheduleActiveNotification(
     id, sessionId, title, body, targetAtMillis, timeoutAtMillis, fireAtMillis, violationsText,
+    allowBreaks ?? true, remainingBreakSeconds ?? 0,
   );
 }
 
@@ -129,10 +132,19 @@ export function updateActiveNotification(
   targetAtMillis: number,
   timeoutAtMillis: number,
   violationsText: string,
+  isOnBreak?: boolean,
+  remainingBreakSeconds?: number,
+  allowBreaks?: boolean,
 ) {
   return AppBlockerModule.updateActiveNotification(
     id, sessionId, title, body, targetAtMillis, timeoutAtMillis, violationsText,
+    isOnBreak ?? null, remainingBreakSeconds ?? null, allowBreaks ?? null,
   );
+}
+
+/** Post session completed notification immediately with tone and vibration. */
+export function postCompletedNotification(sessionId: string, title: string) {
+  return AppBlockerModule.postCompletedNotification(sessionId, title);
 }
 
 /** Cancel a pending alarm and/or dismiss a live session notification by id. */

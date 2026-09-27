@@ -691,7 +691,7 @@ export default function StatsScreen() {
         <View style={styles.milestonesList}>
           {sortedMilestones.map(([key, item]) => {
             const isEquipped = selectedArchetype === item.badge.title;
-            const activeAccent = isDark ? '#636CB5' : '#587042';
+            const activeAccent = isDark ? '#2D5A43' : '#587042';
             const iconTintColor = item.isUnlocked
               ? item.badge.color
               : isDark

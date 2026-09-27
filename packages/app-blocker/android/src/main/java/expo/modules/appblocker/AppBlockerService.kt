@@ -47,6 +47,33 @@ class AppBlockerService : Service() {
     fun getRemainingBreakSeconds(): Int = remainingBreakSeconds
     fun getAllowBreaks(): Boolean = allowBreaks
 
+    /**
+     * Synchronize break status and target end time from active session updates
+     * (e.g. breaks started from the browser extension or mobile UI).
+     */
+    fun syncBreakState(
+        isOnBreak: Boolean,
+        newTargetAtMillis: Long? = null,
+        remainingBreakSec: Int? = null,
+        allowBreaksParam: Boolean? = null
+    ) {
+        this.breakActive = isOnBreak
+        if (newTargetAtMillis != null && newTargetAtMillis > 0L) {
+            this.currentTargetMillis = newTargetAtMillis
+            getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
+                .edit()
+                .putLong("active_session_end", newTargetAtMillis)
+                .apply()
+        }
+        if (remainingBreakSec != null && remainingBreakSec >= 0) {
+            this.remainingBreakSeconds = remainingBreakSec
+        }
+        if (allowBreaksParam != null) {
+            this.allowBreaks = allowBreaksParam
+        }
+        updateActiveNotification()
+    }
+
     fun updateActiveNotification() {
         val rawName = currentSessionName ?: "Focus"
         val titleText = if (rawName.endsWith(" is running")) rawName else "$rawName is running"
@@ -110,13 +137,16 @@ class AppBlockerService : Service() {
                 endBreakInternal()
             }
 
-            // If session time elapsed, stop foreground service and clear ongoing notification
+            // If session time elapsed, stop foreground service, post completed, and clear ongoing notification
             if (currentTargetMillis > 0L && now >= currentTargetMillis) {
                 Log.d("AppBlocker", "Session time elapsed; dismissing active notification and stopping service")
+                val sId = currentSessionId ?: ""
+                val sName = currentSessionName ?: ""
                 clearSavedSession()
                 isMonitoring = false
                 stopForeground(true)
                 SessionNotifications.cancel(this@AppBlockerService, SessionNotifications.ACTIVE_NOTIFICATION_ID)
+                SessionNotifications.postCompleted(this@AppBlockerService, sId, sName)
                 stopSelf()
                 return
             }
@@ -273,6 +303,15 @@ class AppBlockerService : Service() {
                 if (sName != null) currentSessionName = sName
                 val endMs = intent.getLongExtra("END_AT_MILLIS", 0L)
                 if (endMs > 0L) currentTargetMillis = endMs
+                allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", true)
+                val intentBreakSec = intent.getIntExtra("REMAINING_BREAK_SECONDS", -1)
+                remainingBreakSeconds = if (intentBreakSec >= 0) {
+                    intentBreakSec
+                } else if (allowBreaks) {
+                    300
+                } else {
+                    0
+                }
 
                 if (sId != null && sName != null) {
                     saveSessionState(sId, sName, currentTargetMillis)
@@ -297,7 +336,14 @@ class AppBlockerService : Service() {
             blockedPackages = newBlockedPackages
         }
         allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", false)
-        remainingBreakSeconds = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
+        val defaultStartBreakSec = intent.getIntExtra("REMAINING_BREAK_SECONDS", -1)
+        remainingBreakSeconds = if (defaultStartBreakSec >= 0) {
+            defaultStartBreakSec
+        } else if (allowBreaks) {
+            300
+        } else {
+            0
+        }
 
         val sId = intent.getStringExtra("SESSION_ID")
         if (sId != null) currentSessionId = sId

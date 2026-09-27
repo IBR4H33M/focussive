@@ -54,6 +54,7 @@ export default function UpcomingCard({ session, onRefresh, nextOccurrence }: Upc
     setIsSkipping(true);
     setSkipError(null);
     try {
+      chrome.runtime.sendMessage({ type: 'SESSION_SKIPPED', sessionId: session.id }, () => {});
       await sessionApi.skip(session.id);
       // Trigger background cache re-sync
       chrome.runtime.sendMessage({ type: 'SYNC_NOW' }, () => {});
@@ -121,6 +122,7 @@ export default function UpcomingCard({ session, onRefresh, nextOccurrence }: Upc
 
       {/* Skip Button under the upcoming container (matching mobile dashboard) */}
       <button
+        className="skip-upcoming-btn"
         style={styles.skipBtn}
         onClick={() => {
           setSkipError(null);
@@ -134,6 +136,13 @@ export default function UpcomingCard({ session, onRefresh, nextOccurrence }: Upc
         </svg>
         <span>Skip this session</span>
       </button>
+
+      <style>{`
+        .skip-upcoming-btn:hover {
+          background-color: #1e8f3e !important;
+          filter: brightness(1.08);
+        }
+      `}</style>
 
       {/* Skip Confirmation Modal / Overlay */}
       {showSkipConfirm && (

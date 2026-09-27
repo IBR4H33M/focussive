@@ -14,8 +14,11 @@ import android.os.Build
 class SessionAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == "ACTION_SESSION_TEARDOWN") {
-            // Session finished! Dismiss ongoing notification and stop foreground service
+            val sessionId = intent.getStringExtra("sessionId") ?: ""
+            val sessionTitle = intent.getStringExtra("title") ?: ""
+            // Session finished! Dismiss ongoing notification, post completed notification, and stop foreground service
             SessionNotifications.cancel(context, SessionNotifications.ACTIVE_NOTIFICATION_ID)
+            SessionNotifications.postCompleted(context, sessionId, sessionTitle)
             try {
                 val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
                     action = "STOP"
@@ -74,8 +77,14 @@ class SessionAlarmReceiver : BroadcastReceiver() {
         val timeoutAtMillis = intent.getLongExtra("timeoutAtMillis", 0L)
         val isActive = intent.getBooleanExtra("isActive", false)
         val violationsText = intent.getStringExtra("violationsText")
+        val allowBreaks = intent.getBooleanExtra("allowBreaks", true)
+        val rawBreakSec = intent.getIntExtra("remainingBreakSeconds", -1)
+        val remainingBreakSeconds = if (rawBreakSec >= 0) rawBreakSec else if (allowBreaks) 300 else 0
 
-        SessionNotifications.post(context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText)
+        SessionNotifications.post(
+            context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive,
+            violationsText, allowBreaks = allowBreaks, remainingBreakSeconds = remainingBreakSeconds
+        )
 
         if (isActive) {
             // Dismiss reminder notifications immediately when session becomes active
@@ -89,6 +98,8 @@ class SessionAlarmReceiver : BroadcastReceiver() {
                 putExtra("SESSION_NAME", title)
                 putExtra("END_AT_MILLIS", targetAtMillis)
                 putExtra("NOTIF_ID", id)
+                putExtra("ALLOW_BREAKS", allowBreaks)
+                putExtra("REMAINING_BREAK_SECONDS", remainingBreakSeconds)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent)

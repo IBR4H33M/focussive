@@ -5,10 +5,12 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
@@ -29,8 +31,19 @@ import android.widget.RemoteViews
  */
 object SessionNotifications {
     const val ACTIVE_NOTIFICATION_ID = 1001
-    private const val CHANNEL_REMINDER = "session-reminder"
-    private const val CHANNEL_ACTIVE = "session-active"
+    const val COMPLETED_NOTIFICATION_ID = 1002
+    private const val CHANNEL_REMINDER = "session-reminder-v2"
+    private const val CHANNEL_ACTIVE = "session-active-v2"
+    private const val CHANNEL_COMPLETE = "session-complete-v2"
+
+    private const val SOUND_REMINDER = "focustone_1_session_reminder_warm_kalimba"
+    private const val SOUND_ACTIVE = "focustone_2_session_start_zen_bell"
+    private const val SOUND_COMPLETE = "focustone_3_session_end_zen_bell"
+
+    // Reminder: 2 short pulses; Start & End: 1 short pulse
+    private val VIBRATION_REMINDER = longArrayOf(0, 150, 100, 150)
+    private val VIBRATION_SINGLE_PULSE = longArrayOf(0, 150)
+
     private val COLOR_REMINDER = Color.parseColor("#F87171") // Light red countdown matching active
     private val COLOR_ACTIVE = Color.parseColor("#B91C1C")   // Dark red for running session countdown
 
@@ -44,38 +57,93 @@ object SessionNotifications {
     @Volatile
     var latestReminderNotification: Notification? = null
 
+    @Volatile
+    private var lastCompletedSessionId: String? = null
+    @Volatile
+    private var lastCompletedTimestamp: Long = 0L
+
+    fun getSoundUri(context: Context, soundName: String): Uri? {
+        val resId = context.resources.getIdentifier(soundName, "raw", context.packageName)
+        return if (resId != 0) {
+            Uri.parse("${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/$resId")
+        } else {
+            Uri.parse("${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/raw/$soundName")
+        }
+    }
+
     private fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
 
+        // Delete legacy silent channels so they do not conflict
+        try {
+            manager.deleteNotificationChannel("session-reminder")
+            manager.deleteNotificationChannel("session-active")
+        } catch (_: Exception) {}
+
+        val audioAttributes = AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+            .build()
+
         if (manager.getNotificationChannel(CHANNEL_REMINDER) == null) {
+            val reminderSoundUri = getSoundUri(context, SOUND_REMINDER)
             val reminderChannel = NotificationChannel(
                 CHANNEL_REMINDER,
                 "Session Reminders",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 setShowBadge(false)
-                enableLights(false)
-                enableVibration(false)
-                setSound(null, null)
+                enableLights(true)
+                lightColor = Color.parseColor("#FEF3C7")
+                enableVibration(true)
+                vibrationPattern = VIBRATION_REMINDER
+                if (reminderSoundUri != null) {
+                    setSound(reminderSoundUri, audioAttributes)
+                }
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
             manager.createNotificationChannel(reminderChannel)
         }
 
         if (manager.getNotificationChannel(CHANNEL_ACTIVE) == null) {
+            val activeSoundUri = getSoundUri(context, SOUND_ACTIVE)
             val activeChannel = NotificationChannel(
                 CHANNEL_ACTIVE,
                 "Session Running",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 setShowBadge(false)
-                enableLights(false)
-                enableVibration(false)
-                setSound(null, null)
+                enableLights(true)
+                lightColor = Color.parseColor("#258F44")
+                enableVibration(true)
+                vibrationPattern = VIBRATION_SINGLE_PULSE
+                if (activeSoundUri != null) {
+                    setSound(activeSoundUri, audioAttributes)
+                }
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
             manager.createNotificationChannel(activeChannel)
+        }
+
+        if (manager.getNotificationChannel(CHANNEL_COMPLETE) == null) {
+            val completeSoundUri = getSoundUri(context, SOUND_COMPLETE)
+            val completeChannel = NotificationChannel(
+                CHANNEL_COMPLETE,
+                "Session Completed",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                setShowBadge(true)
+                enableLights(true)
+                lightColor = Color.parseColor("#258F44")
+                enableVibration(true)
+                vibrationPattern = VIBRATION_SINGLE_PULSE
+                if (completeSoundUri != null) {
+                    setSound(completeSoundUri, audioAttributes)
+                }
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+            manager.createNotificationChannel(completeChannel)
         }
     }
 
@@ -114,10 +182,12 @@ object SessionNotifications {
     }
 
     /** Schedule automatic dismissal of the active notification when session ends. */
-    fun scheduleTeardown(context: Context, timeoutAtMillis: Long) {
+    fun scheduleTeardown(context: Context, timeoutAtMillis: Long, sessionId: String = "", title: String = "") {
         if (timeoutAtMillis <= System.currentTimeMillis()) return
         val intent = Intent(context, SessionAlarmReceiver::class.java).apply {
             action = "ACTION_SESSION_TEARDOWN"
+            putExtra("sessionId", sessionId)
+            putExtra("title", title)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context, 99999, intent,
@@ -408,6 +478,15 @@ object SessionNotifications {
             builder.setCustomBigContentView(buildExpandedView(context, id, sessionId, title, targetAtMillis, isActive, violationsText, isOnBreak, remainingBreakSeconds, allowBreaks))
         }
 
+        val soundName = if (isActive) SOUND_ACTIVE else SOUND_REMINDER
+        val soundUri = getSoundUri(context, soundName)
+        if (soundUri != null) {
+            @Suppress("DEPRECATION")
+            builder.setSound(soundUri)
+        }
+        @Suppress("DEPRECATION")
+        builder.setVibrate(if (isActive) VIBRATION_SINGLE_PULSE else VIBRATION_REMINDER)
+
         val timeoutMs = timeoutAtMillis - System.currentTimeMillis()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && timeoutMs > 0) {
             builder.setTimeoutAfter(timeoutMs)
@@ -440,8 +519,19 @@ object SessionNotifications {
     ) {
         val service = AppBlockerService.instance
         val effectiveIsOnBreak = isOnBreak ?: (service?.isBreakActive() ?: false)
-        val effectiveRemainingBreak = remainingBreakSeconds ?: (service?.getRemainingBreakSeconds() ?: 0)
+        val serviceBreakSec = service?.getRemainingBreakSeconds()
         val effectiveAllowBreaks = allowBreaks ?: (service?.getAllowBreaks() ?: true)
+        val effectiveRemainingBreak = if (remainingBreakSeconds != null && remainingBreakSeconds > 0) {
+            remainingBreakSeconds
+        } else if (serviceBreakSec != null && serviceBreakSec > 0) {
+            serviceBreakSec
+        } else if (remainingBreakSeconds != null && remainingBreakSeconds >= 0) {
+            remainingBreakSeconds
+        } else if (effectiveAllowBreaks) {
+            300
+        } else {
+            0
+        }
 
         val targetId = if (isActive) ACTIVE_NOTIFICATION_ID else id
         val notification = buildNotification(
@@ -462,14 +552,19 @@ object SessionNotifications {
 
             // Schedule teardown when session finishes so notification disappears
             if (timeoutAtMillis > System.currentTimeMillis()) {
-                scheduleTeardown(context, timeoutAtMillis)
+                scheduleTeardown(context, timeoutAtMillis, sessionId, title)
             }
 
             latestActiveNotification = notification
             val service = AppBlockerService.instance
             if (service != null) {
-                // If service is running, update the foreground service notification directly!
-                service.startForeground(ACTIVE_NOTIFICATION_ID, notification)
+                // If service is running, synchronize break state, target time, and foreground notification directly!
+                service.syncBreakState(
+                    isOnBreak = effectiveIsOnBreak,
+                    newTargetAtMillis = targetAtMillis,
+                    remainingBreakSec = effectiveRemainingBreak,
+                    allowBreaksParam = effectiveAllowBreaks
+                )
                 return
             }
         } else {
@@ -488,6 +583,57 @@ object SessionNotifications {
         manager.notify(targetId, notification)
     }
 
+    /** Post session-completed notification with 1 short pulse and focustone_3 sound. */
+    fun postCompleted(context: Context, sessionId: String, sessionTitle: String) {
+        val now = System.currentTimeMillis()
+        if (sessionId.isNotEmpty() && sessionId == lastCompletedSessionId && (now - lastCompletedTimestamp) < 10000L) {
+            return
+        }
+        lastCompletedSessionId = sessionId
+        lastCompletedTimestamp = now
+
+        ensureChannels(context)
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(context, CHANNEL_COMPLETE)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(context)
+        }
+
+        val cleanTitle = sessionTitle.replace(Regex(" is running$", RegexOption.IGNORE_CASE), "")
+        val displayTitle = if (cleanTitle.isNotBlank()) {
+            formatTitle("<b>$cleanTitle</b> completed")
+        } else {
+            "Session completed"
+        }
+
+        builder
+            .setContentTitle(displayTitle)
+            .setContentText("Great job! Your focus session has ended.")
+            .setSmallIcon(getSmallIconResId(context))
+            .setAutoCancel(true)
+            .setOngoing(false)
+            .setShowWhen(true)
+            .setWhen(now)
+            .setColor(COLOR_SURFACE_ACTIVE)
+            .setContentIntent(openSessionIntent(context, sessionId, COMPLETED_NOTIFICATION_ID))
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            builder.setPriority(Notification.PRIORITY_HIGH)
+        }
+
+        val soundUri = getSoundUri(context, SOUND_COMPLETE)
+        if (soundUri != null) {
+            @Suppress("DEPRECATION")
+            builder.setSound(soundUri)
+        }
+        @Suppress("DEPRECATION")
+        builder.setVibrate(VIBRATION_SINGLE_PULSE)
+
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        manager.notify(COMPLETED_NOTIFICATION_ID, builder.build())
+    }
+
     /** Schedule a future post via AlarmManager; fires natively even if the app is killed. */
     fun schedule(
         context: Context,
@@ -500,12 +646,17 @@ object SessionNotifications {
         fireAtMillis: Long,
         isActive: Boolean,
         violationsText: String? = null,
+        allowBreaks: Boolean = true,
+        remainingBreakSeconds: Int = 0,
     ) {
         val now = System.currentTimeMillis()
 
         // Already due (or nearly so) — post right away instead of dropping it.
         if (fireAtMillis <= now + 1000) {
-            post(context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText)
+            post(
+                context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive,
+                violationsText, allowBreaks = allowBreaks, remainingBreakSeconds = remainingBreakSeconds
+            )
             return
         }
 
@@ -519,6 +670,8 @@ object SessionNotifications {
             putExtra("timeoutAtMillis", timeoutAtMillis)
             putExtra("isActive", isActive)
             putExtra("violationsText", violationsText)
+            putExtra("allowBreaks", allowBreaks)
+            putExtra("remainingBreakSeconds", remainingBreakSeconds)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context, id, intent,
@@ -542,6 +695,17 @@ object SessionNotifications {
         pendingIntent.cancel()
         if (id == ACTIVE_NOTIFICATION_ID) {
             latestActiveNotification = null
+            try {
+                val teardownIntent = Intent(context, SessionAlarmReceiver::class.java).apply {
+                    action = "ACTION_SESSION_TEARDOWN"
+                }
+                val teardownPending = PendingIntent.getBroadcast(
+                    context, 99999, teardownIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                alarmManager.cancel(teardownPending)
+                teardownPending.cancel()
+            } catch (_: Exception) {}
         }
         val manager = context.getSystemService(NotificationManager::class.java)
         manager?.cancel(id)

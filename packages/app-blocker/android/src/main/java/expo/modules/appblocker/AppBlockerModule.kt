@@ -261,12 +261,15 @@ class AppBlockerModule : Module() {
      */
     Function("scheduleActiveNotification") {
         id: Int, sessionId: String, title: String, body: String,
-        targetAtMillis: Double, timeoutAtMillis: Double, fireAtMillis: Double, violationsText: String? ->
+        targetAtMillis: Double, timeoutAtMillis: Double, fireAtMillis: Double, violationsText: String?,
+        allowBreaks: Boolean?, remainingBreakSeconds: Int? ->
       val context = appContext.reactContext ?: return@Function null
       SessionNotifications.schedule(
         context, id, sessionId, title, body,
         targetAtMillis.toLong(), timeoutAtMillis.toLong(), fireAtMillis.toLong(), isActive = true,
         violationsText = violationsText,
+        allowBreaks = allowBreaks ?: true,
+        remainingBreakSeconds = remainingBreakSeconds ?: 0,
       )
       return@Function null
     }
@@ -274,13 +277,24 @@ class AppBlockerModule : Module() {
     /** Silently refresh an already-posted running notification (e.g. new violation count). */
     Function("updateActiveNotification") {
         id: Int, sessionId: String, title: String, body: String,
-        targetAtMillis: Double, timeoutAtMillis: Double, violationsText: String? ->
+        targetAtMillis: Double, timeoutAtMillis: Double, violationsText: String?,
+        isOnBreak: Boolean?, remainingBreakSeconds: Int?, allowBreaks: Boolean? ->
       val context = appContext.reactContext ?: return@Function null
       SessionNotifications.post(
         context, id, sessionId, title, body,
         targetAtMillis.toLong(), timeoutAtMillis.toLong(), isActive = true,
         violationsText = violationsText,
+        isOnBreak = isOnBreak,
+        remainingBreakSeconds = remainingBreakSeconds,
+        allowBreaks = allowBreaks,
       )
+      return@Function null
+    }
+
+    /** Post session completed notification immediately with tone and vibration. */
+    Function("postCompletedNotification") { sessionId: String, title: String ->
+      val context = appContext.reactContext ?: return@Function null
+      SessionNotifications.postCompleted(context, sessionId, title)
       return@Function null
     }
 

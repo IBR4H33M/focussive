@@ -10,11 +10,13 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import type { Session } from '@focussive/shared';
+import { getRemainingSeconds, type Session } from '@focussive/shared';
 import {
   scheduleReminderNotification as nativeScheduleReminder,
   scheduleActiveNotification as nativeScheduleActive,
+  updateActiveNotification as nativeUpdateActive,
   cancelSessionNotification as nativeCancelSessionNotification,
+  postCompletedNotification as nativePostCompletedNotification,
 } from '@focussive/app-blocker';
 
 const REMINDER_MINUTES_KEY = 'session_reminder_minutes';
@@ -202,6 +204,10 @@ async function scheduleAndroidNativeNotifications(
           sessionEnd.getTime(),
           sessionStart.getTime(),
           violationsLabel(0),
+          session.allow_breaks ?? true,
+          (session as any).remaining_break_seconds != null
+            ? (session as any).remaining_break_seconds
+            : (session.allow_breaks ? ((session.max_break_minutes || 5) * 60 - (session.break_used_seconds || 0)) : 0),
         );
         activeAlarmArmed = true;
       }
@@ -212,23 +218,17 @@ async function scheduleAndroidNativeNotifications(
 
   // ── Currently running sessions — authoritative content, posted immediately ──
   for (const session of activeSessions) {
-    let startedAtMs = now.getTime();
-    if (session.start_time && (session as any).schedule && (session as any).schedule !== 'adhoc') {
-      const [hStr, mStr] = session.start_time.split(':');
-      const startD = new Date(now);
-      startD.setHours(parseInt(hStr, 10) || 0, parseInt(mStr, 10) || 0, 0, 0);
-      const endD = new Date(startD.getTime() + session.duration * 60_000);
-      if (startD.getTime() <= now.getTime() && now.getTime() < endD.getTime()) {
-        startedAtMs = startD.getTime();
-      } else if (session.started_at) {
-        startedAtMs = new Date(session.started_at).getTime();
-      }
-    } else if (session.started_at) {
-      startedAtMs = new Date(session.started_at).getTime();
-    }
-    const endAt = startedAtMs + session.duration * 60_000;
+    const remSec = getRemainingSeconds(session as any);
+    const endAt = now.getTime() + remSec * 1000;
     const formattedEnd = formatClockTime(new Date(endAt), use24Hour);
     const violations = session.violations_count ?? 0;
+    const allowBreaks = session.allow_breaks ?? true;
+    const maxBreakSec = (session.max_break_minutes && session.max_break_minutes > 0 ? session.max_break_minutes : 5) * 60;
+    const remainingBreakSec = (session as any).remaining_break_seconds != null
+      ? (session as any).remaining_break_seconds
+      : (allowBreaks ? Math.max(0, maxBreakSec - (session.break_used_seconds || 0)) : 0);
+    const breakEndsAt = (session as any).break_ends_at;
+    const isOnBreak = !!(session as any).is_on_break || (!!breakEndsAt && new Date(breakEndsAt).getTime() > now.getTime());
 
     const activeId = ACTIVE_NOTIFICATION_ID;
     desiredIds.add(activeId);
@@ -241,6 +241,21 @@ async function scheduleAndroidNativeNotifications(
       endAt,
       now.getTime(),
       violationsLabel(violations),
+      allowBreaks,
+      remainingBreakSec,
+    );
+    // Explicitly update to sync break state and remaining time immediately
+    nativeUpdateActive(
+      activeId,
+      session.id,
+      `${session.name} is running`,
+      `Ends at ${formattedEnd}`,
+      endAt,
+      endAt,
+      violationsLabel(violations),
+      isOnBreak,
+      remainingBreakSec,
+      allowBreaks,
     );
   }
 
@@ -442,6 +457,26 @@ export async function scheduleSessionReminders(
 // ─── Notification handler setup ───────────────────────────────
 
 /**
+ * Deliver a session completed notification with sound and vibration.
+ */
+export function notifySessionCompleted(sessionId: string, title: string): void {
+  if (Platform.OS === 'android') {
+    try {
+      nativePostCompletedNotification(sessionId, title);
+    } catch {}
+  } else {
+    Notifications.scheduleNotificationAsync({
+      content: {
+        title: `${title} completed`,
+        body: 'Great job! Your focus session has ended.',
+        sound: 'focustone_3_session_end_zen_bell.wav',
+      },
+      trigger: null,
+    }).catch(() => {});
+  }
+}
+
+/**
  * Configure how notifications behave when the app is in the foreground.
  * Call once at app startup.
  */
@@ -476,11 +511,44 @@ export function setupNotificationHandler(): void {
   ]).catch(() => {});
 
   if (Platform.OS === 'android') {
+    // Delete legacy silent channels
+    Notifications.deleteNotificationChannelAsync('session-reminder').catch(() => {});
+    Notifications.deleteNotificationChannelAsync('session-active').catch(() => {});
+
+    // Reminder: 2 short pulses + warm kalimba tone
+    Notifications.setNotificationChannelAsync('session-reminder-v2', {
+      name: 'Session Reminders',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 150, 100, 150],
+      lightColor: '#FEF3C7',
+      sound: 'focustone_1_session_reminder_warm_kalimba.wav',
+    }).catch(() => {});
+
+    // Start: 1 short pulse + zen bell tone
+    Notifications.setNotificationChannelAsync('session-active-v2', {
+      name: 'Session Running',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 150],
+      lightColor: '#258F44',
+      sound: 'focustone_2_session_start_zen_bell.wav',
+    }).catch(() => {});
+
+    // End: 1 short pulse + zen bell end tone
+    Notifications.setNotificationChannelAsync('session-complete-v2', {
+      name: 'Session Completed',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 150],
+      lightColor: '#258F44',
+      sound: 'focustone_3_session_end_zen_bell.wav',
+    }).catch(() => {});
+
+    // Fallback default channel
     Notifications.setNotificationChannelAsync('default', {
       name: 'Session Reminders',
       importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#8BA794',
+      vibrationPattern: [0, 150, 100, 150],
+      lightColor: '#FEF3C7',
+      sound: 'focustone_1_session_reminder_warm_kalimba.wav',
     }).catch(() => {});
   }
 }

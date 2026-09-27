@@ -337,11 +337,9 @@ export default function Popup() {
             <div>
               <div style={styles.noSessionHeader}>
                 <div style={styles.noSessionTitle}>No active session</div>
-                <div style={styles.noSessionSub}>
-                  {upcomingSessions.length > 0
-                    ? 'Your next session is coming up'
-                    : 'Create a session in the mobile app'}
-                </div>
+                {upcomingSessions.length === 0 && (
+                  <div style={styles.noSessionSub}>Create a session in the mobile app</div>
+                )}
               </div>
 
               {upcomingSessions.length > 0 && (

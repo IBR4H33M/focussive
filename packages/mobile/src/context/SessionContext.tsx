@@ -16,7 +16,7 @@ import { sessionApi, appGroupApi, violationApi, historyApi } from '@/utils/api';
 import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener, takeBreak } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
 import { type Session, type AppGroup, ViolationAction, SessionStatus, isSessionInActiveWindow } from '@focussive/shared';
-import { scheduleSessionReminders } from '@/utils/sessionReminders';
+import { scheduleSessionReminders, notifySessionCompleted } from '@/utils/sessionReminders';
 import {
   evaluateSessionQualityTier,
   recordEarnedTier,
@@ -206,6 +206,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               continue;
             }
 
+            // Post completed notification with end tone & vibration
+            notifySessionCompleted(prev.id, prev.name);
+
             // Verify in history that backend actually recorded a 'completed' session
             historyApi.getAll(1, 5).then((historyRes: any) => {
               const historyList = historyRes?.data || historyRes || [];
@@ -265,13 +268,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated]);
 
-  // Initial fetch + polling every 30s
+  // Initial fetch + adaptive polling (5s when session is active to sync breaks instantly, 30s when idle)
+  const hasActiveSession = state.activeSessions.length > 0;
   useEffect(() => {
     if (isAuthenticated) {
       refreshSessions(false);
+      const pollDelay = hasActiveSession ? 5_000 : POLL_INTERVAL_MS;
       intervalRef.current = setInterval(() => {
         refreshSessions(true);
-      }, POLL_INTERVAL_MS);
+      }, pollDelay);
     } else {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -279,7 +284,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isAuthenticated, refreshSessions]);
+  }, [isAuthenticated, refreshSessions, hasActiveSession]);
 
   // In-memory 5s ticker: checks if any scheduled session enters active window (0 network overhead)
   useEffect(() => {
@@ -376,10 +381,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         console.log('AppBlocker: starting monitoring for', blockedPackages.length, 'packages, session', desiredId);
 
         // Compute remaining break seconds for this session
-        const maxBreakSec = (mobileActiveSession.allow_breaks && mobileActiveSession.max_break_minutes)
-          ? mobileActiveSession.max_break_minutes * 60
-          : 0;
-        const remainingBreakSec = Math.max(0, maxBreakSec - (mobileActiveSession.break_used_seconds ?? 0));
+        const remainingBreakSec = (mobileActiveSession as any).remaining_break_seconds != null
+          ? (mobileActiveSession as any).remaining_break_seconds
+          : (mobileActiveSession.allow_breaks
+              ? Math.max(0, ((mobileActiveSession.max_break_minutes || 5) * 60) - (mobileActiveSession.break_used_seconds ?? 0))
+              : 0);
 
         let startedAtMs = Date.now();
         if (mobileActiveSession.start_time && (mobileActiveSession as any).schedule && (mobileActiveSession as any).schedule !== 'adhoc') {

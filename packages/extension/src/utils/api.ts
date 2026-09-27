@@ -160,6 +160,7 @@ export const sessionApi = {
     apiRequest<{ data: unknown[] }>(
       `/sessions/upcoming?client_time=${encodeURIComponent(new Date().toISOString())}`
     ),
+  getById: (sessionId: string) => apiRequest<any>(`/sessions/${sessionId}`),
 
   skip: (sessionId: string) =>
     apiRequest<{
