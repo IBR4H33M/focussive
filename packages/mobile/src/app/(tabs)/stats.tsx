@@ -205,6 +205,11 @@ export default function StatsScreen() {
     });
   }, [milestones, selectedArchetype]);
 
+  // Equipped milestone archetype
+  const equippedMilestone = useMemo(() => {
+    return Object.values(milestones).find(m => m.badge.title === selectedArchetype);
+  }, [milestones, selectedArchetype]);
+
   // Milestone nearest to completion (uncompleted only)
   const nearestMilestone = useMemo(() => {
     const list = Object.values(milestones);
@@ -328,30 +333,30 @@ export default function StatsScreen() {
           </View>
 
           <View style={styles.profileInfoCol}>
-            <Text style={[styles.profileNameText, { color: theme.text }]} numberOfLines={1}>
-              {profile?.name || user?.name || 'Focus User'}
-            </Text>
-
-            {/* Archetype title under profile name */}
             <TouchableOpacity
-              style={[
-                styles.archetypePill,
-                {
-                  backgroundColor: selectedArchetype ? `${theme.accent}20` : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
-                },
-              ]}
+              style={styles.profileNameWithArchetypeRow}
               onPress={() => setArchetypeModalVisible(true)}
               activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  styles.archetypePillText,
-                  { color: selectedArchetype ? theme.accent : theme.textSecondary },
-                ]}
-              >
-                {selectedArchetype || 'Select Archetype'}
+              <Text style={[styles.profileNameText, { color: theme.text }]} numberOfLines={1}>
+                {profile?.name || user?.name || 'Focus User'}
               </Text>
-              <Ionicons name="chevron-forward" size={12} color={theme.textSecondary} />
+              {equippedMilestone && (
+                <View style={styles.archetypeIconWrapper}>
+                  <Text style={[styles.profileDividerText, { color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)' }]}>
+                    |
+                  </Text>
+                  <Image
+                    source={equippedMilestone.badge.image}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      tintColor: equippedMilestone.badge.color,
+                    }}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -486,7 +491,7 @@ export default function StatsScreen() {
                         width: nearestMilestone.current > 0
                           ? `${Math.min(100, (nearestMilestone.current / nearestMilestone.target) * 100)}%`
                           : '0%',
-                        backgroundColor: nearestMilestone.badge.color,
+                        backgroundColor: theme.accent,
                       },
                     ]}
                   />
@@ -1430,20 +1435,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  archetypePill: {
+  profileNameWithArchetypeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 14,
-    borderWidth: 0,
-    alignSelf: 'flex-start',
+    gap: 8,
+    flexWrap: 'wrap',
   },
-  archetypePillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+  archetypeIconWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  profileDividerText: {
+    fontSize: 18,
+    fontWeight: '300',
   },
 
   // Earned Badges Section
