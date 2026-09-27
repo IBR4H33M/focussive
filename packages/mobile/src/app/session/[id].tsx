@@ -394,7 +394,7 @@ export default function SessionDetailScreen() {
       return;
     }
     if (editScheduleTab !== 'scheduled' && editScheduleDays.length === 0) {
-      Alert.alert('Error', 'Select at least one day for recurring sessions');
+      Alert.alert('Error', 'Select at least one day for custom sessions');
       return;
     }
     if (editScheduleTab === 'scheduled' && editScheduledDates.length === 0) {
@@ -528,7 +528,7 @@ export default function SessionDetailScreen() {
                 : session.schedule === 'recurring' && session.schedule_days && session.schedule_days.length === 7
                 ? 'Everyday'
                 : session.schedule === 'recurring'
-                ? 'Recurring'
+                ? 'Custom'
                 : session.schedule === 'today'
                 ? 'One time'
                 : session.schedule.charAt(0).toUpperCase() + session.schedule.slice(1)
@@ -776,7 +776,7 @@ export default function SessionDetailScreen() {
           <View style={styles.scheduleRow}>
             {([
               { key: 'everyday', label: 'Everyday' },
-              { key: 'recurring', label: 'Recurring' },
+              { key: 'recurring', label: 'Custom' },
               { key: 'scheduled', label: 'One time' },
             ] as const).map(opt => {
               const isSelected = editScheduleTab === opt.key;

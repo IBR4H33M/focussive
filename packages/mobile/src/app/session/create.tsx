@@ -176,7 +176,7 @@ export default function CreateSessionScreen() {
     const startTime = primarySlot.start_time;
 
     if (scheduleTab !== 'scheduled' && recurringDays.length === 0) {
-      Alert.alert('Error', 'Select at least one day for recurring sessions');
+      Alert.alert('Error', 'Select at least one day for custom sessions');
       return;
     }
     if (scheduleTab === 'scheduled' && scheduledDates.length === 0) {
@@ -304,7 +304,7 @@ export default function CreateSessionScreen() {
       <View style={styles.scheduleRow}>
         {([
           { key: 'everyday', label: 'Everyday' },
-          { key: 'recurring', label: 'Recurring' },
+          { key: 'recurring', label: 'Custom' },
           { key: 'scheduled', label: 'One time' },
         ] as const).map(opt => {
           const isSelected = scheduleTab === opt.key;
