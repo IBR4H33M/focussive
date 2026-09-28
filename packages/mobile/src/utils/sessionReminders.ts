@@ -207,7 +207,7 @@ async function scheduleAndroidNativeNotifications(
           session.allow_breaks ?? true,
           (session as any).remaining_break_seconds != null
             ? (session as any).remaining_break_seconds
-            : (session.allow_breaks ? ((session.max_break_minutes || 5) * 60 - (session.break_used_seconds || 0)) : 0),
+            : (session.allow_breaks ? Math.max(0, (session.max_break_minutes || 5) * 60 - (session.break_used_seconds || 0)) : 0),
           sessionStart.getTime(),
         );
         activeAlarmArmed = true;
@@ -471,15 +471,19 @@ export async function scheduleSessionReminders(
  * Deliver a session completed notification with sound and vibration.
  */
 export function notifySessionCompleted(sessionId: string, title: string): void {
+  const cleanTitle = title.replace(/\s+is running$/i, '').trim();
+  const sessionName = cleanTitle || '';
   if (Platform.OS === 'android') {
     try {
-      nativePostCompletedNotification(sessionId, title);
+      nativePostCompletedNotification(sessionId, cleanTitle);
     } catch {}
   } else {
     Notifications.scheduleNotificationAsync({
       content: {
-        title: `${title} completed`,
-        body: 'Great job! Your focus session has ended.',
+        title: cleanTitle ? `${cleanTitle} completed` : 'Session completed',
+        body: sessionName
+          ? `Great job! your session ${sessionName} has ended.`
+          : 'Great job! your session has ended.',
         sound: 'focustone_3_session_end_zen_bell.wav',
       },
       trigger: null,

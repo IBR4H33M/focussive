@@ -36,6 +36,10 @@ export function takeBreak(minutes: number) {
   return AppBlockerModule.takeBreak(minutes);
 }
 
+export function endBreak() {
+  return AppBlockerModule.endBreak();
+}
+
 export function updateBlockedApps(blockedPackages: string[]) {
   return AppBlockerModule.updateBlockedApps(blockedPackages);
 }

@@ -13,7 +13,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { sessionApi, appGroupApi, violationApi, historyApi } from '@/utils/api';
-import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener, takeBreak } from '@focussive/app-blocker';
+import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener, takeBreak, endBreak } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
 import { type Session, type AppGroup, ViolationAction, SessionStatus, isSessionInActiveWindow, getRemainingSeconds, getEffectiveSessionStartMs } from '@focussive/shared';
 import { scheduleSessionReminders, notifySessionCompleted } from '@/utils/sessionReminders';
@@ -384,8 +384,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               : 0);
 
         const startedAtMs = getEffectiveSessionStartMs(mobileActiveSession);
-        const breakUsedMs = (mobileActiveSession.break_used_seconds || 0) * 1000;
-        const endAtMs = startedAtMs + mobileActiveSession.duration * 60_000 + breakUsedMs;
+        const endAtMs = startedAtMs + (mobileActiveSession.duration || 25) * 60_000;
 
         startMonitoring(
           blockedPackages,
@@ -418,8 +417,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           console.log('AppBlocker: native break started', event.breakMinutes, 'min');
           try {
             await sessionApi.startBreak(desiredId, 'violation', event.breakMinutes);
-          } catch (e) {
+          } catch (e: any) {
             console.error('Failed to record native break start:', e);
+            if (e?.message?.includes('No break time remaining') || e?.statusCode === 400) {
+              endBreak();
+            }
           }
           await refreshSessions();
         });

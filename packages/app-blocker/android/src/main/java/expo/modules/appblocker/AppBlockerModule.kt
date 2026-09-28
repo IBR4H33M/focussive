@@ -148,6 +148,15 @@ class AppBlockerModule : Module() {
       return@Function null
     }
 
+    Function("endBreak") {
+      val context = appContext.reactContext ?: return@Function null
+      val intent = Intent(context, AppBlockerService::class.java).apply {
+        action = "END_BREAK"
+      }
+      context.startService(intent)
+      return@Function null
+    }
+
     Function("requestUsageStatsPermission") {
       val context = appContext.reactContext ?: return@Function null
       try {

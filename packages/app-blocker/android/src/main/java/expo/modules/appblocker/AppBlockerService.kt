@@ -250,9 +250,6 @@ class AppBlockerService : Service() {
                 breakStartedAtMillis = System.currentTimeMillis()
                 sessionRemainingAtBreakStart = (currentTargetMillis - breakStartedAtMillis).coerceAtLeast(0L)
                 breakEndsAtMillis = breakStartedAtMillis + breakMs
-                if (currentTargetMillis > 0L) {
-                    currentTargetMillis += breakMs
-                }
 
                 // Update notification immediately: pause timer & grey out break button
                 updateActiveNotification()
@@ -273,6 +270,12 @@ class AppBlockerService : Service() {
                 }
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast)
 
+                return START_STICKY
+            }
+
+            "END_BREAK" -> {
+                Log.d("AppBlocker", "END_BREAK action received; ending break now")
+                endBreakInternal()
                 return START_STICKY
             }
 

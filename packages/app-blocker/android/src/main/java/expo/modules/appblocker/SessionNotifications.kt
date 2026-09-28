@@ -571,16 +571,11 @@ object SessionNotifications {
         val effectiveIsOnBreak = isOnBreak ?: (service?.isBreakActive() ?: false)
         val serviceBreakSec = service?.getRemainingBreakSeconds()
         val effectiveAllowBreaks = allowBreaks ?: (service?.getAllowBreaks() ?: true)
-        val effectiveRemainingBreak = if (remainingBreakSeconds != null && remainingBreakSeconds > 0) {
-            remainingBreakSeconds
-        } else if (serviceBreakSec != null && serviceBreakSec > 0) {
-            serviceBreakSec
-        } else if (remainingBreakSeconds != null && remainingBreakSeconds >= 0) {
-            remainingBreakSeconds
-        } else if (effectiveAllowBreaks) {
-            300
-        } else {
-            0
+        val effectiveRemainingBreak = when {
+            remainingBreakSeconds != null -> remainingBreakSeconds
+            serviceBreakSec != null -> serviceBreakSec
+            effectiveAllowBreaks -> 300
+            else -> 0
         }
 
         val targetId = if (isActive) ACTIVE_NOTIFICATION_ID else id
@@ -654,16 +649,22 @@ object SessionNotifications {
             Notification.Builder(context)
         }
 
-        val cleanTitle = sessionTitle.replace(Regex(" is running$", RegexOption.IGNORE_CASE), "")
+        val cleanTitle = sessionTitle.replace(Regex(" is running$", RegexOption.IGNORE_CASE), "").trim()
         val displayTitle = if (cleanTitle.isNotBlank()) {
             formatTitle("<b>$cleanTitle</b> completed")
         } else {
             "Session completed"
         }
 
+        val contentText = if (cleanTitle.isNotBlank()) {
+            "Great job! your session $cleanTitle has ended."
+        } else {
+            "Great job! your session has ended."
+        }
+
         builder
             .setContentTitle(displayTitle)
-            .setContentText("Great job! Your focus session has ended.")
+            .setContentText(contentText)
             .setSmallIcon(getSmallIconResId(context))
             .setAutoCancel(true)
             .setOngoing(false)

@@ -168,7 +168,7 @@ export const getEffectiveSessionStartMs = (session: {
   break_used_seconds?: number;
 }): number => {
   const now = new Date();
-  const durMs = ((session.duration || 25) * 60 + (session.break_used_seconds || 0)) * 1000;
+  const durMs = (session.duration || 25) * 60 * 1000;
 
   // 1. If it has time_slots or start_time and is not an adhoc session
   if (session.start_time && (session.schedule || '').toLowerCase() !== 'adhoc') {
@@ -187,7 +187,7 @@ export const getEffectiveSessionStartMs = (session: {
             const customEnd = new Date(now);
             customEnd.setHours(eh, em, 0, 0);
             if (customEnd.getTime() > slotStart.getTime()) {
-              slotEndMs = customEnd.getTime() + (session.break_used_seconds || 0) * 1000;
+              slotEndMs = customEnd.getTime();
             }
           }
         }
@@ -221,7 +221,7 @@ export const getEffectiveSessionStartMs = (session: {
   return now.getTime();
 };
 
-/** Seconds remaining until an active session ends, pausing during breaks and extending by break duration. */
+/** Seconds remaining until an active session ends. */
 export const getRemainingSeconds = (session: {
   started_at?: string | null;
   duration: number;
@@ -235,22 +235,19 @@ export const getRemainingSeconds = (session: {
 }): number => {
   const startedAtMs = getEffectiveSessionStartMs(session);
   const totalDurationMs = (session.duration || 25) * 60_000;
-  const breakUsedMs = (session.break_used_seconds || 0) * 1000;
+  const sessionEndMs = startedAtMs + totalDurationMs;
 
-  // When a break is currently active, freeze / pause the countdown!
+  // When a break is currently active, freeze the countdown at break start
   if (session.is_on_break) {
     let breakStartMs = Date.now();
     if (session.break_started_at) {
       breakStartMs = new Date(session.break_started_at).getTime();
     }
-    const focusElapsedMs = Math.max(0, breakStartMs - startedAtMs - breakUsedMs);
-    return Math.max(0, Math.floor((totalDurationMs - focusElapsedMs) / 1000));
+    return Math.max(0, Math.floor((sessionEndMs - breakStartMs) / 1000));
   }
 
   // Active session running (or resumed after break):
-  // Target end time is extended by any completed break time.
-  const effectiveEndMs = startedAtMs + totalDurationMs + breakUsedMs;
-  return Math.max(0, Math.floor((effectiveEndMs - Date.now()) / 1000));
+  return Math.max(0, Math.floor((sessionEndMs - Date.now()) / 1000));
 };
 
 /** Seconds elapsed since an active session started, pausing during breaks. */

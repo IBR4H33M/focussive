@@ -147,7 +147,9 @@ async function pollSessions() {
             type: 'basic',
             iconUrl: chrome.runtime.getURL('icons/icon-48.png'),
             title: 'Session Completed',
-            message: 'Your focus session has finished. Great job!',
+            message: sessionName
+              ? `Great job! your session ${sessionName} has ended.`
+              : 'Great job! your session has ended.',
             priority: 2,
           });
         }
