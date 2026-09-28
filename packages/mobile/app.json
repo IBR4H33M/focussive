@@ -70,7 +70,7 @@
     },
     "extra": {
       "apiUrl": "https://focussive-backend-cd9ac796ce02.herokuapp.com",
-      "clerkPublishableKey": "pk_test_Zml0LXN0dXJnZW9uLTQwNC5jbGVyay5hY2NvdW50cy5kZXYk",
+      "clerkPublishableKey": "pk_live_Y2xlcmsuZm9jdXNzaXZlLnNvbGFzZS5zdHVkaW8k",
       "revenuecatPublicKey": "test_MuSObdIzFoUVskINilLfIZiqRZT",
       "router": {},
       "eas": {

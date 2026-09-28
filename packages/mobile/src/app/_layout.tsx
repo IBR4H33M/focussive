@@ -38,7 +38,7 @@ import Constants from 'expo-constants';
 const clerkPublishableKey =
   process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||
   (Constants.expoConfig?.extra as Record<string, string> | undefined)?.clerkPublishableKey ||
-  'pk_test_Zml0LXN0dXJnZW9uLTQwNC5jbGVyay5hY2NvdW50cy5kZXYk';
+  'pk_live_Y2xlcmsuZm9jdXNzaXZlLnNvbGFzZS5zdHVkaW8k';
 
 // Ignore known upstream expo-router Android linking initialization warning (expo/expo #35224)
 LogBox.ignoreLogs([
