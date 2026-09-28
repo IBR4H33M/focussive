@@ -230,6 +230,9 @@ async function scheduleAndroidNativeNotifications(
       : (allowBreaks ? Math.max(0, maxBreakSec - (session.break_used_seconds || 0)) : 0);
     const breakEndsAt = (session as any).break_ends_at;
     const isOnBreak = !!(session as any).is_on_break || (!!breakEndsAt && new Date(breakEndsAt).getTime() > now.getTime());
+    const breakStartedAt = (session as any).break_started_at
+      ? new Date((session as any).break_started_at).getTime()
+      : 0;
 
     const startAt = session.started_at
       ? new Date(session.started_at).getTime()
@@ -263,6 +266,7 @@ async function scheduleAndroidNativeNotifications(
       remainingBreakSec,
       allowBreaks,
       startAt,
+      breakStartedAt,
     );
   }
 

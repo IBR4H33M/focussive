@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { ThemeColors } from '@/utils/theme';
+import { useIsDark, type ThemeColors } from '@/utils/theme';
 
 interface MiniCalendarProps {
   selectedDates: string[];
@@ -14,6 +14,8 @@ export default function MiniCalendar({
   onToggleDate,
   theme,
 }: MiniCalendarProps) {
+  const isDark = useIsDark();
+  const calBg = isDark ? '#2D2E46' : theme.surface;
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
@@ -53,7 +55,7 @@ export default function MiniCalendar({
   const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   return (
-    <View style={[calStyles.cal, { backgroundColor: theme.surface }]}>
+    <View style={[calStyles.cal, { backgroundColor: calBg }]}>
       <View style={calStyles.header}>
         <TouchableOpacity onPress={prevMonth} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="chevron-back" size={20} color={theme.textSecondary} />

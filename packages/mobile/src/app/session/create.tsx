@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { sessionApi, appGroupApi, websiteGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
 import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES } from '@focussive/shared';
@@ -47,6 +47,9 @@ const ALL_WEEKDAYS: Weekday[] = [
 
 export default function CreateSessionScreen() {
   const theme = useTheme();
+  const isDark = useIsDark();
+  const containerBg = isDark ? '#2D2E46' : theme.surface;
+  const innerBg = isDark ? 'rgba(0, 0, 0, 0.2)' : theme.background;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { refreshSessions } = useSessions();
@@ -298,7 +301,7 @@ export default function CreateSessionScreen() {
         {/* Session Name */}
         <Text style={[styles.label, { color: theme.textSecondary, marginTop: 4 }]}>SESSION NAME</Text>
         <TextInput
-        style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+        style={[styles.input, { color: theme.text, backgroundColor: containerBg, borderColor: isDark ? 'transparent' : theme.border }]}
         placeholder="e.g. Deep Work, Study, Writing..."
         placeholderTextColor={theme.textSecondary}
         value={name} onChangeText={setName}
@@ -330,7 +333,7 @@ export default function CreateSessionScreen() {
               key={opt.key}
               style={[
                 styles.scheduleBtn,
-                { backgroundColor: isSelected ? theme.accent : theme.surface },
+                { backgroundColor: isSelected ? theme.accent : containerBg },
               ]}
               onPress={() => handleSelectScheduleTab(opt.key)}
               activeOpacity={0.8}
@@ -414,7 +417,7 @@ export default function CreateSessionScreen() {
       )}
 
       {/* Mobile Focus Container */}
-      <View style={[styles.focusContainer, { backgroundColor: theme.surface }]}>
+      <View style={[styles.focusContainer, { backgroundColor: containerBg }]}>
         <TouchableOpacity
           style={styles.toggleRow}
           activeOpacity={0.7}
@@ -468,7 +471,7 @@ export default function CreateSessionScreen() {
                     <View
                       style={[
                         styles.groupItem,
-                        { backgroundColor: isSelected ? `${theme.accent}20` : theme.background },
+                        { backgroundColor: isSelected ? `${theme.accent}20` : innerBg },
                       ]}
                     >
                       <View style={{ flex: 1 }}>
@@ -488,7 +491,7 @@ export default function CreateSessionScreen() {
                       </View>
                     </View>
                     {isExpanded && group.apps && group.apps.length > 0 && (
-                      <View style={[styles.appListContainer, { backgroundColor: theme.background }]}>
+                      <View style={[styles.appListContainer, { backgroundColor: innerBg }]}>
                         {group.apps.map((app, index) => {
                           const icon = (app as any).iconUri || appIconMap[app.id];
                           return (
@@ -513,7 +516,7 @@ export default function CreateSessionScreen() {
       </View>
 
       {/* Browser Focus Container */}
-      <View style={[styles.focusContainer, { backgroundColor: theme.surface }]}>
+      <View style={[styles.focusContainer, { backgroundColor: containerBg }]}>
         <TouchableOpacity
           style={styles.toggleRow}
           activeOpacity={0.7}
@@ -541,7 +544,7 @@ export default function CreateSessionScreen() {
                     key={site}
                     style={[
                       styles.websiteChip,
-                      { backgroundColor: isSel ? `${theme.accent}30` : theme.background },
+                      { backgroundColor: isSel ? `${theme.accent}30` : innerBg },
                     ]}
                     onPress={() => {
                       if (isSel) {
@@ -570,7 +573,7 @@ export default function CreateSessionScreen() {
                       <View
                         style={[
                           styles.groupItem,
-                          { backgroundColor: isSelected ? `${theme.accent}20` : theme.background },
+                          { backgroundColor: isSelected ? `${theme.accent}20` : innerBg },
                         ]}
                       >
                         <View style={{ flex: 1 }}>
@@ -590,7 +593,7 @@ export default function CreateSessionScreen() {
                         </View>
                       </View>
                       {isExpanded && group.websites && group.websites.length > 0 && (
-                        <View style={[styles.appListContainer, { backgroundColor: theme.background }]}>
+                        <View style={[styles.appListContainer, { backgroundColor: innerBg }]}>
                           {group.websites.map((website, index) => {
                             const faviconUrl = getFaviconUrl(website);
                             return (
@@ -612,7 +615,7 @@ export default function CreateSessionScreen() {
             <Text style={[styles.subLabel, { color: theme.textSecondary, marginTop: 14 }]}>Additional Websites</Text>
             <View style={styles.customRow}>
               <TextInput
-                style={[styles.customInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
+                style={[styles.customInput, { color: theme.text, backgroundColor: innerBg, borderColor: isDark ? 'transparent' : theme.border }]}
                 placeholder="example.com" placeholderTextColor={theme.textSecondary}
                 value={customWebsite} onChangeText={setCustomWebsite}
                 autoCapitalize="none" keyboardType="url"
@@ -629,7 +632,7 @@ export default function CreateSessionScreen() {
                   return (
                     <TouchableOpacity
                       key={`extra-${site}-${idx}`}
-                      style={[styles.sitePill, { backgroundColor: theme.background, borderColor: 'transparent' }]}
+                      style={[styles.sitePill, { backgroundColor: innerBg, borderColor: 'transparent' }]}
                       onPress={() => removeExtraWebsite(site)}
                     >
                       <Image source={{ uri: faviconUrl }} style={{ width: 14, height: 14, borderRadius: 3 }} />
@@ -645,7 +648,7 @@ export default function CreateSessionScreen() {
       </View>
 
       {/* Allow Breaks Container */}
-      <View style={[styles.focusContainer, { backgroundColor: theme.surface }]}>
+      <View style={[styles.focusContainer, { backgroundColor: containerBg }]}>
         <TouchableOpacity
           style={styles.toggleRow}
           activeOpacity={0.7}
@@ -679,7 +682,7 @@ export default function CreateSessionScreen() {
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
               <TextInput
-                style={[styles.compactTimeInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
+                style={[styles.compactTimeInput, { color: theme.text, backgroundColor: innerBg, borderColor: isDark ? 'transparent' : theme.border }]}
                 placeholder="5"
                 placeholderTextColor={theme.textSecondary}
                 value={maxBreakMinutes}

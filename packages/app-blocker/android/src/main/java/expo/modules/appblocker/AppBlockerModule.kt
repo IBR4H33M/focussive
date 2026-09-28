@@ -299,6 +299,7 @@ class AppBlockerModule : Module() {
       val remainingBreakSeconds = (options["remainingBreakSeconds"] as? Number)?.toInt()
       val allowBreaks = options["allowBreaks"] as? Boolean
       val startAtMillis = (options["startAtMillis"] as? Number)?.toLong() ?: 0L
+      val breakStartedAtMillis = (options["breakStartedAtMillis"] as? Number)?.toLong() ?: 0L
 
       SessionNotifications.post(
         context, id, sessionId, title, body,
@@ -308,6 +309,7 @@ class AppBlockerModule : Module() {
         remainingBreakSeconds = remainingBreakSeconds,
         allowBreaks = allowBreaks,
         startAtMillis = startAtMillis,
+        breakStartedAtMillis = breakStartedAtMillis,
       )
       return@Function null
     }

@@ -58,6 +58,9 @@ object SessionNotifications {
     var latestReminderNotification: Notification? = null
 
     @Volatile
+    var activeBreakFreezeTime: Long? = null
+
+    @Volatile
     private var lastCompletedSessionId: String? = null
     @Volatile
     private var lastCompletedTimestamp: Long = 0L
@@ -299,17 +302,31 @@ object SessionNotifications {
         isPaused: Boolean = false,
         startAtMillis: Long = 0L,
         isCollapsed: Boolean = false,
+        breakStartedAtMillis: Long = 0L,
     ) {
         if (isActive) {
             val effectiveStart = if (startAtMillis > 0L) startAtMillis else (targetAtMillis - 25 * 60 * 1000L)
-            val elapsedMillis = (System.currentTimeMillis() - effectiveStart).coerceAtLeast(0L)
+            val now = System.currentTimeMillis()
+
+            val freezeTime = if (isPaused) {
+                if (breakStartedAtMillis > 0L) {
+                    breakStartedAtMillis
+                } else {
+                    activeBreakFreezeTime ?: now.also { activeBreakFreezeTime = it }
+                }
+            } else {
+                activeBreakFreezeTime = null
+                now
+            }
+
+            val elapsedMillis = (freezeTime - effectiveStart).coerceAtLeast(0L)
             val elapsedBase = SystemClock.elapsedRealtime() - elapsedMillis
             views.setChronometer(R.id.notif_chronometer, elapsedBase, null, !isPaused)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 views.setChronometerCountDown(R.id.notif_chronometer, false)
             }
 
-            val diff = (targetAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+            val diff = (targetAtMillis - now).coerceAtLeast(0L)
             val remainingBase = SystemClock.elapsedRealtime() + diff
             val remFormat = if (isCollapsed) "%s rem" else "%s remaining"
             try {
@@ -364,12 +381,13 @@ object SessionNotifications {
         remainingBreakSeconds: Int = 0,
         allowBreaks: Boolean = true,
         startAtMillis: Long = 0L,
+        breakStartedAtMillis: Long = 0L,
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_active else R.layout.notification_reminder
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, formatTitle(title))
         views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
-        bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = false)
+        bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = false, breakStartedAtMillis = breakStartedAtMillis)
 
         if (isActive) {
             val skipIntent = sessionActionIntent(context, sessionId, "skip", id + 100)
@@ -411,12 +429,13 @@ object SessionNotifications {
         isActive: Boolean,
         isOnBreak: Boolean = false,
         startAtMillis: Long = 0L,
+        breakStartedAtMillis: Long = 0L,
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_collapsed else R.layout.notification_collapsed_reminder
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, formatTitle(title))
         views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
-        bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = true)
+        bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = true, breakStartedAtMillis = breakStartedAtMillis)
         return views
     }
 
@@ -450,6 +469,7 @@ object SessionNotifications {
         remainingBreakSeconds: Int = 0,
         allowBreaks: Boolean = true,
         startAtMillis: Long = 0L,
+        breakStartedAtMillis: Long = 0L,
     ): Notification {
         ensureChannels(context)
         val channel = if (isActive) CHANNEL_ACTIVE else CHANNEL_REMINDER
@@ -502,8 +522,8 @@ object SessionNotifications {
         // Fully custom views so our custom surface fills the notification body edge-to-edge
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             builder.setPriority(Notification.PRIORITY_HIGH)
-            builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive, isOnBreak, startAtMillis))
-            builder.setCustomBigContentView(buildExpandedView(context, id, sessionId, title, targetAtMillis, isActive, violationsText, isOnBreak, remainingBreakSeconds, allowBreaks, startAtMillis))
+            builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive, isOnBreak, startAtMillis, breakStartedAtMillis))
+            builder.setCustomBigContentView(buildExpandedView(context, id, sessionId, title, targetAtMillis, isActive, violationsText, isOnBreak, remainingBreakSeconds, allowBreaks, startAtMillis, breakStartedAtMillis))
         }
 
         val soundName = if (isActive) SOUND_ACTIVE else SOUND_REMINDER
@@ -545,6 +565,7 @@ object SessionNotifications {
         remainingBreakSeconds: Int? = null,
         allowBreaks: Boolean? = null,
         startAtMillis: Long = 0L,
+        breakStartedAtMillis: Long = 0L,
     ) {
         val service = AppBlockerService.instance
         val effectiveIsOnBreak = isOnBreak ?: (service?.isBreakActive() ?: false)
@@ -568,7 +589,8 @@ object SessionNotifications {
             isOnBreak = effectiveIsOnBreak,
             remainingBreakSeconds = effectiveRemainingBreak,
             allowBreaks = effectiveAllowBreaks,
-            startAtMillis = startAtMillis
+            startAtMillis = startAtMillis,
+            breakStartedAtMillis = breakStartedAtMillis
         )
         if (isActive) {
             latestActiveNotification = notification
@@ -593,7 +615,8 @@ object SessionNotifications {
                     isOnBreak = effectiveIsOnBreak,
                     newTargetAtMillis = targetAtMillis,
                     remainingBreakSec = effectiveRemainingBreak,
-                    allowBreaksParam = effectiveAllowBreaks
+                    allowBreaksParam = effectiveAllowBreaks,
+                    breakStartedAt = breakStartedAtMillis
                 )
                 return
             }
@@ -615,6 +638,7 @@ object SessionNotifications {
 
     /** Post session-completed notification with 1 short pulse and focustone_3 sound. */
     fun postCompleted(context: Context, sessionId: String, sessionTitle: String) {
+        activeBreakFreezeTime = null
         val now = System.currentTimeMillis()
         if (sessionId.isNotEmpty() && sessionId == lastCompletedSessionId && (now - lastCompletedTimestamp) < 10000L) {
             return
@@ -728,6 +752,7 @@ object SessionNotifications {
         pendingIntent.cancel()
         if (id == ACTIVE_NOTIFICATION_ID) {
             latestActiveNotification = null
+            activeBreakFreezeTime = null
             try {
                 val teardownIntent = Intent(context, SessionAlarmReceiver::class.java).apply {
                     action = "ACTION_SESSION_TEARDOWN"

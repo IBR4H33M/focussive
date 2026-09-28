@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import type { SessionTimeSlot } from '@focussive/shared';
+import { useIsDark } from '@/utils/theme';
 
 const ITEM_HEIGHT = 44;
 const VISIBLE_HEIGHT = ITEM_HEIGHT * 3; // 132px (3 items visible: previous, selected, next)
@@ -184,6 +185,8 @@ function TimeBox({
   use24Hour?: boolean;
   theme: any;
 }) {
+  const isDark = useIsDark();
+  const toggleBg = isDark ? '#2D2E46' : theme.surface;
   const parts = (timeStr || '09:00').split(':').map(Number);
   const rawHours = isNaN(parts[0]) ? 9 : parts[0];
   const minutes = isNaN(parts[1]) ? 0 : parts[1];
@@ -252,7 +255,7 @@ function TimeBox({
 
       {/* AM / PM Toggle (Only shown when not in 24-hour mode) */}
       {!use24Hour && (
-        <View style={[styles.ampmToggleContainer, { backgroundColor: theme.surface }]}>
+        <View style={[styles.ampmToggleContainer, { backgroundColor: toggleBg }]}>
           <TouchableOpacity
             style={[
               styles.ampmToggleBtn,

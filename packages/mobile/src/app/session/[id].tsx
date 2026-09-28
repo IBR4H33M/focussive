@@ -80,6 +80,8 @@ export default function SessionDetailScreen() {
   const { id, action } = useLocalSearchParams<{ id: string; action?: string }>();
   const theme = useTheme();
   const isDark = useIsDark();
+  const containerBg = isDark ? '#2D2E46' : theme.surface;
+  const innerBg = isDark ? 'rgba(0, 0, 0, 0.2)' : theme.background;
   const router = useRouter();
   const navigation = useNavigation();
   const { refreshSessions, handleBreak } = useSessions();
@@ -765,7 +767,7 @@ export default function SessionDetailScreen() {
 
           <Text style={[styles.label, { color: theme.textSecondary }]}>SESSION NAME</Text>
           <TextInput
-            style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+            style={[styles.input, { color: theme.text, backgroundColor: containerBg, borderColor: isDark ? 'transparent' : theme.border }]}
             value={editName}
             onChangeText={setEditName}
             placeholder="Session name"
@@ -796,7 +798,7 @@ export default function SessionDetailScreen() {
                   key={opt.key}
                   style={[
                     styles.scheduleBtn,
-                    { backgroundColor: isSelected ? theme.accent : theme.surface },
+                    { backgroundColor: isSelected ? theme.accent : containerBg },
                   ]}
                   onPress={() => handleSelectEditScheduleTab(opt.key)}
                   activeOpacity={0.8}
@@ -884,7 +886,7 @@ export default function SessionDetailScreen() {
           )}
 
           {/* Mobile Focus Container */}
-          <View style={[styles.focusContainer, { backgroundColor: theme.surface }]}>
+          <View style={[styles.focusContainer, { backgroundColor: containerBg }]}>
             <TouchableOpacity
               style={styles.toggleRow}
               activeOpacity={0.7}
@@ -915,7 +917,7 @@ export default function SessionDetailScreen() {
                         <View
                           style={[
                             styles.groupItem,
-                            { backgroundColor: isSelected ? `${theme.accent}20` : theme.background },
+                            { backgroundColor: isSelected ? `${theme.accent}20` : innerBg },
                           ]}
                         >
                           <View style={{ flex: 1 }}>
@@ -935,7 +937,7 @@ export default function SessionDetailScreen() {
                           </View>
                         </View>
                         {isExpanded && group.apps && group.apps.length > 0 && (
-                          <View style={[styles.appListContainer, { backgroundColor: theme.background }]}>
+                          <View style={[styles.appListContainer, { backgroundColor: innerBg }]}>
                             {group.apps.map((app, index) => {
                               const icon = (app as any).iconUri || appIconMap[app.id];
                               return (
@@ -960,7 +962,7 @@ export default function SessionDetailScreen() {
           </View>
 
           {/* Browser Focus Container */}
-          <View style={[styles.focusContainer, { backgroundColor: theme.surface }]}>
+          <View style={[styles.focusContainer, { backgroundColor: containerBg }]}>
             <TouchableOpacity
               style={styles.toggleRow}
               activeOpacity={0.7}
@@ -987,7 +989,7 @@ export default function SessionDetailScreen() {
                         key={site}
                         style={[
                           styles.websiteChip,
-                          { backgroundColor: isSel ? `${theme.accent}30` : theme.background },
+                          { backgroundColor: isSel ? `${theme.accent}30` : innerBg },
                         ]}
                         onPress={() => toggleWebsite(site)}
                       >

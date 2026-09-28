@@ -45,10 +45,14 @@ class AppBlockerService : Service() {
     private var currentSessionName: String? = null
     private var currentTargetMillis: Long = 0L
     private var currentStartMillis: Long = 0L
+    private var breakStartedAtMillis: Long = 0L
+    private var sessionRemainingAtBreakStart: Long = 0L
+    private var lastForegroundPackage: String? = null
 
     fun isBreakActive(): Boolean = breakActive
     fun getRemainingBreakSeconds(): Int = remainingBreakSeconds
     fun getAllowBreaks(): Boolean = allowBreaks
+    fun getBreakStartedAtMillis(): Long = breakStartedAtMillis
 
     /**
      * Synchronize break status and target end time from active session updates
@@ -58,9 +62,21 @@ class AppBlockerService : Service() {
         isOnBreak: Boolean,
         newTargetAtMillis: Long? = null,
         remainingBreakSec: Int? = null,
-        allowBreaksParam: Boolean? = null
+        allowBreaksParam: Boolean? = null,
+        breakStartedAt: Long? = null
     ) {
+        val wasOnBreak = this.breakActive
         this.breakActive = isOnBreak
+        if (isOnBreak) {
+            if (!wasOnBreak) {
+                breakStartedAtMillis = if (breakStartedAt != null && breakStartedAt > 0L) breakStartedAt else System.currentTimeMillis()
+                sessionRemainingAtBreakStart = (currentTargetMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+            }
+        } else {
+            breakStartedAtMillis = 0L
+            sessionRemainingAtBreakStart = 0L
+            SessionNotifications.activeBreakFreezeTime = null
+        }
         if (newTargetAtMillis != null && newTargetAtMillis > 0L) {
             this.currentTargetMillis = newTargetAtMillis
             getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
@@ -81,14 +97,17 @@ class AppBlockerService : Service() {
         val rawName = currentSessionName ?: "Focus"
         val titleText = if (rawName.endsWith(" is running")) rawName else "$rawName is running"
         val sessionId = currentSessionId ?: ""
-        val targetMillis = if (currentTargetMillis > System.currentTimeMillis()) {
+        val now = System.currentTimeMillis()
+        val targetMillis = if (breakActive && sessionRemainingAtBreakStart > 0L) {
+            now + sessionRemainingAtBreakStart
+        } else if (currentTargetMillis > now) {
             currentTargetMillis
         } else {
             val savedEnd = getSharedPreferences("focussive_session", Context.MODE_PRIVATE).getLong("active_session_end", 0L)
-            if (savedEnd > System.currentTimeMillis()) {
+            if (savedEnd > now) {
                 savedEnd
             } else {
-                System.currentTimeMillis() + 25 * 60 * 1000L
+                now + 25 * 60 * 1000L
             }
         }
 
@@ -105,7 +124,8 @@ class AppBlockerService : Service() {
             isOnBreak = breakActive,
             remainingBreakSeconds = remainingBreakSeconds,
             allowBreaks = allowBreaks,
-            startAtMillis = currentStartMillis
+            startAtMillis = currentStartMillis,
+            breakStartedAtMillis = breakStartedAtMillis
         )
         SessionNotifications.latestActiveNotification = notif
         val manager = getSystemService(NotificationManager::class.java)
@@ -116,9 +136,17 @@ class AppBlockerService : Service() {
         if (!breakActive && breakEndsAtMillis == 0L) return
         breakActive = false
         breakEndsAtMillis = 0L
+        breakStartedAtMillis = 0L
+        sessionRemainingAtBreakStart = 0L
+        SessionNotifications.activeBreakFreezeTime = null
         breakEndRunnable?.let { breakEndHandler?.removeCallbacks(it) }
         breakEndRunnable = null
         Log.d("AppBlocker", "Break ended; re-enforcing blocking immediately")
+
+        // Reset overlay debounce and cached foreground so blocked app is detected instantly
+        lastOverlayShownTime = 0L
+        lastOverlayPackage = null
+        lastForegroundPackage = null
 
         // Update notification: unpause timer & re-evaluate break button
         updateActiveNotification()
@@ -219,7 +247,9 @@ class AppBlockerService : Service() {
                 // Deduct break time from remaining budget
                 remainingBreakSeconds = (remainingBreakSeconds - breakMinutes * 60).coerceAtLeast(0)
                 breakActive = true
-                breakEndsAtMillis = System.currentTimeMillis() + breakMs
+                breakStartedAtMillis = System.currentTimeMillis()
+                sessionRemainingAtBreakStart = (currentTargetMillis - breakStartedAtMillis).coerceAtLeast(0L)
+                breakEndsAtMillis = breakStartedAtMillis + breakMs
                 if (currentTargetMillis > 0L) {
                     currentTargetMillis += breakMs
                 }
@@ -251,6 +281,10 @@ class AppBlockerService : Service() {
                 isMonitoring = false
                 breakActive = false
                 breakEndsAtMillis = 0L
+                breakStartedAtMillis = 0L
+                sessionRemainingAtBreakStart = 0L
+                SessionNotifications.activeBreakFreezeTime = null
+                lastForegroundPackage = null
                 handler.removeCallbacks(monitorRunnable)
                 breakEndRunnable?.let { breakEndHandler?.removeCallbacks(it) }
                 stopForeground(true)
@@ -468,6 +502,25 @@ class AppBlockerService : Service() {
             }
         }
 
+        if (currentPackage != null) {
+            lastForegroundPackage = currentPackage
+        } else if (lastForegroundPackage == null) {
+            // No recent events and no cached foreground package (e.g. break just ended while user stayed in banned app):
+            // Search a wider window (last 15 minutes) to identify the foreground app.
+            val wideEvents = usageStatsManager.queryEvents(time - 15 * 60 * 1000L, time)
+            while (wideEvents.hasNextEvent()) {
+                wideEvents.getNextEvent(event)
+                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED || event.eventType == 1) {
+                    currentPackage = event.packageName
+                }
+            }
+            if (currentPackage != null) {
+                lastForegroundPackage = currentPackage
+            }
+        } else {
+            currentPackage = lastForegroundPackage
+        }
+
         if (currentPackage != null && blockedPackages.contains(currentPackage)) {
             val allowedUntil = temporarilyAllowed[currentPackage]
             val now = System.currentTimeMillis()
@@ -531,14 +584,17 @@ class AppBlockerService : Service() {
         val rawName = currentSessionName ?: "Focus"
         val titleText = if (rawName.endsWith(" is running")) rawName else "$rawName is running"
         val sessionId = currentSessionId ?: ""
-        val targetMillis = if (currentTargetMillis > System.currentTimeMillis()) {
+        val now = System.currentTimeMillis()
+        val targetMillis = if (breakActive && sessionRemainingAtBreakStart > 0L) {
+            now + sessionRemainingAtBreakStart
+        } else if (currentTargetMillis > now) {
             currentTargetMillis
         } else {
             val savedEnd = getSharedPreferences("focussive_session", Context.MODE_PRIVATE).getLong("active_session_end", 0L)
-            if (savedEnd > System.currentTimeMillis()) {
+            if (savedEnd > now) {
                 savedEnd
             } else {
-                System.currentTimeMillis() + 25 * 60 * 1000L
+                now + 25 * 60 * 1000L
             }
         }
 
@@ -555,7 +611,8 @@ class AppBlockerService : Service() {
             isOnBreak = breakActive,
             remainingBreakSeconds = remainingBreakSeconds,
             allowBreaks = allowBreaks,
-            startAtMillis = currentStartMillis
+            startAtMillis = currentStartMillis,
+            breakStartedAtMillis = breakStartedAtMillis
         )
     }
 

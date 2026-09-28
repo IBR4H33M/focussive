@@ -148,6 +148,7 @@ export function updateActiveNotification(
   remainingBreakSeconds?: number,
   allowBreaks?: boolean,
   startAtMillis?: number,
+  breakStartedAtMillis?: number,
 ) {
   return AppBlockerModule.updateActiveNotification({
     id,
@@ -161,6 +162,7 @@ export function updateActiveNotification(
     remainingBreakSeconds: remainingBreakSeconds ?? null,
     allowBreaks: allowBreaks ?? null,
     startAtMillis: startAtMillis ?? null,
+    breakStartedAtMillis: breakStartedAtMillis ?? null,
   });
 }
 
