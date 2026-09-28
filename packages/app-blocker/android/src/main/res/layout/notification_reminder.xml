@@ -31,8 +31,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Starts in"
-            android:textSize="12sp"
-            android:letterSpacing="0.03"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.01"
             android:textColor="#78350F" />
 
         <Chronometer

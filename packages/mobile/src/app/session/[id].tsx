@@ -341,7 +341,7 @@ export default function SessionDetailScreen() {
         ? Math.max(0, ((session.max_break_minutes ?? 0) * 60) - session.break_used_seconds)
         : (session.max_break_minutes ?? 0) * 60) / 60);
       const liveRemainingSec = getRemainingSeconds(session);
-      const sessionRemainingMins = Math.floor(liveRemainingSec / 60);
+      const sessionRemainingMins = Math.floor(Math.max(0, liveRemainingSec - 1) / 60);
       const maxSelectable = Math.min(remainingMinutes, sessionRemainingMins);
 
       if (session.allow_breaks && !onBreak) {
@@ -465,6 +465,9 @@ export default function SessionDetailScreen() {
     : (session.max_break_minutes ?? 0) * 60) / 60);
   const activeGreen = '#22B14C';
   const liveRemaining = isActive ? getRemainingSeconds(session) : 0;
+  const sessionRemainingMin = Math.floor(Math.max(0, liveRemaining - 1) / 60);
+  const maxBreakSelectable = Math.max(0, Math.min(breakRemaining, sessionRemainingMin));
+  const canTakeBreak = breakRemaining > 0 && maxBreakSelectable > 0;
 
   return (
     <>

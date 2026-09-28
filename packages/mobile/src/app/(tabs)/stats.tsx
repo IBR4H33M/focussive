@@ -814,7 +814,7 @@ export default function StatsScreen() {
                   <View
                     style={[
                       styles.currentArchetypeBanner,
-                      { backgroundColor: activeAccent },
+                      { backgroundColor: '#535985' },
                     ]}
                   >
                     <Text style={styles.currentArchetypeText}>Current Archetype</Text>

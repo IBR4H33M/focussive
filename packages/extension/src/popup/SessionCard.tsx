@@ -55,7 +55,9 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
   const [breakSecondsLeft, setBreakSecondsLeft] = useState(() => getBreakSecondsLeft(session.break_ends_at));
 
   const remainingBreakMin = Math.ceil((session.remaining_break_seconds || 0) / 60);
-  const hasBreakTime = session.allow_breaks && (session.remaining_break_seconds || 0) > 0 && !isOnBreak;
+  const remainingSessionMin = Math.floor(Math.max(0, remaining - 1) / 60);
+  const maxBreakAllowed = Math.max(0, Math.min(remainingBreakMin, remainingSessionMin));
+  const hasBreakTime = session.allow_breaks && maxBreakAllowed > 0 && !isOnBreak;
 
   // Session countdown — paused while on break, continues when break finishes
   useEffect(() => {
@@ -215,6 +217,7 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
         </div>
 
         {/* Break Buttons for Running Session (Mobile Parity) */}
+        {/* Break Buttons for Running Session (Mobile Parity) */}
         {session.allow_breaks && !isOnBreak && (
           <div style={styles.breakControlsSection}>
             {hasBreakTime ? (
@@ -229,13 +232,12 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
                   title="Take a break from this session"
                 >
                   <span style={styles.primaryBreakBtnText}>Take a break</span>
-                  <span style={styles.primaryBreakBtnSub}>{remainingBreakMin} min remaining</span>
+                  <span style={styles.primaryBreakBtnSub}>{maxBreakAllowed} min available</span>
                 </button>
               </div>
             ) : (
               <div style={styles.breakBtnDisabled}>
-                <span>No break time available</span>
-                <span style={{ opacity: 0.8 }}>0 min remaining</span>
+                <span>{remainingBreakMin <= 0 ? 'No break time available' : 'Session ending soon'}</span>
               </div>
             )}
           </div>
@@ -275,9 +277,10 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
             <div style={styles.modalHeaderTitle}>Take a break</div>
-            <div style={styles.modalSubtitle}>
+            <div style={styles.breakQuoteLarge}>
               Even machines need to cool down.
-              <br /><br />
+            </div>
+            <div style={styles.modalSubtitle}>
               No violations tracked during breaks.
               <br />
               Come back when you&apos;re ready.
@@ -287,8 +290,8 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
             <div style={styles.stepperContainer}>
               <button
                 style={styles.stepperArrowBtn}
-                onClick={() => setBreakMinutes((m) => Math.min(m + 1, remainingBreakMin))}
-                disabled={breakMinutes >= remainingBreakMin}
+                onClick={() => setBreakMinutes((m) => Math.min(m + 1, maxBreakAllowed))}
+                disabled={breakMinutes >= maxBreakAllowed}
               >
                 ▲
               </button>
@@ -631,6 +634,13 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#E9E4DC',
     marginBottom: 8,
   },
+  breakQuoteLarge: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: '#FFFFFF',
+    marginBottom: 8,
+    lineHeight: 1.35,
+  },
   modalSubtitle: {
     fontSize: 13,
     lineHeight: 1.5,
@@ -668,13 +678,14 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     padding: '12px 16px',
     borderRadius: 10,
-    border: '1.5px solid #2E4233',
-    backgroundColor: '#1C281F',
-    color: '#8BA794',
-    fontSize: 14,
+    border: 'none',
+    backgroundColor: '#F59E0B',
+    color: '#1C1D2A',
+    fontSize: 15,
     fontWeight: 700,
     cursor: 'pointer',
     marginBottom: 10,
+    transition: 'filter 0.15s ease',
   },
   cancelLinkBtn: {
     background: 'none',

@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
-import { isSessionOverlap, SessionStatus, sortByNextOccurrence } from '@focussive/shared';
+import { isSessionOverlap, SessionStatus, sortByNextOccurrence, getRemainingSeconds } from '@focussive/shared';
 import { completeExpiredSessions } from '../services/sessionScheduler';
 
 // POST /sessions/:id/start  — manually start a scheduled session
@@ -659,10 +659,20 @@ export async function startBreak(req: AuthRequest, res: Response): Promise<void>
 
   // Check remaining break time
   const maxBreakSeconds = (session.max_break_minutes || 0) * 60;
-  const remainingSeconds = maxBreakSeconds - (session.break_used_seconds || 0);
+  const remainingBreakSeconds = maxBreakSeconds - (session.break_used_seconds || 0);
 
-  if (remainingSeconds <= 0) {
+  if (remainingBreakSeconds <= 0) {
     throw new AppError('No break time remaining', 400, 'NO_BREAK_TIME');
+  }
+
+  // Break time must always be strictly less than remaining session time
+  // e.g. if 1m 20s remaining (80s), 2m (120s) cannot be taken; at most 1m (60s) can be taken
+  const sessionRemainingSeconds = getRemainingSeconds(session);
+  const maxAllowedBySessionSeconds = Math.max(0, sessionRemainingSeconds - 1);
+  const effectiveMaxBreakSeconds = Math.min(remainingBreakSeconds, maxAllowedBySessionSeconds);
+
+  if (effectiveMaxBreakSeconds < 60) {
+    throw new AppError('Break time must be less than remaining session time', 400, 'SESSION_ENDING_SOON');
   }
 
   // Close any existing open break first
@@ -672,10 +682,16 @@ export async function startBreak(req: AuthRequest, res: Response): Promise<void>
     .eq('session_id', id)
     .is('ended_at', null);
 
-  // Compute planned duration (capped to remaining)
-  const plannedSeconds = minutes
-    ? Math.min(Math.max(1, Number(minutes)) * 60, remainingSeconds)
-    : remainingSeconds;
+  // Compute planned duration (capped to remaining break & remaining session time)
+  const requestedSeconds = minutes
+    ? Math.max(1, Number(minutes)) * 60
+    : effectiveMaxBreakSeconds;
+
+  if (requestedSeconds > effectiveMaxBreakSeconds) {
+    throw new AppError('Break time must be less than remaining session time', 400, 'BREAK_EXCEEDS_REMAINING_TIME');
+  }
+
+  const plannedSeconds = Math.min(requestedSeconds, effectiveMaxBreakSeconds);
 
   const breakId = uuidv4();
   const { data: breakRecord, error } = await supabase
@@ -694,7 +710,7 @@ export async function startBreak(req: AuthRequest, res: Response): Promise<void>
     throw new AppError('Failed to start break', 500, 'CREATE_ERROR');
   }
 
-  res.json({ ...breakRecord, remaining_break_seconds: remainingSeconds });
+  res.json({ ...breakRecord, remaining_break_seconds: remainingBreakSeconds });
 }
 
 // POST /sessions/:id/break/end

@@ -328,7 +328,7 @@ export default function Popup() {
                 <>
                   <div style={styles.sectionTitle}>UPCOMING</div>
                   {upcomingSessions.slice(0, 1).map((s) => (
-                    <UpcomingCard key={s.id} session={s} onRefresh={loadData} />
+                    <UpcomingCard key={s.id} session={s} onRefresh={loadData} showSkipButton={false} />
                   ))}
                 </>
               )}
@@ -346,7 +346,7 @@ export default function Popup() {
                 <>
                   <div style={styles.sectionTitle}>UPCOMING</div>
                   {upcomingSessions.slice(0, 1).map((s) => (
-                    <UpcomingCard key={s.id} session={s} onRefresh={loadData} />
+                    <UpcomingCard key={s.id} session={s} onRefresh={loadData} showSkipButton={true} />
                   ))}
                 </>
               )}

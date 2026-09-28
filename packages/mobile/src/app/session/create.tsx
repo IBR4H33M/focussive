@@ -12,7 +12,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from '@/utils/theme';
 import { sessionApi, appGroupApi, websiteGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
-import { ScheduleType, Weekday } from '@focussive/shared';
+import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES } from '@focussive/shared';
 import type { AppGroup, WebsiteGroup, SessionTimeSlot } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { hasRequiredPermissions, requestUsageStatsPermission, requestOverlayPermission } from '@focussive/app-blocker';
@@ -530,6 +530,34 @@ export default function CreateSessionScreen() {
 
         {browserFocus && (
           <View style={styles.focusContent}>
+            {/* Popular Websites */}
+            <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Popular Websites</Text>
+            <View style={styles.websiteGrid}>
+              {PREDEFINED_BLOCKED_WEBSITES.map(site => {
+                const isSel = extraWebsites.includes(site);
+                const faviconUrl = getFaviconUrl(site);
+                return (
+                  <TouchableOpacity
+                    key={site}
+                    style={[
+                      styles.websiteChip,
+                      { backgroundColor: isSel ? `${theme.accent}30` : theme.background },
+                    ]}
+                    onPress={() => {
+                      if (isSel) {
+                        setExtraWebsites(prev => prev.filter(s => s !== site));
+                      } else {
+                        setExtraWebsites(prev => [...prev, site]);
+                      }
+                    }}
+                  >
+                    <Image source={{ uri: faviconUrl }} style={{ width: 16, height: 16, borderRadius: 3 }} />
+                    <Text style={[styles.websiteText, { color: isSel ? theme.accent : theme.text }]}>{site}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             {/* Website Groups */}
             {websiteGroups.length > 0 && (
               <>
@@ -738,4 +766,7 @@ const styles = StyleSheet.create({
   createBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   focusContainer: { marginTop: 14, borderRadius: 14, padding: 14, overflow: 'hidden' },
   focusContent: { marginTop: 12, paddingTop: 4 },
+  websiteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 12 },
+  websiteChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 0 },
+  websiteText: { fontSize: 13 },
 });

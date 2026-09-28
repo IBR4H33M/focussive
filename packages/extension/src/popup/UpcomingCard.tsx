@@ -11,6 +11,7 @@ interface UpcomingCardProps {
   session: StoredSession;
   onRefresh?: () => void;
   nextOccurrence?: Date;
+  showSkipButton?: boolean;
 }
 
 interface FormattedTimeRange {
@@ -54,7 +55,12 @@ function formatTimeRange(startTime: string, durationMinutes: number, occurrenceD
   return { dateLabel, range };
 }
 
-export default function UpcomingCard({ session, onRefresh, nextOccurrence }: UpcomingCardProps) {
+export default function UpcomingCard({
+  session,
+  onRefresh,
+  nextOccurrence,
+  showSkipButton = true,
+}: UpcomingCardProps) {
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
   const [skipError, setSkipError] = useState<string | null>(null);
@@ -82,15 +88,14 @@ export default function UpcomingCard({ session, onRefresh, nextOccurrence }: Upc
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        {/* Header: Name + Duration Badge */}
+        {/* Header: Name */}
         <div style={styles.header}>
           <span style={styles.name} title={session.name}>
             {session.name}
           </span>
-          <span style={styles.durationBadge}>{durationLabel}</span>
         </div>
 
-        {/* Time Row */}
+        {/* Time Row: range left, duration large right */}
         <div style={styles.timeRow}>
           <div style={styles.timeRangeBox}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#78350F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: dateLabel ? 2 : 0 }}>
@@ -104,6 +109,7 @@ export default function UpcomingCard({ session, onRefresh, nextOccurrence }: Upc
               <span style={styles.timeRangeText}>{timeRange}</span>
             </div>
           </div>
+          <span style={styles.durationBig}>{durationLabel}</span>
         </div>
 
         {/* Footer: Badges for Mobile / Browser / Breaks */}
@@ -137,29 +143,33 @@ export default function UpcomingCard({ session, onRefresh, nextOccurrence }: Upc
         </div>
       </div>
 
-      {/* Skip Button under the upcoming container (matching mobile dashboard) */}
-      <button
-        className="skip-upcoming-btn"
-        style={styles.skipBtn}
-        onClick={() => {
-          setSkipError(null);
-          setShowSkipConfirm(true);
-        }}
-        title="Skip upcoming occurrence of this session"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="5 4 15 12 5 20 5 4" />
-          <line x1="19" y1="5" x2="19" y2="19" />
-        </svg>
-        <span>Skip this session</span>
-      </button>
+      {/* Skip Button under upcoming card — only shown when no active session is running */}
+      {showSkipButton && (
+        <>
+          <button
+            className="skip-upcoming-btn"
+            style={styles.skipBtn}
+            onClick={() => {
+              setSkipError(null);
+              setShowSkipConfirm(true);
+            }}
+            title="Skip upcoming occurrence of this session"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="5 4 15 12 5 20 5 4" />
+              <line x1="19" y1="5" x2="19" y2="19" />
+            </svg>
+            <span>Skip this session</span>
+          </button>
 
-      <style>{`
-        .skip-upcoming-btn:hover {
-          background-color: #1e8f3e !important;
-          filter: brightness(1.08);
-        }
-      `}</style>
+          <style>{`
+            .skip-upcoming-btn:hover {
+              background-color: #F59E0B !important;
+              filter: brightness(1.08);
+            }
+          `}</style>
+        </>
+      )}
 
       {/* Skip Confirmation Modal / Overlay */}
       {showSkipConfirm && (
@@ -234,14 +244,14 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
     flex: 1,
   },
-  durationBadge: {
-    fontSize: 12,
-    fontWeight: 700,
+  durationBig: {
+    fontSize: 28,
+    fontWeight: 500,
     color: '#D97706',
-    backgroundColor: 'rgba(217, 119, 6, 0.14)',
-    padding: '2px 8px',
-    borderRadius: 6,
-    letterSpacing: 0.2,
+    letterSpacing: -0.5,
+    fontVariantNumeric: 'tabular-nums',
+    textAlign: 'right',
+    marginLeft: 8,
     flexShrink: 0,
   },
   timeRow: {

@@ -15,7 +15,7 @@ import {
   setExtensionSettings,
   type StoredSession,
 } from './utils/storage';
-import { isBlockedWebsite, getNextSessionOccurrence, isSessionInActiveWindow } from '@focussive/shared';
+import { isBlockedWebsite, getNextSessionOccurrence, isSessionInActiveWindow, getRemainingSeconds } from '@focussive/shared';
 import type { ViolationResponseMessage } from './utils/messaging';
 
 // --- Session Polling (every 5 seconds) ---
@@ -288,12 +288,17 @@ async function checkAllTabs() {
         if (isBlockedWebsite(tab.url, blockedList)) {
           const hostname = new URL(tab.url).hostname;
           const settings = await getExtensionSettings();
+          const sessionRemaining = getRemainingSeconds(session as any);
+          const effectiveBreakSeconds = Math.min(
+            session.remaining_break_seconds ?? 0,
+            Math.max(0, sessionRemaining - 1)
+          );
           await chrome.tabs.sendMessage(tab.id, {
             type: 'SHOW_OVERLAY',
             sessionId: session.id,
             websiteName: hostname,
             allowBreaks: session.allow_breaks || false,
-            remainingBreakSeconds: session.remaining_break_seconds ?? 0,
+            remainingBreakSeconds: effectiveBreakSeconds,
             settings,
           }).catch(() => {});
         }
@@ -353,13 +358,19 @@ async function checkTab(tabId: number, url: string) {
           const tab = await chrome.tabs.get(tabId);
           if (tab.url && isBlockedWebsite(tab.url, blockedList)) {
             const settings = await getExtensionSettings();
+            const sessionToUse = currentSession || session;
+            const sessionRemaining = getRemainingSeconds(sessionToUse as any);
+            const effectiveBreakSeconds = Math.min(
+              sessionToUse.remaining_break_seconds ?? 0,
+              Math.max(0, sessionRemaining - 1)
+            );
             // Pass break info and settings to overlay
             await chrome.tabs.sendMessage(tabId, {
               type: 'SHOW_OVERLAY',
               sessionId: session.id,
               websiteName: hostname,
-              allowBreaks: currentSession?.allow_breaks || false,
-              remainingBreakSeconds: currentSession?.remaining_break_seconds ?? 0,
+              allowBreaks: sessionToUse.allow_breaks || false,
+              remainingBreakSeconds: effectiveBreakSeconds,
               settings,
             });
           }

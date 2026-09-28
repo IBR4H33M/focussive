@@ -54,8 +54,8 @@ async function showOverlay(
 
   currentSessionId = sessionId;
   currentWebsiteName = websiteName;
-  breakAvailable = allowBreaks && remainingBreakSeconds > 0;
-  breakMaxMinutes = Math.floor(remainingBreakSeconds / 60) || 1;
+  breakMaxMinutes = Math.floor(remainingBreakSeconds / 60);
+  breakAvailable = allowBreaks && breakMaxMinutes > 0;
   overlayScreen = 'idle';
   breakMinutes = 1;
   allowMinutes = 1;
