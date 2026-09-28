@@ -79,30 +79,52 @@ export default function CreateSessionScreen() {
   const [allowBreaks, setAllowBreaks] = useState(false);
   const [maxBreakMinutes, setMaxBreakMinutes] = useState('5');
   const [appIconMap, setAppIconMap] = useState<Record<string, string>>({});
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [breakKeyboardSpacer, setBreakKeyboardSpacer] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const isBreakInputFocused = useRef(false);
+  const currentKeyboardHeight = useRef(0);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
-        setKeyboardHeight(e.endCoordinates.height);
-        setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: true });
-        }, 50);
+        const height = e.endCoordinates?.height || 280;
+        currentKeyboardHeight.current = height;
+        if (isBreakInputFocused.current) {
+          setBreakKeyboardSpacer(height);
+        }
       }
     );
+
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
-        setKeyboardHeight(0);
+        currentKeyboardHeight.current = 0;
+        setBreakKeyboardSpacer(0);
+        isBreakInputFocused.current = false;
       }
     );
+
     return () => {
       showSub.remove();
       hideSub.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (breakKeyboardSpacer > 0) {
+      const t1 = setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+      const t2 = setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 180);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [breakKeyboardSpacer]);
 
   useEffect(() => {
     appGroupApi.getAll().then(r => setAppGroups(r.data as AppGroup[])).catch(() => {});
@@ -347,18 +369,22 @@ export default function CreateSessionScreen() {
         <ScrollView
           ref={scrollViewRef}
           style={styles.container}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
           keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets={true}
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
         {/* Session Name */}
         <Text style={[styles.label, { color: theme.textSecondary, marginTop: 4 }]}>SESSION NAME</Text>
         <TextInput
-        style={[styles.input, { color: theme.text, backgroundColor: containerBg, borderColor: isDark ? 'transparent' : theme.border }]}
-        placeholder="e.g. Deep Work, Study, Writing..."
-        placeholderTextColor={theme.textSecondary}
-        value={name} onChangeText={setName}
-      />
+          style={[styles.input, { color: theme.text, backgroundColor: containerBg, borderColor: isDark ? 'transparent' : theme.border }]}
+          placeholder="e.g. Deep Work, Study, Writing..."
+          placeholderTextColor={theme.textSecondary}
+          value={name} onChangeText={setName}
+          onFocus={() => {
+            isBreakInputFocused.current = false;
+            setBreakKeyboardSpacer(0);
+          }}
+        />
 
       {/* Time durations */}
       <Text style={[styles.label, { color: theme.textSecondary }]}>
@@ -610,34 +636,6 @@ export default function CreateSessionScreen() {
 
         {browserFocus && (
           <View style={styles.focusContent}>
-            {/* Popular Websites */}
-            <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Popular Websites</Text>
-            <View style={styles.websiteGrid}>
-              {PREDEFINED_BLOCKED_WEBSITES.map(site => {
-                const isSel = extraWebsites.includes(site);
-                const faviconUrl = getFaviconUrl(site);
-                return (
-                  <TouchableOpacity
-                    key={site}
-                    style={[
-                      styles.websiteChip,
-                      { backgroundColor: isSel ? `${theme.accent}30` : innerBg },
-                    ]}
-                    onPress={() => {
-                      if (isSel) {
-                        setExtraWebsites(prev => prev.filter(s => s !== site));
-                      } else {
-                        setExtraWebsites(prev => [...prev, site]);
-                      }
-                    }}
-                  >
-                    <Image source={{ uri: faviconUrl }} style={{ width: 16, height: 16, borderRadius: 3 }} />
-                    <Text style={[styles.websiteText, { color: isSel ? theme.accent : theme.text }]}>{site}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
             {/* Website Groups */}
             {websiteGroups.length > 0 && (
               <>
@@ -711,6 +709,34 @@ export default function CreateSessionScreen() {
                 })}
               </>
             )}
+
+            {/* Popular Websites */}
+            <Text style={[styles.subLabel, { color: theme.textSecondary, marginTop: websiteGroups.length > 0 ? 14 : 4 }]}>Popular Websites</Text>
+            <View style={styles.websiteGrid}>
+              {PREDEFINED_BLOCKED_WEBSITES.map(site => {
+                const isSel = extraWebsites.includes(site);
+                const faviconUrl = getFaviconUrl(site);
+                return (
+                  <TouchableOpacity
+                    key={site}
+                    style={[
+                      styles.websiteChip,
+                      { backgroundColor: isSel ? `${theme.accent}30` : innerBg },
+                    ]}
+                    onPress={() => {
+                      if (isSel) {
+                        setExtraWebsites(prev => prev.filter(s => s !== site));
+                      } else {
+                        setExtraWebsites(prev => [...prev, site]);
+                      }
+                    }}
+                  >
+                    <Image source={{ uri: faviconUrl }} style={{ width: 16, height: 16, borderRadius: 3 }} />
+                    <Text style={[styles.websiteText, { color: isSel ? theme.accent : theme.text }]}>{site}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
             {/* Additional individual websites */}
             <Text style={[styles.subLabel, { color: theme.textSecondary, marginTop: 14 }]}>Additional Websites</Text>
@@ -789,7 +815,14 @@ export default function CreateSessionScreen() {
                 value={maxBreakMinutes}
                 onChangeText={setMaxBreakMinutes}
                 onFocus={() => {
-                  setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 250);
+                  isBreakInputFocused.current = true;
+                  if (currentKeyboardHeight.current > 0) {
+                    setBreakKeyboardSpacer(currentKeyboardHeight.current);
+                  }
+                }}
+                onBlur={() => {
+                  isBreakInputFocused.current = false;
+                  setBreakKeyboardSpacer(0);
                 }}
                 keyboardType="number-pad"
                 maxLength={3}
@@ -809,7 +842,9 @@ export default function CreateSessionScreen() {
         <Text style={styles.createBtnText}>{loading ? 'Creating...' : 'Create Session'}</Text>
       </TouchableOpacity>
 
-      <View style={{ height: Math.max(140, keyboardHeight + 120) }} />
+      {breakKeyboardSpacer > 0 && (
+        <View style={{ height: Math.max(0, breakKeyboardSpacer - (Math.max(insets.bottom, 16) + 16)) }} />
+      )}
       </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -830,7 +865,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 40 },
+  content: { paddingHorizontal: 20, paddingTop: 4 },
   label: { fontSize: 12, fontWeight: '600', letterSpacing: 2, marginBottom: 8, marginTop: 20 },
   subLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginBottom: 8, marginTop: 12 },
   input: { height: 48, borderWidth: 2.5, borderRadius: 10, paddingHorizontal: 16, fontSize: 16, fontWeight: '300' },
