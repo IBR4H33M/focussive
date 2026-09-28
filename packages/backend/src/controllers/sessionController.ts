@@ -154,9 +154,10 @@ export async function createSession(req: AuthRequest, res: Response): Promise<vo
   }
 
   if (allow_breaks && max_break_minutes != null) {
-    if (max_break_minutes < 1 || max_break_minutes >= duration) {
+    const maxAllowedBreak = Math.floor(duration / 4);
+    if (maxAllowedBreak < 1 || max_break_minutes < 1 || max_break_minutes > maxAllowedBreak) {
       throw new AppError(
-        'Max break time must be at least 1 minute and less than session duration',
+        `Max break time can be at most 1/4th of the session duration (${maxAllowedBreak} minutes for a ${duration} minute session)`,
         400,
         'VALIDATION_ERROR'
       );
@@ -261,6 +262,21 @@ export async function updateSession(req: AuthRequest, res: Response): Promise<vo
     if (slotMins <= 0) slotMins += 24 * 60;
     if (!updates.duration) {
       updates.duration = Math.max(1, slotMins);
+    }
+  }
+
+  // Validate break settings if updated
+  const effDuration = (updates.duration as number) || existing.duration;
+  const effAllowBreaks = updates.allow_breaks !== undefined ? updates.allow_breaks : existing.allow_breaks;
+  const effMaxBreak = updates.max_break_minutes !== undefined ? updates.max_break_minutes : existing.max_break_minutes;
+  if (effAllowBreaks && effMaxBreak != null) {
+    const maxAllowedBreak = Math.floor(effDuration / 4);
+    if (maxAllowedBreak < 1 || (effMaxBreak as number) < 1 || (effMaxBreak as number) > maxAllowedBreak) {
+      throw new AppError(
+        `Max break time can be at most 1/4th of the session duration (${maxAllowedBreak} minutes for a ${effDuration} minute session)`,
+        400,
+        'VALIDATION_ERROR'
+      );
     }
   }
 
@@ -715,7 +731,11 @@ export async function endBreak(req: AuthRequest, res: Response): Promise<void> {
 
   const now = new Date();
   const startedAt = new Date(openBreak.started_at);
-  const durationSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+  const rawDuration = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+  // Cap at planned duration if the break ran to or past its full scheduled time
+  const durationSeconds = openBreak.duration_seconds
+    ? Math.min(rawDuration, openBreak.duration_seconds)
+    : rawDuration;
 
   // End the break
   const { error: breakError } = await supabase

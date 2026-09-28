@@ -92,6 +92,10 @@ class SessionAlarmReceiver : BroadcastReceiver() {
         }
 
         try {
+            // When the alarm fires while app is dead, restore blocked packages from prefs
+            val prefs = context.getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
+            val savedPackages = prefs.getStringSet("blocked_packages", emptySet()) ?: emptySet()
+
             val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
                 action = if (isActive) "START_ACTIVE" else "START_REMINDER"
                 putExtra("SESSION_ID", sessionId)
@@ -100,6 +104,9 @@ class SessionAlarmReceiver : BroadcastReceiver() {
                 putExtra("NOTIF_ID", id)
                 putExtra("ALLOW_BREAKS", allowBreaks)
                 putExtra("REMAINING_BREAK_SECONDS", remainingBreakSeconds)
+                if (isActive && savedPackages.isNotEmpty()) {
+                    putStringArrayListExtra("BLOCKED_PACKAGES", ArrayList(savedPackages))
+                }
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent)

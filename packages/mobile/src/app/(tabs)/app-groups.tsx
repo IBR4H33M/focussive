@@ -508,13 +508,13 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
               <Ionicons
                 name="add-circle-outline"
                 size={18}
-                color="#686EA7"
+                color="#FFFFFF"
                 style={{ marginRight: 8 }}
               />
               <Text
                 style={[
                   styles.createSessionTopBtnText,
-                  { color: '#686EA7' },
+                  { color: '#FFFFFF' },
                 ]}
               >
                 Create new session

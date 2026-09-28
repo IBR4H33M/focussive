@@ -499,6 +499,9 @@ class AppBlockerService : Service() {
             .putString("active_session_id", sessionId)
             .putString("active_session_name", sessionName)
             .putLong("active_session_end", endAtMillis)
+            .putStringSet("blocked_packages", blockedPackages.toSet())
+            .putBoolean("allow_breaks", allowBreaks)
+            .putInt("remaining_break_seconds", remainingBreakSeconds)
             .apply()
     }
 
@@ -510,6 +513,9 @@ class AppBlockerService : Service() {
             .remove("active_session_id")
             .remove("active_session_name")
             .remove("active_session_end")
+            .remove("blocked_packages")
+            .remove("allow_breaks")
+            .remove("remaining_break_seconds")
             .apply()
     }
 
@@ -525,6 +531,14 @@ class AppBlockerService : Service() {
             return
         }
 
+        // Restore blocked packages from SharedPreferences
+        val savedPackages = prefs.getStringSet("blocked_packages", emptySet()) ?: emptySet()
+        if (savedPackages.isNotEmpty()) {
+            blockedPackages = savedPackages.toList()
+        }
+        allowBreaks = prefs.getBoolean("allow_breaks", false)
+        remainingBreakSeconds = prefs.getInt("remaining_break_seconds", 0)
+
         // Re-post the active notification and resume blocking
         val restoreIntent = Intent(this, AppBlockerService::class.java).apply {
             action = "START_ACTIVE"
@@ -532,6 +546,9 @@ class AppBlockerService : Service() {
             putExtra("SESSION_NAME", sessionName)
             putExtra("END_AT_MILLIS", endAtMillis)
             putExtra("IS_RESTART", true)
+            putStringArrayListExtra("BLOCKED_PACKAGES", ArrayList(savedPackages))
+            putExtra("ALLOW_BREAKS", allowBreaks)
+            putExtra("REMAINING_BREAK_SECONDS", remainingBreakSeconds)
         }
         onStartCommand(restoreIntent, 0, 0)
     }

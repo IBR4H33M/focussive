@@ -84,6 +84,31 @@ CREATE TABLE IF NOT EXISTS app_groups (
 CREATE INDEX IF NOT EXISTS idx_app_groups_user_id ON app_groups(user_id);
 
 -- ============================================================
+-- WEBSITE GROUPS TABLE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS website_groups (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  websites TEXT[] DEFAULT '{}',
+  is_default BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_website_groups_user_id ON website_groups(user_id);
+
+ALTER TABLE website_groups ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY website_groups_policy ON website_groups
+  FOR ALL USING (user_id = auth.uid());
+
+CREATE TRIGGER update_website_groups_updated_at
+  BEFORE UPDATE ON website_groups
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+-- ============================================================
 -- DEVICES TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS devices (

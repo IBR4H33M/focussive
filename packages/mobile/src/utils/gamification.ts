@@ -558,6 +558,18 @@ export async function getEarnedTierCounts(history: SessionHistory[]): Promise<Re
     }
   });
 
+  // Also merge with locally recorded tier counts so recent badges aren't lost
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.TIER_COUNTS);
+    if (raw) {
+      const localCounts = JSON.parse(raw);
+      for (const k of Object.keys(counts) as QualityTierKey[]) {
+        counts[k] = Math.max(counts[k], Number(localCounts[k]) || 0);
+      }
+    }
+    await AsyncStorage.setItem(STORAGE_KEYS.TIER_COUNTS, JSON.stringify(counts));
+  } catch {}
+
   return counts;
 }
 

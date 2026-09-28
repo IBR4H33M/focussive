@@ -76,11 +76,17 @@ async function pollSessions() {
     } : null;
 
     // Sync in-memory breakActive from API (catches breaks started from mobile)
+    const wasBreakActive = breakActive;
     if (storedSession?.is_on_break) {
       breakActive = true;
     } else if (!activeBreakTimer) {
       // Only clear if we don't have a locally-managed timer
       breakActive = false;
+    }
+
+    if (wasBreakActive && !breakActive) {
+      // Break just completed! Check all open tabs to re-block websites immediately
+      checkAllTabs().catch(() => {});
     }
 
     // Notify on new active session
@@ -218,9 +224,13 @@ async function handleStartBreak(sessionId: string, minutes: number) {
       clearTimeout(activeBreakTimer.timeoutId);
       activeBreakTimer = null;
     }
+    chrome.alarms.clear(`break_timer_${sessionId}`).catch(() => {});
 
     breakActive = true;
     const durationMs = minutes * 60 * 1000;
+
+    // Use chrome.alarms to guarantee wake-up in Manifest V3 even if service worker sleeps
+    chrome.alarms.create(`break_timer_${sessionId}`, { when: Date.now() + durationMs });
 
     // Immediately poll and store updated break status
     await pollSessions();
@@ -238,17 +248,69 @@ async function handleStartBreak(sessionId: string, minutes: number) {
   }
 }
 
-async function endBreak(sessionId: string, breakId: string) {
+async function endBreak(sessionId: string, breakId?: string) {
   try {
     breakActive = false;
-    activeBreakTimer = null;
+    if (activeBreakTimer) {
+      clearTimeout(activeBreakTimer.timeoutId);
+      activeBreakTimer = null;
+    }
+    chrome.alarms.clear(`break_timer_${sessionId}`).catch(() => {});
+
     await sessionApi.endBreak(sessionId, breakId);
     await pollSessions();
     chrome.runtime.sendMessage({ type: 'BREAK_ENDED' }).catch(() => {});
+
+    // Crucial: Re-check all open tabs immediately so blocked sites like YouTube
+    // are blocked right away without waiting for the user to switch tabs!
+    await checkAllTabs();
   } catch (error) {
     console.error('[Focussive BG] End break error:', error);
   }
 }
+
+async function checkAllTabs() {
+  try {
+    const session = await getActiveSession();
+    if (!session || !session.browser_focus) return;
+    const blockedList = session.blocked_websites || [];
+    if (blockedList.length === 0) return;
+
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (tab.id && tab.url) {
+        const isAllowlisted = session.allowlist?.some((item) => {
+          if (item.website_name && tab.url!.includes(item.website_name)) return true;
+          return false;
+        });
+        if (isAllowlisted) continue;
+
+        if (isBlockedWebsite(tab.url, blockedList)) {
+          const hostname = new URL(tab.url).hostname;
+          const settings = await getExtensionSettings();
+          await chrome.tabs.sendMessage(tab.id, {
+            type: 'SHOW_OVERLAY',
+            sessionId: session.id,
+            websiteName: hostname,
+            allowBreaks: session.allow_breaks || false,
+            remainingBreakSeconds: session.remaining_break_seconds ?? 0,
+            settings,
+          }).catch(() => {});
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[Focussive BG] checkAllTabs error:', e);
+  }
+}
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name.startsWith('break_timer_')) {
+    const sessionId = alarm.name.replace('break_timer_', '');
+    const breakId = activeBreakTimer?.breakId;
+    await endBreak(sessionId, breakId);
+  }
+});
 
 // --- Tab Monitoring ---
 
@@ -385,10 +447,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'END_BREAK') {
-    if (activeBreakTimer) {
-      clearTimeout(activeBreakTimer.timeoutId);
-      endBreak(message.sessionId, activeBreakTimer.breakId);
-    }
+    const breakId = activeBreakTimer ? activeBreakTimer.breakId : undefined;
+    endBreak(message.sessionId, breakId);
   }
 
   if (message.type === 'SKIP_SESSION') {

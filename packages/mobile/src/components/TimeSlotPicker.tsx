@@ -55,6 +55,7 @@ function WheelColumn({
   const initialIndex = 1 * count + (value - min);
   const initialOffset = initialIndex * ITEM_HEIGHT;
   const currentCenter = useRef(initialIndex);
+  // centerIndex only updates when scroll fully settles — prevents flicker during fling
   const [centerIndex, setCenterIndex] = useState(initialIndex);
 
   // Generate 3 repetitions of numbers [min .. min + count - 1]
@@ -68,7 +69,7 @@ function WheelColumn({
     return list;
   }, [count, min]);
 
-  // Sync when prop value changes from outside
+  // Sync when prop value changes from outside (e.g. AM/PM toggle)
   useEffect(() => {
     if (!isDragging.current) {
       const targetIndex = 1 * count + (value - min);
@@ -78,13 +79,13 @@ function WheelColumn({
     }
   }, [value, count, min]);
 
+  // Do NOT update centerIndex during scroll frames — doing so causes rapid
+  // re-renders of all items as the scroll decelerates, producing the flicker
+  // where numbers appear to jump between values mid-spin.
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    // Only track the raw position for internal use; do not setState here
     const y = e.nativeEvent.contentOffset.y;
-    const idx = Math.round(y / ITEM_HEIGHT);
-    if (idx !== currentCenter.current) {
-      currentCenter.current = idx;
-      setCenterIndex(idx);
-    }
+    currentCenter.current = Math.round(y / ITEM_HEIGHT);
   };
 
   const handleScrollEnd = (offsetY: number) => {
@@ -94,6 +95,7 @@ function WheelColumn({
     const val = offsetInCycle + min;
     const normalizedIndex = 1 * count + offsetInCycle;
     currentCenter.current = normalizedIndex;
+    // Only NOW update the visual selection state — scroll has fully settled
     setCenterIndex(normalizedIndex);
     onChange(val);
 

@@ -19,6 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTheme, useIsDark } from '@/utils/theme';
+import { useFocusEffect } from 'expo-router';
 import { historyApi, userApi, appGroupApi } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -176,11 +177,9 @@ export default function StatsScreen() {
     });
   }, []);
 
-  // Sync tier counts whenever history updates
+  // Sync tier counts whenever history updates or on initial load
   useEffect(() => {
-    if (history.length > 0) {
-      getEarnedTierCounts(history).then(counts => setTierCounts(counts));
-    }
+    getEarnedTierCounts(history).then(counts => setTierCounts(counts));
   }, [history]);
 
   // Milestone evaluations
@@ -230,7 +229,7 @@ export default function StatsScreen() {
 
   const totalBadgesEarned = useMemo(() => {
     const milestoneCount = Object.values(milestones).filter(m => m.isUnlocked).length;
-    const tierCount = Object.values(tierCounts).reduce((acc, count) => acc + (count > 0 ? 1 : 0), 0);
+    const tierCount = Object.values(tierCounts).reduce((acc, count) => acc + count, 0);
     return milestoneCount + tierCount;
   }, [milestones, tierCounts]);
 
@@ -244,7 +243,10 @@ export default function StatsScreen() {
   const fetchHistory = useCallback(async () => {
     try {
       const response = await historyApi.getAll(1, 200);
-      setHistory(response.data as SessionHistory[]);
+      const list = (response.data as SessionHistory[]) || [];
+      setHistory(list);
+      const counts = await getEarnedTierCounts(list);
+      setTierCounts(counts);
     } catch {
       // silently fail
     } finally {
@@ -253,6 +255,20 @@ export default function StatsScreen() {
   }, []);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
+
+  // Refetch whenever user navigates to the Stats tab so newly earned badges appear immediately
+  useFocusEffect(
+    useCallback(() => {
+      fetchHistory();
+      getEarnedTierCounts(history).then(counts => setTierCounts(counts));
+      userApi.getProfile().then(p => {
+        setProfile(p);
+        if (p.active_archetype) {
+          setSelectedArchetypeState(p.active_archetype as string);
+        }
+      }).catch(() => {});
+    }, [fetchHistory, history])
+  );
 
   function goToSection(index: number) {
     setActiveSection(index);

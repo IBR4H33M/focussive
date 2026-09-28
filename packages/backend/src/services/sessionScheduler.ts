@@ -21,13 +21,24 @@ const WEEKDAY_MAP: Record<number, Weekday> = {
  */
 function shouldSessionBeActive(session: any): boolean {
   const now = new Date();
-  const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
   const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
   const currentWeekday = WEEKDAY_MAP[now.getDay()];
 
   // Check if session was skipped for this occurrence
   if (session.skipped_until && new Date(session.skipped_until) > now) {
     return false;
+  }
+
+  // ── Guard: Don't re-activate a session that was already completed in the current time window.
+  // This prevents the scheduler from re-activating a recurring session that just completed
+  // while the clock is still inside its time slot, which would create duplicate history entries.
+  if (session.completed_at) {
+    const completedAt = new Date(session.completed_at);
+    const completedMinutesAgo = (now.getTime() - completedAt.getTime()) / 60000;
+    // If completed within the session's duration window, don't re-activate
+    if (completedMinutesAgo < (session.duration || 25)) {
+      return false;
+    }
   }
 
   const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
@@ -247,29 +258,43 @@ export async function completeExpiredSessions() {
           })
           .eq('id', session.id);
 
-        // Create history entry
-        const { error: insertError } = await supabase.from('session_history').insert({
-          id: uuidv4(),
-          session_id: session.id,
-          user_id: session.user_id,
-          session_name: session.name,
-          scheduled_duration: session.duration,
-          actual_duration: actualMins,
-          start_time: session.start_time,
-          status: SessionStatus.COMPLETED,
-          violations_count: totalViolations,
-          app_violations_count: appViolationsCount || 0,
-          web_violations_count: webViolationsCount || 0,
-          quality_tier: qualityTier,
-          breaks_count: breaksCount || 0,
-          emergency_breaks_count: emergencyBreaksCount || 0,
-          is_on_schedule: isOnSchedule,
-          blocked_apps: blockedApps,
-          apps_count: blockedApps.length,
-        });
+        // Guard: check if a history entry already exists for this exact session activation
+        // (prevents duplicates from scheduler race conditions or overlapping ticks)
+        const { count: existingHistoryCount } = await supabase
+          .from('session_history')
+          .select('*', { count: 'exact', head: true })
+          .eq('session_id', session.id)
+          .eq('user_id', session.user_id)
+          .eq('status', SessionStatus.COMPLETED)
+          .gte('created_at', new Date(startedAt.getTime() - 60000).toISOString()); // within 1 min of started_at
 
-        if (insertError) {
-          console.error(`[Scheduler] Failed to insert session history for ${session.id}:`, insertError);
+        if ((existingHistoryCount ?? 0) > 0) {
+          console.log(`[Scheduler] Skipping duplicate history insert for session ${session.id} — already recorded`);
+        } else {
+          // Create history entry
+          const { error: insertError } = await supabase.from('session_history').insert({
+            id: uuidv4(),
+            session_id: session.id,
+            user_id: session.user_id,
+            session_name: session.name,
+            scheduled_duration: session.duration,
+            actual_duration: actualMins,
+            start_time: session.start_time,
+            status: SessionStatus.COMPLETED,
+            violations_count: totalViolations,
+            app_violations_count: appViolationsCount || 0,
+            web_violations_count: webViolationsCount || 0,
+            quality_tier: qualityTier,
+            breaks_count: breaksCount || 0,
+            emergency_breaks_count: emergencyBreaksCount || 0,
+            is_on_schedule: isOnSchedule,
+            blocked_apps: blockedApps,
+            apps_count: blockedApps.length,
+          });
+
+          if (insertError) {
+            console.error(`[Scheduler] Failed to insert session history for ${session.id}:`, insertError);
+          }
         }
 
         console.log(`[Scheduler] Completed session: ${session.name} (${session.id})`);

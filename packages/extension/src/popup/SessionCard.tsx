@@ -54,7 +54,7 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
   const isOnBreak = session.is_on_break;
   const [breakSecondsLeft, setBreakSecondsLeft] = useState(() => getBreakSecondsLeft(session.break_ends_at));
 
-  const remainingBreakMin = Math.floor((session.remaining_break_seconds || 0) / 60);
+  const remainingBreakMin = Math.ceil((session.remaining_break_seconds || 0) / 60);
   const hasBreakTime = session.allow_breaks && (session.remaining_break_seconds || 0) > 0 && !isOnBreak;
 
   // Session countdown — paused while on break, continues when break finishes

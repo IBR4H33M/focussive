@@ -24,12 +24,21 @@ class ServiceRestartReceiver : BroadcastReceiver() {
         // Do not restart if the session has already expired
         if (endAtMillis > 0 && System.currentTimeMillis() >= endAtMillis) return
 
+        // Restore blocked packages and break state from SharedPreferences
+        val prefs = context.getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
+        val savedPackages = prefs.getStringSet("blocked_packages", emptySet()) ?: emptySet()
+        val allowBreaks = prefs.getBoolean("allow_breaks", false)
+        val remainingBreakSec = prefs.getInt("remaining_break_seconds", 0)
+
         val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
             action = "START_ACTIVE"
             putExtra("SESSION_ID", sessionId)
             putExtra("SESSION_NAME", sessionName)
             putExtra("END_AT_MILLIS", endAtMillis)
             putExtra("IS_RESTART", true)
+            putStringArrayListExtra("BLOCKED_PACKAGES", ArrayList(savedPackages))
+            putExtra("ALLOW_BREAKS", allowBreaks)
+            putExtra("REMAINING_BREAK_SECONDS", remainingBreakSec)
         }
 
         try {

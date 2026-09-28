@@ -71,7 +71,7 @@ export default function CreateSessionScreen() {
   const [customWebsite, setCustomWebsite] = useState('');
   const [loading, setLoading] = useState(false);
   const [allowBreaks, setAllowBreaks] = useState(false);
-  const [maxBreakMinutes, setMaxBreakMinutes] = useState('10');
+  const [maxBreakMinutes, setMaxBreakMinutes] = useState('5');
   const [appIconMap, setAppIconMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -219,8 +219,25 @@ export default function CreateSessionScreen() {
       ]),
     ];
 
+    if (allowBreaks) {
+      const maxAllowed = Math.floor(duration / 4);
+      if (maxAllowed < 1) {
+        Alert.alert('Session Too Short', 'Session duration must be at least 4 minutes to allow breaks.');
+        return;
+      }
+      const requestedBreak = parseInt(maxBreakMinutes) || 5;
+      if (requestedBreak > maxAllowed) {
+        Alert.alert(
+          'Invalid Break Time',
+          `Break time can be at most 1/4th of the session duration (${maxAllowed} min for a ${duration} min session).`
+        );
+        return;
+      }
+    }
+
     setLoading(true);
     try {
+      const maxAllowed = Math.floor(duration / 4);
       await sessionApi.create({
         name: name.trim(),
         duration,
@@ -236,7 +253,7 @@ export default function CreateSessionScreen() {
         blocked_websites: browserFocus ? allBlockedWebsites : [],
         website_group_ids: browserFocus ? selectedWebsiteGroupIds : [],
         allow_breaks: allowBreaks,
-        max_break_minutes: allowBreaks ? (parseInt(maxBreakMinutes) || 10) : undefined,
+        max_break_minutes: allowBreaks ? Math.min(parseInt(maxBreakMinutes) || 5, maxAllowed) : undefined,
       });
       await refreshSessions();
       if (router.canGoBack()) {
@@ -607,7 +624,6 @@ export default function CreateSessionScreen() {
           onPress={() => setAllowBreaks(!allowBreaks)}
         >
           <View style={styles.toggleLabelRow}>
-            <Ionicons name="cafe-outline" size={20} color={allowBreaks ? theme.accent : theme.textSecondary} />
             <View>
               <Text style={[styles.toggleLabel, { color: theme.text }]}>Allow Breaks</Text>
               <Text style={[{ fontSize: 12, color: theme.textSecondary, marginTop: 2, lineHeight: 16 }]}>
@@ -622,11 +638,21 @@ export default function CreateSessionScreen() {
 
         {allowBreaks && (
           <View style={[styles.focusContent, { paddingTop: 12 }]}>
-            <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Max Break Time (minutes)</Text>
+            <Text style={[styles.subLabel, { color: theme.textSecondary }]}>
+              Max Break Time (minutes, max {Math.floor(((() => {
+                const s = timeSlots[0];
+                if (!s) return 60;
+                const [sh, sm] = s.start_time.split(':').map(Number);
+                const [eh, em] = s.end_time.split(':').map(Number);
+                let mins = (eh * 60 + em) - (sh * 60 + sm);
+                if (mins <= 0) mins += 24 * 60;
+                return Math.max(1, mins);
+              })()) / 4)} min)
+            </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
               <TextInput
                 style={[styles.compactTimeInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
-                placeholder="10"
+                placeholder="5"
                 placeholderTextColor={theme.textSecondary}
                 value={maxBreakMinutes}
                 onChangeText={setMaxBreakMinutes}

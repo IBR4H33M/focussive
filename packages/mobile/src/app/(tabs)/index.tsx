@@ -310,12 +310,12 @@ export default function DashboardScreen() {
               <Ionicons
                 name="add-circle-outline"
                 size={18}
-                color={isDark ? '#2F3456' : '#FFFFFF'}
+                color="#FFFFFF"
               />
               <Text
                 style={[
                   styles.emptyCreateBtnText,
-                  { color: isDark ? '#2F3456' : '#FFFFFF' },
+                  { color: '#FFFFFF' },
                 ]}
               >
                 Create new session
