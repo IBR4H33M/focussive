@@ -120,7 +120,17 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+        // RevenueCat enforces that test API keys ("test_...") cannot be used in release/preview builds
+        // and displays a fatal dialog that closes the app.
+        if (!__DEV__ && apiKey.startsWith('test_')) {
+          console.warn(
+            `[RevenueCat] Skipping initialization in release/preview build because a test API key (${apiKey.slice(0, 8)}...) was provided. ` +
+            `To enable native In-App Purchases, configure a production Google Play key (goog_...) or Apple key (appl_...) in your RevenueCat project settings and environment.`
+          );
+          return;
+        }
+
+        Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO);
         await Purchases.configure({ apiKey });
         setIsRcInitialized(true);
 
@@ -163,7 +173,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           const { customerInfo } = await Purchases.logIn(user.id);
           const hasRcPremium =
             customerInfo.entitlements.active['premium'] !== undefined ||
-            customerInfo.entitlements.active['pro'] !== undefined;
+            customerInfo.entitlements.active['pro'] !== undefined ||
+            Object.keys(customerInfo.entitlements.active).length > 0;
 
           if (hasRcPremium) {
             // Inform backend of active store entitlement
@@ -252,9 +263,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
         if ('packageType' in pkg) {
           const { customerInfo } = await Purchases.purchasePackage(pkg as PurchasesPackage);
+          console.log('[RevenueCat] Purchase completed, active entitlements:', Object.keys(customerInfo.entitlements.active));
           const hasPremium =
             customerInfo.entitlements.active['premium'] !== undefined ||
-            customerInfo.entitlements.active['pro'] !== undefined;
+            customerInfo.entitlements.active['pro'] !== undefined ||
+            Object.keys(customerInfo.entitlements.active).length > 0;
 
           if (hasPremium) {
             await subscriptionApi.sync({
@@ -290,9 +303,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         return false;
       }
       const customerInfo: CustomerInfo = await Purchases.restorePurchases();
+      console.log('[RevenueCat] Restore completed, active entitlements:', Object.keys(customerInfo.entitlements.active));
       const hasPremium =
         customerInfo.entitlements.active['premium'] !== undefined ||
-        customerInfo.entitlements.active['pro'] !== undefined;
+        customerInfo.entitlements.active['pro'] !== undefined ||
+        Object.keys(customerInfo.entitlements.active).length > 0;
 
       if (hasPremium) {
         await subscriptionApi.sync({

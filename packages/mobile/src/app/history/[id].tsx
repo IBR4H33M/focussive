@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/utils/theme';
+import { useTheme, useIsDark } from '@/utils/theme';
 import { historyApi } from '@/utils/api';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
 import type { SessionHistory } from '@focussive/shared';
@@ -22,6 +22,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 export default function HistoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
+  const isDark = useIsDark();
   const router = useRouter();
 
   const [entry, setEntry] = useState<SessionHistory & { violations?: any[] } | null>(null);
@@ -58,6 +59,7 @@ export default function HistoryDetailScreen() {
   if (!entry) return null;
 
   const isCancelled = entry.status === 'cancelled';
+  const isSkipped = entry.status === 'skipped';
   const isCompleted = entry.status === 'completed';
   const totalViolations = entry.violations_count ?? 0;
   const appViolations = (entry as any).app_violations_count ?? 0;
@@ -74,13 +76,25 @@ export default function HistoryDetailScreen() {
           <Text style={[styles.sessionName, { color: theme.text }]}>{entry.session_name}</Text>
           <View style={[
             styles.statusBadge,
-            { backgroundColor: isCancelled ? theme.dangerBg : `${theme.accent}20` }
+            {
+              backgroundColor: isCancelled
+                ? theme.dangerBg
+                : isSkipped
+                ? (isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(245, 158, 11, 0.15)')
+                : `${theme.accent}20`
+            }
           ]}>
             <Text style={[
               styles.statusText,
-              { color: isCancelled ? theme.danger : theme.accent }
+              {
+                color: isCancelled
+                  ? theme.danger
+                  : isSkipped
+                  ? (isDark ? '#FCD34D' : '#D97706')
+                  : theme.accent
+              }
             ]}>
-              {isCancelled ? 'Cancelled' : 'Completed'}
+              {isCancelled ? 'Cancelled' : isSkipped ? 'Skipped' : 'Completed'}
             </Text>
           </View>
         </View>
@@ -185,10 +199,12 @@ export default function HistoryDetailScreen() {
         )}
       </View>
 
-      {/* Cancellation reason */}
-      {isCancelled && (entry as any).cancellation_reason && (
+      {/* Cancellation / Skip reason */}
+      {(isCancelled || isSkipped) && (entry as any).cancellation_reason && (
         <>
-          <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>CANCELLATION REASON</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+            {isSkipped ? 'SKIP REASON' : 'CANCELLATION REASON'}
+          </Text>
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Text style={[styles.cancelReason, { color: theme.text }]}>
               {(entry as any).cancellation_reason}

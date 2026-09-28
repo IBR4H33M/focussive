@@ -1,5 +1,10 @@
 {
   "android": {
     "package": "com.ibr4h33m.focussive"
+  },
+  "extra": {
+    "eas": {
+      "projectId": "c71a2169-5cb4-452a-b07c-61809b84ac9c"
+    }
   }
 }

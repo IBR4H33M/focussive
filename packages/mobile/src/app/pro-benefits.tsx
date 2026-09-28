@@ -74,6 +74,12 @@ const COMPARISON_ROWS: ComparisonRow[] = [
     pro: 'All, including custom',
     isDifferent: true,
   },
+  {
+    feature: 'Ads',
+    free: 'Banner ads',
+    pro: 'No ads',
+    isDifferent: true,
+  },
 ];
 
 export default function ProBenefitsScreen() {
@@ -147,6 +153,15 @@ export default function ProBenefitsScreen() {
               <Text style={[styles.highlightTitle, { color: theme.text }]}>Custom Blocker Overlay Images</Text>
               <Text style={[styles.highlightDesc, { color: theme.textSecondary }]}>
                 Personalize your screen blocker overlay with motivational presets or custom images from your gallery.
+              </Text>
+            </View>
+
+            <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
+
+            <View style={styles.highlightItem}>
+              <Text style={[styles.highlightTitle, { color: theme.text }]}>No Ads</Text>
+              <Text style={[styles.highlightDesc, { color: theme.textSecondary }]}>
+                Enjoy a clean, distraction-free focus environment with zero banner ads or promotional clutter.
               </Text>
             </View>
 

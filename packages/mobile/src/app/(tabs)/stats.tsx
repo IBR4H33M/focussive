@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTheme, useIsDark } from '@/utils/theme';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { historyApi, userApi, appGroupApi } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -129,8 +129,17 @@ export default function StatsScreen() {
   const containerBg = isDark ? '#20233B' : theme.card;
   const insets = useSafeAreaInsets();
   const { isPremium, openPaywall } = useSubscription();
+  const params = useLocalSearchParams<{ section?: string }>();
 
   const [activeSection, setActiveSection] = useState(0);
+
+  useEffect(() => {
+    if (params.section !== undefined) {
+      const s = parseInt(params.section, 10);
+      if (!isNaN(s)) setActiveSection(s);
+    }
+  }, [params.section]);
+
   const [history, setHistory] = useState<SessionHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -450,99 +459,6 @@ export default function StatsScreen() {
             </ScrollView>
           </View>
         </View>
-
-        {/* ── Milestone Progression Section (Nearest to completion) ── */}
-        {nearestMilestone && (
-          <View style={styles.progressionSection}>
-            <View style={styles.progressionHeaderRow}>
-              <Text style={[styles.overviewSectionHeaderTitle, { color: theme.textSecondary }]}>
-                MILESTONE PROGRESSION
-              </Text>
-              <TouchableOpacity
-                onPress={() => goToSection(1)}
-                style={styles.viewAllMilestonesBtn}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.viewAllMilestonesText, { color: theme.accent }]}>
-                  View all
-                </Text>
-                <Ionicons name="arrow-forward" size={13} color={theme.accent} />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.progressionCard, { backgroundColor: containerBg }]}
-              onPress={() => goToSection(1)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.progressionTopRow}>
-                <View
-                  style={[
-                    styles.milestoneIconBox,
-                    { backgroundColor: 'transparent' },
-                  ]}
-                >
-                  <Image
-                    source={nearestMilestone.badge.image}
-                    style={[
-                      { width: 36, height: 36 },
-                      isDark ? { tintColor: '#FFFFFF' } : null,
-                    ]}
-                    resizeMode="contain"
-                  />
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <View style={styles.progressionTitleRow}>
-                    <Text style={[styles.progressionTitle, { color: theme.text }]}>
-                      {nearestMilestone.badge.title}
-                    </Text>
-                  </View>
-                  <Text style={[styles.progressionQuote, { color: theme.textSecondary }]}>
-                    {nearestMilestone.badge.quote}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={[styles.progressionRequirement, { color: theme.textSecondary }]}>
-                {nearestMilestone.badge.requirement}
-              </Text>
-
-              {/* Progress Bar */}
-              <View style={{ gap: 6, marginTop: 4 }}>
-                <View
-                  style={[
-                    styles.progressBarBg,
-                    {
-                      backgroundColor: isDark
-                        ? 'rgba(255,255,255,0.08)'
-                        : 'rgba(0,0,0,0.06)',
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        width: nearestMilestone.current > 0
-                          ? `${Math.min(100, (nearestMilestone.current / nearestMilestone.target) * 100)}%`
-                          : '0%',
-                        backgroundColor: theme.accent,
-                      },
-                    ]}
-                  />
-                </View>
-                <View style={styles.progressionStatsRow}>
-                  <Text style={[styles.progressionDetailText, { color: theme.textSecondary }]}>
-                    {`${nearestMilestone.target - nearestMilestone.current} needed to unlock`}
-                  </Text>
-                  <Text style={[styles.progressionRatioText, { color: theme.text }]}>
-                    {nearestMilestone.current} / {nearestMilestone.target}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* ── Period Stats Section ── */}
         <View style={styles.periodStatsSection}>
@@ -902,6 +818,7 @@ export default function StatsScreen() {
         }
         renderItem={({ item }) => {
           const isCancelled = item.status === 'cancelled';
+          const isSkipped = item.status === 'skipped';
           const violations = item.violations_count ?? 0;
           return (
             <TouchableOpacity
@@ -916,16 +833,28 @@ export default function StatsScreen() {
                 <View
                   style={[
                     styles.statusPill,
-                    { backgroundColor: isCancelled ? (isDark ? 'rgba(239, 68, 68, 0.25)' : theme.dangerBg) : (isDark ? 'rgba(255, 255, 255, 0.2)' : theme.accent + '22') },
+                    {
+                      backgroundColor: isCancelled
+                        ? (isDark ? 'rgba(239, 68, 68, 0.25)' : theme.dangerBg)
+                        : isSkipped
+                        ? (isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(245, 158, 11, 0.15)')
+                        : (isDark ? 'rgba(255, 255, 255, 0.2)' : theme.accent + '22'),
+                    },
                   ]}
                 >
                   <Text
                     style={[
                       styles.statusPillText,
-                      { color: isCancelled ? (isDark ? '#FFB4B4' : theme.danger) : (isDark ? '#FFFFFF' : theme.accent) },
+                      {
+                        color: isCancelled
+                          ? (isDark ? '#FFB4B4' : theme.danger)
+                          : isSkipped
+                          ? (isDark ? '#FCD34D' : '#D97706')
+                          : (isDark ? '#FFFFFF' : theme.accent),
+                      },
                     ]}
                   >
-                    {isCancelled ? 'Cancelled' : 'Completed'}
+                    {isCancelled ? 'Cancelled' : isSkipped ? 'Skipped' : 'Completed'}
                   </Text>
                 </View>
               </View>
@@ -1144,17 +1073,42 @@ export default function StatsScreen() {
 
               {/* Status banner */}
               <View style={[styles.statusBanner, {
-                backgroundColor: selectedEntry.status === 'cancelled' ? theme.dangerBg : theme.accent + '18'
+                backgroundColor: selectedEntry.status === 'cancelled'
+                  ? theme.dangerBg
+                  : selectedEntry.status === 'skipped'
+                  ? (isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(245, 158, 11, 0.15)')
+                  : theme.accent + '18'
               }]}>
                 <Ionicons
-                  name={selectedEntry.status === 'cancelled' ? 'close-circle-outline' : 'checkmark-circle-outline'}
+                  name={
+                    selectedEntry.status === 'cancelled'
+                      ? 'close-circle-outline'
+                      : selectedEntry.status === 'skipped'
+                      ? 'play-forward-outline'
+                      : 'checkmark-circle-outline'
+                  }
                   size={16}
-                  color={selectedEntry.status === 'cancelled' ? theme.danger : theme.accent}
+                  color={
+                    selectedEntry.status === 'cancelled'
+                      ? theme.danger
+                      : selectedEntry.status === 'skipped'
+                      ? (isDark ? '#FCD34D' : '#D97706')
+                      : theme.accent
+                  }
                 />
                 <Text style={[styles.statusBannerText, {
-                  color: selectedEntry.status === 'cancelled' ? theme.danger : theme.accent
+                  color:
+                    selectedEntry.status === 'cancelled'
+                      ? theme.danger
+                      : selectedEntry.status === 'skipped'
+                      ? (isDark ? '#FCD34D' : '#D97706')
+                      : theme.accent
                 }]}>
-                  {selectedEntry.status === 'cancelled' ? 'Session Cancelled' : 'Session Completed'}
+                  {selectedEntry.status === 'cancelled'
+                    ? 'Session Cancelled'
+                    : selectedEntry.status === 'skipped'
+                    ? 'Session Skipped'
+                    : 'Session Completed'}
                 </Text>
               </View>
 
@@ -1229,10 +1183,12 @@ export default function StatsScreen() {
                 </>
               )}
 
-              {/* Cancellation reason */}
-              {selectedEntry.status === 'cancelled' && (selectedEntry as any).cancellation_reason && (
+              {/* Cancellation / Skip reason */}
+              {(selectedEntry.status === 'cancelled' || selectedEntry.status === 'skipped') && (selectedEntry as any).cancellation_reason && (
                 <>
-                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>REASON</Text>
+                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                    {selectedEntry.status === 'skipped' ? 'SKIP REASON' : 'REASON'}
+                  </Text>
                   <View style={[styles.detailCard, { backgroundColor: containerBg }]}>
                     <Text style={[styles.cancelReason, { color: theme.text }]}>
                       {(selectedEntry as any).cancellation_reason}

@@ -95,7 +95,7 @@ class AppBlockerModule : Module() {
      * @param remainingBreakSec Remaining break seconds (passed to overlay).
      */
     Function("startMonitoring") { blockedPackages: List<String>, allowBreaks: Boolean?, remainingBreakSec: Int?,
-                                  sessionId: String?, sessionName: String?, endAtMillis: Double? ->
+                                  sessionId: String?, sessionName: String?, endAtMillis: Double?, startAtMillis: Double? ->
       val context = appContext.reactContext ?: return@Function null
 
       registerReceivers(context)
@@ -108,6 +108,7 @@ class AppBlockerModule : Module() {
         if (sessionId != null) putExtra("SESSION_ID", sessionId)
         if (sessionName != null) putExtra("SESSION_NAME", sessionName)
         if (endAtMillis != null) putExtra("END_AT_MILLIS", endAtMillis.toLong())
+        if (startAtMillis != null) putExtra("START_AT_MILLIS", startAtMillis.toLong())
       }
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         context.startForegroundService(intent)
@@ -271,6 +272,7 @@ class AppBlockerModule : Module() {
       val violationsText = options["violationsText"] as? String
       val allowBreaks = options["allowBreaks"] as? Boolean ?: true
       val remainingBreakSeconds = (options["remainingBreakSeconds"] as? Number)?.toInt() ?: 0
+      val startAtMillis = (options["startAtMillis"] as? Number)?.toLong() ?: fireAtMillis
 
       SessionNotifications.schedule(
         context, id, sessionId, title, body,
@@ -278,6 +280,7 @@ class AppBlockerModule : Module() {
         violationsText = violationsText,
         allowBreaks = allowBreaks,
         remainingBreakSeconds = remainingBreakSeconds,
+        startAtMillis = startAtMillis,
       )
       return@Function null
     }
@@ -295,6 +298,7 @@ class AppBlockerModule : Module() {
       val isOnBreak = options["isOnBreak"] as? Boolean
       val remainingBreakSeconds = (options["remainingBreakSeconds"] as? Number)?.toInt()
       val allowBreaks = options["allowBreaks"] as? Boolean
+      val startAtMillis = (options["startAtMillis"] as? Number)?.toLong() ?: 0L
 
       SessionNotifications.post(
         context, id, sessionId, title, body,
@@ -303,6 +307,7 @@ class AppBlockerModule : Module() {
         isOnBreak = isOnBreak,
         remainingBreakSeconds = remainingBreakSeconds,
         allowBreaks = allowBreaks,
+        startAtMillis = startAtMillis,
       )
       return@Function null
     }

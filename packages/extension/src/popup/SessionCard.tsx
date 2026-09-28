@@ -162,9 +162,14 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
             </svg>
             <span style={styles.timeRange}>{timeRange}</span>
           </div>
-          <span style={{ ...styles.durationBig, color: timerColor }}>
-            {formatCountdown(remaining)}
-          </span>
+          <div style={styles.timerBox}>
+            <span style={{ ...styles.durationBig, color: timerColor }}>
+              {formatCountdown(Math.max(0, (session.duration || 0) * 60 - remaining))}
+            </span>
+            <span style={styles.remainingSubText}>
+              {formatCountdown(remaining)} remaining
+            </span>
+          </div>
         </div>
 
         {/* Break ongoing row */}
@@ -451,6 +456,20 @@ const styles: Record<string, React.CSSProperties> = {
     fontVariantNumeric: 'tabular-nums',
     textAlign: 'right',
     letterSpacing: 1,
+  },
+  timerBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  remainingSubText: {
+    fontSize: 11,
+    fontWeight: 500,
+    fontVariantNumeric: 'tabular-nums',
+    color: 'rgba(255, 255, 255, 0.88)',
+    textAlign: 'right',
+    marginTop: -2,
   },
   breakRow: {
     display: 'flex',

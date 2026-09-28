@@ -20,13 +20,29 @@
         android:maxLines="2"
         android:ellipsize="end" />
 
-    <Chronometer
-        android:id="@+id/notif_chronometer"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:textSize="26sp"
-        android:textColor="#B91C1C"
-        android:fontFamily="sans-serif-light"
-        android:gravity="end" />
+        android:orientation="vertical"
+        android:gravity="end"
+        android:layout_marginStart="12dp">
+
+        <Chronometer
+            android:id="@+id/notif_chronometer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="22sp"
+            android:textColor="#2D2E46"
+            android:fontFamily="sans-serif-light"
+            android:gravity="end" />
+
+        <Chronometer
+            android:id="@+id/notif_remaining_chronometer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="#E8F8ED"
+            android:gravity="end"
+            android:layout_marginTop="-1dp" />
+    </LinearLayout>
 </LinearLayout>

@@ -87,7 +87,7 @@ export default function PaywallModal() {
             <View
               style={[
                 styles.badge,
-                { backgroundColor: 'rgba(212, 175, 55, 0.15)' },
+                { backgroundColor: isDark ? 'rgba(212, 175, 55, 0.22)' : 'rgba(212, 175, 55, 0.15)' },
               ]}
             >
               <Image
@@ -95,7 +95,7 @@ export default function PaywallModal() {
                 style={{ width: 14, height: 14, marginRight: 6 }}
                 resizeMode="contain"
               />
-              <Text style={[styles.badgeText, { color: '#4A3600' }]}>FOCUSSIVE PRO</Text>
+              <Text style={[styles.badgeText, { color: isDark ? '#F5D77F' : '#854D0E' }]}>FOCUSSIVE PRO</Text>
             </View>
             <TouchableOpacity
               onPress={closePaywall}
@@ -182,6 +182,17 @@ export default function PaywallModal() {
                   <Text style={[styles.featureTitle, { color: theme.text }]}>Block Screen Images & GIFs</Text>
                   <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
                     Personalize your block screen with curated presets or custom images.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.featureDivider} />
+
+              <View style={styles.featureItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.featureTitle, { color: theme.text }]}>No Ads</Text>
+                  <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
+                    Free tier: Contains banner ads. Pro: 100% ad-free experience.
                   </Text>
                 </View>
               </View>
@@ -295,12 +306,9 @@ export default function PaywallModal() {
               {isLoading ? (
                 <ActivityIndicator color="#4A3600" size="small" />
               ) : (
-                <>
-                  <Text style={[styles.actionBtnText, { color: '#4A3600' }]}>
-                    {!trialUsed ? 'Start 3-Week Free Trial' : 'Subscribe Now'}
-                  </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#4A3600" style={{ marginLeft: 6 }} />
-                </>
+                <Text style={[styles.actionBtnText, { color: '#4A3600' }]}>
+                  {!trialUsed ? 'Start 3-Week Free Trial' : 'Subscribe Now'}
+                </Text>
               )}
             </TouchableOpacity>
 

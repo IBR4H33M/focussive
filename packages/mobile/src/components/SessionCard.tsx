@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { useSessions } from '@/context/SessionContext';
-import { formatDuration, formatCountdown, getRemainingSeconds } from '@focussive/shared';
+import { formatDuration, formatCountdown, getRemainingSeconds, getElapsedSeconds } from '@focussive/shared';
 import type { Session } from '@focussive/shared';
 import { SessionStatus } from '@focussive/shared';
 
@@ -104,16 +104,18 @@ export default function SessionCard({ session, isActive, isUpcoming, nextOccurre
   const isActiveSession = session.status === SessionStatus.ACTIVE || isActive;
   const isOnBreak = session.is_on_break ?? false;
 
-  const [remaining, setRemaining] = useState(getRemainingSeconds(session));
+  const [remaining, setRemaining] = useState(() => getRemainingSeconds(session));
+  const [elapsed, setElapsed] = useState(() => getElapsedSeconds(session));
   const [breakLeft, setBreakLeft] = useState(() => getBreakSecondsLeft(session.break_ends_at));
 
   // Session countdown
   useEffect(() => {
     if (!isActiveSession) return;
+    setRemaining(getRemainingSeconds(session));
+    setElapsed(getElapsedSeconds(session));
     const interval = setInterval(() => {
-      const s = getRemainingSeconds(session);
-      setRemaining(s);
-      if (s <= 0) clearInterval(interval);
+      setRemaining(getRemainingSeconds(session));
+      setElapsed(getElapsedSeconds(session));
     }, 1000);
     return () => clearInterval(interval);
   }, [session, isActiveSession]);
@@ -231,7 +233,7 @@ export default function SessionCard({ session, isActive, isUpcoming, nextOccurre
         <View style={styles.headerRight} />
       </View>
 
-      {/* Time row: range left, main countdown right */}
+      {/* Time row: range left, main timer right */}
       <View style={styles.timeRow}>
         <View style={styles.timeRangeContainer}>
           {dateLabel ? (
@@ -241,9 +243,20 @@ export default function SessionCard({ session, isActive, isUpcoming, nextOccurre
           ) : null}
           <Text style={[styles.timeRange, { color: secondaryTextColor }]}>{timeRange}</Text>
         </View>
-        <Text style={[styles.durationBig, { color: timerColor }]}>
-          {isActiveSession ? formatCountdown(remaining) : durationLabel}
-        </Text>
+        {isActiveSession ? (
+          <View style={styles.timerContainer}>
+            <Text style={[styles.durationBig, { color: timerColor }]}>
+              {formatCountdown(elapsed)}
+            </Text>
+            <Text style={[styles.remainingSubText, { color: secondaryTextColor }]}>
+              {formatCountdown(remaining)} remaining
+            </Text>
+          </View>
+        ) : (
+          <Text style={[styles.durationBig, { color: timerColor }]}>
+            {durationLabel}
+          </Text>
+        )}
       </View>
 
       {/* Break ongoing row */}
@@ -340,6 +353,18 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontVariant: ['tabular-nums'],
     textAlign: 'right',
+  },
+  timerContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  remainingSubText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+    marginTop: -2,
+    opacity: 0.9,
   },
   breakRow: {
     flexDirection: 'row',

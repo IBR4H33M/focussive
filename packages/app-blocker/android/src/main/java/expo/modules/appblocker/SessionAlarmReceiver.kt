@@ -75,6 +75,7 @@ class SessionAlarmReceiver : BroadcastReceiver() {
         val body = intent.getStringExtra("body") ?: ""
         val targetAtMillis = intent.getLongExtra("targetAtMillis", 0L)
         val timeoutAtMillis = intent.getLongExtra("timeoutAtMillis", 0L)
+        val startAtMillis = intent.getLongExtra("startAtMillis", 0L)
         val isActive = intent.getBooleanExtra("isActive", false)
         val violationsText = intent.getStringExtra("violationsText")
         val allowBreaks = intent.getBooleanExtra("allowBreaks", true)
@@ -83,7 +84,8 @@ class SessionAlarmReceiver : BroadcastReceiver() {
 
         SessionNotifications.post(
             context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive,
-            violationsText, allowBreaks = allowBreaks, remainingBreakSeconds = remainingBreakSeconds
+            violationsText, allowBreaks = allowBreaks, remainingBreakSeconds = remainingBreakSeconds,
+            startAtMillis = startAtMillis
         )
 
         if (isActive) {
@@ -101,6 +103,7 @@ class SessionAlarmReceiver : BroadcastReceiver() {
                 putExtra("SESSION_ID", sessionId)
                 putExtra("SESSION_NAME", title)
                 putExtra("END_AT_MILLIS", targetAtMillis)
+                putExtra("START_AT_MILLIS", startAtMillis)
                 putExtra("NOTIF_ID", id)
                 putExtra("ALLOW_BREAKS", allowBreaks)
                 putExtra("REMAINING_BREAK_SECONDS", remainingBreakSeconds)

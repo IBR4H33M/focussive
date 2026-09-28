@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { sessionApi, appGroupApi } from '@/utils/api';
 import { useSessions } from '@/context/SessionContext';
-import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, formatDuration, formatTime, formatCountdown, getRemainingSeconds } from '@focussive/shared';
+import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, formatDuration, formatTime, formatCountdown, getRemainingSeconds, getElapsedSeconds } from '@focussive/shared';
 import type { Session, AppGroup, SessionTimeSlot } from '@focussive/shared';
 import InstalledApps from '@focussive/installed-apps';
 import TimeSlotPicker from '@/components/TimeSlotPicker';
@@ -463,8 +463,20 @@ export default function SessionDetailScreen() {
   const breakRemaining = Math.floor((session.break_used_seconds != null
     ? Math.max(0, ((session.max_break_minutes ?? 0) * 60) - session.break_used_seconds)
     : (session.max_break_minutes ?? 0) * 60) / 60);
-  const activeGreen = '#22B14C';
-  const liveRemaining = isActive ? getRemainingSeconds(session) : 0;
+  const [liveRemaining, setLiveRemaining] = useState(() => (isActive ? getRemainingSeconds(session) : 0));
+  const [liveElapsed, setLiveElapsed] = useState(() => (isActive ? getElapsedSeconds(session) : 0));
+
+  useEffect(() => {
+    if (!session || session.status !== SessionStatus.ACTIVE) return;
+    setLiveRemaining(getRemainingSeconds(session));
+    setLiveElapsed(getElapsedSeconds(session));
+    const interval = setInterval(() => {
+      setLiveRemaining(getRemainingSeconds(session));
+      setLiveElapsed(getElapsedSeconds(session));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [session, isActive]);
+
   const sessionRemainingMin = Math.floor(Math.max(0, liveRemaining - 1) / 60);
   const maxBreakSelectable = Math.max(0, Math.min(breakRemaining, sessionRemainingMin));
   const canTakeBreak = breakRemaining > 0 && maxBreakSelectable > 0;
@@ -488,8 +500,12 @@ export default function SessionDetailScreen() {
           <View style={[styles.liveBanner, { borderColor: '#1B8C3C', backgroundColor: '#22B14C' }]}> 
             <Text style={[styles.liveBannerLabel, { color: '#FFFFFF' }]}>Session running</Text>
             <Text style={[styles.liveBannerName, { color: '#FFFFFF' }]} numberOfLines={1}>{session.name}</Text>
-            <Text style={[styles.liveBannerCountdown, { color: '#FFFFFF' }]}>{formatCountdown(liveRemaining)}</Text>
-            <Text style={[styles.liveBannerMeta, { color: 'rgba(255, 255, 255, 0.88)' }]}>remaining until this session ends</Text>
+            <Text style={[styles.liveBannerCountdown, { color: '#FFFFFF' }]}>
+              {formatCountdown(liveElapsed)}
+            </Text>
+            <Text style={[styles.liveBannerMeta, { color: 'rgba(255, 255, 255, 0.88)' }]}>
+              {formatCountdown(liveRemaining)} remaining
+            </Text>
           </View>
         )}
 

@@ -410,6 +410,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           mobileActiveSession.id,
           mobileActiveSession.name,
           endAtMs,
+          startedAtMs,
         );
         runningSessionIdRef.current = desiredId;
 

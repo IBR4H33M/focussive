@@ -153,18 +153,88 @@ export const formatCountdown = (totalSeconds: number): string => {
   return `${pad(mins)}:${pad(secs)}`;
 };
 
+/**
+ * Resolves the true start timestamp (in ms) of a session.
+ * For scheduled sessions (recurring, today, scheduled), resolves to today's scheduled start time
+ * in the local timezone so that client countdowns are immune to server timezone drift.
+ * Falls back to session.started_at, or Date.now().
+ */
+export const getEffectiveSessionStartMs = (session: {
+  started_at?: string | null;
+  duration?: number;
+  start_time?: string;
+  schedule?: string;
+  time_slots?: Array<{ start_time: string; end_time: string }>;
+  break_used_seconds?: number;
+}): number => {
+  const now = new Date();
+  const durMs = ((session.duration || 25) * 60 + (session.break_used_seconds || 0)) * 1000;
+
+  // 1. If it has time_slots or start_time and is not an adhoc session
+  if (session.start_time && (session.schedule || '').toLowerCase() !== 'adhoc') {
+    // Check time_slots first
+    if (Array.isArray(session.time_slots) && session.time_slots.length > 0) {
+      for (const slot of session.time_slots) {
+        if (!slot.start_time) continue;
+        const [sh, sm] = slot.start_time.split(':').map(Number);
+        if (isNaN(sh) || isNaN(sm)) continue;
+        const slotStart = new Date(now);
+        slotStart.setHours(sh, sm, 0, 0);
+        let slotEndMs = slotStart.getTime() + durMs;
+        if (slot.end_time) {
+          const [eh, em] = slot.end_time.split(':').map(Number);
+          if (!isNaN(eh) && !isNaN(em)) {
+            const customEnd = new Date(now);
+            customEnd.setHours(eh, em, 0, 0);
+            if (customEnd.getTime() > slotStart.getTime()) {
+              slotEndMs = customEnd.getTime() + (session.break_used_seconds || 0) * 1000;
+            }
+          }
+        }
+        // If current time is within or within 1 hour past this slot
+        if (slotStart.getTime() <= now.getTime() && now.getTime() <= slotEndMs + 60 * 60_000) {
+          return slotStart.getTime();
+        }
+      }
+    }
+
+    // Single start_time
+    const [sh, sm] = session.start_time.split(':').map(Number);
+    if (!isNaN(sh) && !isNaN(sm)) {
+      const scheduledStart = new Date(now);
+      scheduledStart.setHours(sh, sm, 0, 0);
+      const scheduledEndMs = scheduledStart.getTime() + durMs;
+      if (scheduledStart.getTime() <= now.getTime() && now.getTime() <= scheduledEndMs + 60 * 60_000) {
+        return scheduledStart.getTime();
+      }
+    }
+  }
+
+  // 2. Fallback to started_at
+  if (session.started_at) {
+    const parsed = new Date(session.started_at).getTime();
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return now.getTime();
+};
+
 /** Seconds remaining until an active session ends, pausing during breaks and extending by break duration. */
 export const getRemainingSeconds = (session: {
-  started_at?: string;
+  started_at?: string | null;
   duration: number;
   break_used_seconds?: number;
   is_on_break?: boolean;
   break_started_at?: string | null;
   break_ends_at?: string | null;
+  start_time?: string;
+  schedule?: string;
+  time_slots?: Array<{ start_time: string; end_time: string }>;
 }): number => {
-  if (!session.started_at) return session.duration * 60;
-  const startedAtMs = new Date(session.started_at).getTime();
-  const totalDurationMs = session.duration * 60_000;
+  const startedAtMs = getEffectiveSessionStartMs(session);
+  const totalDurationMs = (session.duration || 25) * 60_000;
   const breakUsedMs = (session.break_used_seconds || 0) * 1000;
 
   // When a break is currently active, freeze / pause the countdown!
@@ -181,6 +251,31 @@ export const getRemainingSeconds = (session: {
   // Target end time is extended by any completed break time.
   const effectiveEndMs = startedAtMs + totalDurationMs + breakUsedMs;
   return Math.max(0, Math.floor((effectiveEndMs - Date.now()) / 1000));
+};
+
+/** Seconds elapsed since an active session started, pausing during breaks. */
+export const getElapsedSeconds = (session: {
+  started_at?: string | null;
+  duration?: number;
+  break_used_seconds?: number;
+  is_on_break?: boolean;
+  break_started_at?: string | null;
+  break_ends_at?: string | null;
+  start_time?: string;
+  schedule?: string;
+  time_slots?: Array<{ start_time: string; end_time: string }>;
+}): number => {
+  const startedAtMs = getEffectiveSessionStartMs(session);
+
+  if (session.is_on_break) {
+    let breakStartMs = Date.now();
+    if (session.break_started_at) {
+      breakStartMs = new Date(session.break_started_at).getTime();
+    }
+    return Math.max(0, Math.floor((breakStartMs - startedAtMs) / 1000));
+  }
+
+  return Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));
 };
 
 /** Whether a URL's hostname matches (or is a subdomain of) an entry in `blockedList`. */

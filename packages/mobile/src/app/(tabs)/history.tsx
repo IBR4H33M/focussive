@@ -59,6 +59,7 @@ export default function HistoryScreen() {
 
   function renderItem({ item }: { item: SessionHistory }) {
     const isCancelled = item.status === 'cancelled';
+    const isSkipped = item.status === 'skipped';
 
     return (
       <TouchableOpacity
@@ -72,6 +73,11 @@ export default function HistoryScreen() {
           {isCancelled && (
             <View style={[styles.cancelBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.25)' : theme.dangerBg }]}>
               <Text style={[styles.cancelBadgeText, { color: isDark ? '#FFB4B4' : theme.danger }]}>Cancelled</Text>
+            </View>
+          )}
+          {isSkipped && (
+            <View style={[styles.cancelBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(245, 158, 11, 0.15)' }]}>
+              <Text style={[styles.cancelBadgeText, { color: isDark ? '#FCD34D' : '#D97706' }]}>Skipped</Text>
             </View>
           )}
         </View>

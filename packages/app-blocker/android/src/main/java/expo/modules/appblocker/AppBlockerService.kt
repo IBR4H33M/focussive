@@ -42,6 +42,7 @@ class AppBlockerService : Service() {
     private var currentSessionId: String? = null
     private var currentSessionName: String? = null
     private var currentTargetMillis: Long = 0L
+    private var currentStartMillis: Long = 0L
 
     fun isBreakActive(): Boolean = breakActive
     fun getRemainingBreakSeconds(): Int = remainingBreakSeconds
@@ -101,7 +102,8 @@ class AppBlockerService : Service() {
             violationsText = if (breakActive) "Break active" else "Monitoring active",
             isOnBreak = breakActive,
             remainingBreakSeconds = remainingBreakSeconds,
-            allowBreaks = allowBreaks
+            allowBreaks = allowBreaks,
+            startAtMillis = currentStartMillis
         )
         SessionNotifications.latestActiveNotification = notif
         val manager = getSystemService(NotificationManager::class.java)
@@ -303,6 +305,13 @@ class AppBlockerService : Service() {
                 if (sName != null) currentSessionName = sName
                 val endMs = intent.getLongExtra("END_AT_MILLIS", 0L)
                 if (endMs > 0L) currentTargetMillis = endMs
+                val startMs = intent.getLongExtra("START_AT_MILLIS", 0L)
+                if (startMs > 0L) {
+                    currentStartMillis = startMs
+                } else if (currentStartMillis == 0L) {
+                    val savedStart = getSharedPreferences("focussive_session", Context.MODE_PRIVATE).getLong("active_session_start", 0L)
+                    currentStartMillis = if (savedStart > 0L) savedStart else (if (currentTargetMillis > 0L) currentTargetMillis - 25 * 60 * 1000L else System.currentTimeMillis())
+                }
                 allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", true)
                 val intentBreakSec = intent.getIntExtra("REMAINING_BREAK_SECONDS", -1)
                 remainingBreakSeconds = if (intentBreakSec >= 0) {
@@ -314,7 +323,7 @@ class AppBlockerService : Service() {
                 }
 
                 if (sId != null && sName != null) {
-                    saveSessionState(sId, sName, currentTargetMillis)
+                    saveSessionState(sId, sName, currentTargetMillis, currentStartMillis)
                 }
 
                 val notification = getForegroundNotification()
@@ -351,9 +360,16 @@ class AppBlockerService : Service() {
         if (sName != null) currentSessionName = sName
         val endMs = intent.getLongExtra("END_AT_MILLIS", 0L)
         if (endMs > 0L) currentTargetMillis = endMs
+        val normalStartMs = intent.getLongExtra("START_AT_MILLIS", 0L)
+        if (normalStartMs > 0L) {
+            currentStartMillis = normalStartMs
+        } else if (currentStartMillis == 0L) {
+            val savedStart = getSharedPreferences("focussive_session", Context.MODE_PRIVATE).getLong("active_session_start", 0L)
+            currentStartMillis = if (savedStart > 0L) savedStart else (if (currentTargetMillis > 0L) currentTargetMillis - 25 * 60 * 1000L else System.currentTimeMillis())
+        }
 
         if (currentSessionId != null && currentSessionName != null) {
-            saveSessionState(currentSessionId!!, currentSessionName!!, currentTargetMillis)
+            saveSessionState(currentSessionId!!, currentSessionName!!, currentTargetMillis, currentStartMillis)
         }
 
         val notification = getForegroundNotification()
@@ -485,19 +501,22 @@ class AppBlockerService : Service() {
             violationsText = if (breakActive) "Break active" else "Monitoring active",
             isOnBreak = breakActive,
             remainingBreakSeconds = remainingBreakSeconds,
-            allowBreaks = allowBreaks
+            allowBreaks = allowBreaks,
+            startAtMillis = currentStartMillis
         )
     }
 
     private fun saveSessionState(
         sessionId: String,
         sessionName: String,
-        endAtMillis: Long
+        endAtMillis: Long,
+        startAtMillis: Long = currentStartMillis
     ) {
         getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
             .edit()
             .putString("active_session_id", sessionId)
             .putString("active_session_name", sessionName)
+            .putLong("active_session_start", startAtMillis)
             .putLong("active_session_end", endAtMillis)
             .putStringSet("blocked_packages", blockedPackages.toSet())
             .putBoolean("allow_breaks", allowBreaks)
@@ -512,6 +531,7 @@ class AppBlockerService : Service() {
             .edit()
             .remove("active_session_id")
             .remove("active_session_name")
+            .remove("active_session_start")
             .remove("active_session_end")
             .remove("blocked_packages")
             .remove("allow_breaks")
@@ -524,6 +544,7 @@ class AppBlockerService : Service() {
         val sessionId = prefs.getString("active_session_id", null) ?: return
         val sessionName = prefs.getString("active_session_name", null) ?: return
         val endAtMillis = prefs.getLong("active_session_end", 0L)
+        val startAtMillis = prefs.getLong("active_session_start", 0L)
 
         // Do not restore if the session has already expired
         if (endAtMillis > 0 && System.currentTimeMillis() >= endAtMillis) {
@@ -544,6 +565,7 @@ class AppBlockerService : Service() {
             action = "START_ACTIVE"
             putExtra("SESSION_ID", sessionId)
             putExtra("SESSION_NAME", sessionName)
+            putExtra("START_AT_MILLIS", startAtMillis)
             putExtra("END_AT_MILLIS", endAtMillis)
             putExtra("IS_RESTART", true)
             putStringArrayListExtra("BLOCKED_PACKAGES", ArrayList(savedPackages))

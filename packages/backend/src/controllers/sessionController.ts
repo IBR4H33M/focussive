@@ -604,12 +604,57 @@ export async function skipSession(req: AuthRequest, res: Response): Promise<void
     skipped_at: now.toISOString(),
   });
 
-  // Update session: set skipped_until, reset started_at to null, set status back to scheduled
-  // Crucially: NO row is inserted into session_history!
+  // Insert skipped session record into session_history
+  let blockedApps: string[] = [];
+  if (session.app_group_ids && session.app_group_ids.length > 0) {
+    const { data: groups } = await supabase
+      .from('app_groups')
+      .select('apps')
+      .in('id', session.app_group_ids);
+    if (groups) {
+      const appSet = new Set<string>();
+      for (const g of groups) {
+        if (Array.isArray(g.apps)) {
+          g.apps.forEach((app: string) => appSet.add(app));
+        }
+      }
+      blockedApps = Array.from(appSet);
+    }
+  }
+
+  let actualDuration = 0;
+  if (session.status === SessionStatus.ACTIVE && session.started_at) {
+    actualDuration = Math.max(0, Math.round((now.getTime() - new Date(session.started_at).getTime()) / 60000));
+  }
+
+  await supabase.from('session_history').insert({
+    id: uuidv4(),
+    session_id: id,
+    user_id: userId,
+    session_name: session.name,
+    scheduled_duration: session.duration,
+    actual_duration: actualDuration,
+    start_time: session.start_time,
+    status: SessionStatus.SKIPPED,
+    violations_count: 0,
+    app_violations_count: 0,
+    web_violations_count: 0,
+    quality_tier: null,
+    breaks_count: 0,
+    emergency_breaks_count: 0,
+    is_on_schedule: false,
+    blocked_apps: blockedApps,
+    apps_count: blockedApps.length,
+    cancellation_reason: 'Skipped by user',
+    cancelled_at: now.toISOString(),
+  });
+
+  // Update session: set skipped_until, reset started_at to null, set status back to scheduled (or skipped for one-time)
+  const finalNextStatus = isOneTime ? SessionStatus.SKIPPED : SessionStatus.SCHEDULED;
   const { error: updateError } = await supabase
     .from('sessions')
     .update({
-      status: nextStatus,
+      status: finalNextStatus,
       skipped_until: skipUntil.toISOString(),
       started_at: null,
       pause_count: 0,

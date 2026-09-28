@@ -15,6 +15,7 @@ export function startMonitoring(
   sessionId?: string,
   sessionName?: string,
   endAtMillis?: number,
+  startAtMillis?: number,
 ) {
   return AppBlockerModule.startMonitoring(
     blockedPackages,
@@ -23,6 +24,7 @@ export function startMonitoring(
     sessionId ?? null,
     sessionName ?? null,
     endAtMillis ?? null,
+    startAtMillis ?? null,
   );
 }
 
@@ -116,6 +118,7 @@ export function scheduleActiveNotification(
   violationsText: string,
   allowBreaks?: boolean,
   remainingBreakSeconds?: number,
+  startAtMillis?: number,
 ) {
   return AppBlockerModule.scheduleActiveNotification({
     id,
@@ -128,6 +131,7 @@ export function scheduleActiveNotification(
     violationsText,
     allowBreaks: allowBreaks ?? true,
     remainingBreakSeconds: remainingBreakSeconds ?? 0,
+    startAtMillis: startAtMillis ?? fireAtMillis,
   });
 }
 
@@ -143,6 +147,7 @@ export function updateActiveNotification(
   isOnBreak?: boolean,
   remainingBreakSeconds?: number,
   allowBreaks?: boolean,
+  startAtMillis?: number,
 ) {
   return AppBlockerModule.updateActiveNotification({
     id,
@@ -155,6 +160,7 @@ export function updateActiveNotification(
     isOnBreak: isOnBreak ?? null,
     remainingBreakSeconds: remainingBreakSeconds ?? null,
     allowBreaks: allowBreaks ?? null,
+    startAtMillis: startAtMillis ?? null,
   });
 }
 

@@ -2,7 +2,7 @@
 // Focussive Mobile — Dashboard Screen
 // ============================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,17 +12,20 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  Image,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { useSessions } from '@/context/SessionContext';
 import SessionCard from '@/components/SessionCard';
-import { sessionApi } from '@/utils/api';
-import type { Session } from '@focussive/shared';
+import { sessionApi, historyApi } from '@/utils/api';
+import type { Session, SessionHistory } from '@focussive/shared';
 import { sortByNextOccurrence, getNextSessionOccurrence, isSessionInActiveWindow } from '@focussive/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { evaluateMilestones } from '@/utils/gamification';
+import { useSubscription } from '@/context/SubscriptionContext';
 
 export default function DashboardScreen() {
   const theme = useTheme();
@@ -30,8 +33,50 @@ export default function DashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeSessions, upcomingSessions, allSessions, isLoading, refreshSessions } = useSessions();
+  const { tier, isTrialActive, openPaywall, packages } = useSubscription();
+
+  const isPro = tier === 'premium' || isTrialActive;
+  const annualPkg = packages.find((p) => p.packageType === 'ANNUAL' || p.identifier.includes('annual'));
+  const adPriceText = annualPkg?.product?.priceString
+    ? `${annualPkg.product.priceString}/year`
+    : '3 Weeks Free Trial';
 
   const [isSkippingUpcoming, setIsSkippingUpcoming] = useState(false);
+  const [history, setHistory] = useState<SessionHistory[]>([]);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const response = await historyApi.getAll(1, 200);
+      setHistory((response.data as SessionHistory[]) || []);
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchHistory();
+    }, [fetchHistory])
+  );
+
+  const milestones = useMemo(() => evaluateMilestones(history, []), [history]);
+
+  const nearestMilestone = useMemo(() => {
+    const list = Object.values(milestones);
+    const unearned = list.filter((m) => !m.isUnlocked && m.current < m.target);
+    if (unearned.length > 0) {
+      unearned.sort((a, b) => {
+        const ratioA = a.target > 0 ? a.current / a.target : 0;
+        const ratioB = b.target > 0 ? b.current / b.target : 0;
+        if (ratioB !== ratioA) {
+          return ratioB - ratioA;
+        }
+        return (a.target - a.current) - (b.target - b.current);
+      });
+      return unearned[0];
+    }
+    return null;
+  }, [milestones]);
 
   const now = new Date();
   const activeIds = new Set(activeSessions.map((s) => s.id));
@@ -169,7 +214,10 @@ export default function DashboardScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
-            onRefresh={refreshSessions}
+            onRefresh={() => {
+              refreshSessions();
+              fetchHistory();
+            }}
             tintColor={theme.accent}
           />
         }
@@ -254,7 +302,7 @@ export default function DashboardScreen() {
             </Text>
 
             <View style={styles.scheduledList}>
-              {scheduledSessions.slice(0, 2).map((item) => (
+              {scheduledSessions.slice(0, 1).map((item) => (
                 <SessionCard
                   key={item.session.id}
                   session={item.session as Session & { violations_count?: number; pause_count?: number }}
@@ -284,6 +332,140 @@ export default function DashboardScreen() {
             >
               <Text style={[styles.viewAllButtonText, { color: isDark ? '#FFFFFF' : theme.text }]}>View All Sessions</Text>
               <Ionicons name="arrow-forward" size={14} color={isDark ? '#FFFFFF' : theme.accent} style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Ad Banner for non-pro users (RevenueCat SDK powered, hidden for Pro users) */}
+        {!isPro && (
+          <TouchableOpacity
+            style={[
+              styles.adBannerContainer,
+              {
+                backgroundColor: isDark ? 'rgba(217, 119, 6, 0.14)' : '#FEF3C7',
+                borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : '#FDE68A',
+              },
+            ]}
+            onPress={() => openPaywall('dashboard_ad_banner')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.adBannerTopRow, { justifyContent: 'flex-end' }]}>
+              <Text
+                style={[
+                  styles.adSponsoredTag,
+                  {
+                    color: isDark ? 'rgba(255, 255, 255, 0.5)' : '#92400E',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(146, 64, 14, 0.2)',
+                  },
+                ]}
+              >
+                Ad
+              </Text>
+            </View>
+
+            <Text style={[styles.adBannerTitle, { color: isDark ? '#FFFFFF' : '#78350F' }]}>
+              Unlock Unlimited Distraction Blocking
+            </Text>
+            <Text style={[styles.adBannerSubtitle, { color: isDark ? 'rgba(255, 255, 255, 0.8)' : '#92400E' }]}>
+              Get unlimited website & app groups, ad-free focus sessions, and complete history.
+            </Text>
+
+            <View style={styles.adBannerFooter}>
+              <Text style={[styles.adBannerPrice, { color: isDark ? '#FCD34D' : '#B45309' }]}>
+                {adPriceText}
+              </Text>
+              <View style={[styles.adBannerCtaBtn, { backgroundColor: isDark ? '#F59E0B' : '#D97706' }]}>
+                <Text style={styles.adBannerCtaText}>Upgrade Now</Text>
+                <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Milestone Progression Section */}
+        {nearestMilestone && (
+          <View style={styles.progressionSection}>
+            <View style={styles.progressionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary, marginBottom: 0 }]}>
+                MILESTONE PROGRESSION
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/(tabs)/stats', params: { section: '1' } } as never)}
+                style={styles.viewAllMilestonesBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.viewAllMilestonesText, { color: theme.accent }]}>
+                  View all
+                </Text>
+                <Ionicons name="arrow-forward" size={13} color={theme.accent} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.progressionCard, { backgroundColor: isDark ? '#20233B' : theme.card }]}
+              onPress={() => router.push({ pathname: '/(tabs)/stats', params: { section: '1' } } as never)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.progressionTopRow}>
+                <View style={[styles.milestoneIconBox, { backgroundColor: 'transparent' }]}>
+                  <Image
+                    source={nearestMilestone.badge.image}
+                    style={[
+                      { width: 36, height: 36 },
+                      isDark ? { tintColor: '#FFFFFF' } : null,
+                    ]}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={styles.progressionTitleRow}>
+                    <Text style={[styles.progressionTitle, { color: theme.text }]}>
+                      {nearestMilestone.badge.title}
+                    </Text>
+                  </View>
+                  <Text style={[styles.progressionQuote, { color: theme.textSecondary }]}>
+                    {nearestMilestone.badge.quote}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={[styles.progressionRequirement, { color: theme.textSecondary }]}>
+                {nearestMilestone.badge.requirement}
+              </Text>
+
+              {/* Progress Bar */}
+              <View style={{ gap: 6, marginTop: 4 }}>
+                <View
+                  style={[
+                    styles.progressBarBg,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(255,255,255,0.08)'
+                        : 'rgba(0,0,0,0.06)',
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: nearestMilestone.current > 0
+                          ? `${Math.min(100, (nearestMilestone.current / nearestMilestone.target) * 100)}%`
+                          : '0%',
+                        backgroundColor: theme.accent,
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.progressionStatsRow}>
+                  <Text style={[styles.progressionDetailText, { color: theme.textSecondary }]}>
+                    {`${nearestMilestone.target - nearestMilestone.current} needed to unlock`}
+                  </Text>
+                  <Text style={[styles.progressionRatioText, { color: theme.text }]}>
+                    {nearestMilestone.current} / {nearestMilestone.target}
+                  </Text>
+                </View>
+              </View>
             </TouchableOpacity>
           </View>
         )}
@@ -357,6 +539,80 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     marginTop: 4,
+  },
+  progressionSection: {
+    marginBottom: 24,
+  },
+  progressionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  viewAllMilestonesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllMilestonesText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  progressionCard: {
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  progressionTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  milestoneIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  progressionQuote: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  progressionRequirement: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  progressBarBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressionStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressionDetailText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  progressionRatioText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   viewAllButtonText: {
     fontSize: 14,
@@ -484,5 +740,74 @@ const styles = StyleSheet.create({
   modalBtnText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  adBannerContainer: {
+    marginBottom: 24,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  adBannerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  adBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  adBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  adSponsoredTag: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  adBannerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  adBannerSubtitle: {
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  adBannerFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  adBannerPrice: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  adBannerCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  adBannerCtaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

@@ -32,9 +32,9 @@ import android.widget.RemoteViews
 object SessionNotifications {
     const val ACTIVE_NOTIFICATION_ID = 1001
     const val COMPLETED_NOTIFICATION_ID = 1002
-    private const val CHANNEL_REMINDER = "session-reminder-v2"
-    private const val CHANNEL_ACTIVE = "session-active-v2"
-    private const val CHANNEL_COMPLETE = "session-complete-v2"
+    private const val CHANNEL_REMINDER = "session-reminder-v3"
+    private const val CHANNEL_ACTIVE = "session-active-v3"
+    private const val CHANNEL_COMPLETE = "session-complete-v3"
 
     private const val SOUND_REMINDER = "focustone_1_session_reminder_warm_kalimba"
     private const val SOUND_ACTIVE = "focustone_2_session_start_zen_bell"
@@ -45,7 +45,7 @@ object SessionNotifications {
     private val VIBRATION_SINGLE_PULSE = longArrayOf(0, 150)
 
     private val COLOR_REMINDER = Color.parseColor("#F87171") // Light red countdown matching active
-    private val COLOR_ACTIVE = Color.parseColor("#B91C1C")   // Dark red for running session countdown
+    private val COLOR_ACTIVE = Color.parseColor("#2D2E46")   // Dark theme accent (Space Cadet Dark) for time passed
 
     /** Notification surface colors matching custom layouts */
     private val COLOR_SURFACE_ACTIVE = Color.parseColor("#258F44")
@@ -62,23 +62,21 @@ object SessionNotifications {
     @Volatile
     private var lastCompletedTimestamp: Long = 0L
 
-    fun getSoundUri(context: Context, soundName: String): Uri? {
-        val resId = context.resources.getIdentifier(soundName, "raw", context.packageName)
-        return if (resId != 0) {
-            Uri.parse("${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/$resId")
-        } else {
-            Uri.parse("${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/raw/$soundName")
-        }
+    fun getSoundUri(context: Context, soundName: String): Uri {
+        return Uri.parse("${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/raw/$soundName")
     }
 
     private fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
 
-        // Delete legacy silent channels so they do not conflict
+        // Delete legacy channels so new v3 channels with custom sound take effect
         try {
             manager.deleteNotificationChannel("session-reminder")
             manager.deleteNotificationChannel("session-active")
+            manager.deleteNotificationChannel("session-reminder-v2")
+            manager.deleteNotificationChannel("session-active-v2")
+            manager.deleteNotificationChannel("session-complete-v2")
         } catch (_: Exception) {}
 
         val audioAttributes = AudioAttributes.Builder()
@@ -287,20 +285,47 @@ object SessionNotifications {
     }
 
     /**
-     * Wire up a Chronometer to tick down to [targetAtMillis].
-     *
-     * Chronometer's clock is elapsedRealtime, not wall-clock, so the base has to
-     * be translated. Countdown mode must be set on the *view* — setting it on the
-     * Notification.Builder only affects the system template's own chronometer, so
-     * without this the widget counts up from a future base and renders a leading
-     * minus sign.
+     * Wire up Chronometer widgets.
+     * When [isActive] is true:
+     * - Primary chronometer counts UP showing time passed from [startAtMillis].
+     * - Secondary chronometer counts DOWN showing time remaining until [targetAtMillis].
+     * When [isActive] is false (reminder):
+     * - Primary chronometer counts DOWN to session start.
      */
-    private fun bindChronometer(views: RemoteViews, targetAtMillis: Long, isPaused: Boolean = false) {
-        val diff = (targetAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
-        val base = SystemClock.elapsedRealtime() + diff
-        views.setChronometer(R.id.notif_chronometer, base, null, !isPaused)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            views.setChronometerCountDown(R.id.notif_chronometer, true)
+    private fun bindChronometer(
+        views: RemoteViews,
+        targetAtMillis: Long,
+        isActive: Boolean = false,
+        isPaused: Boolean = false,
+        startAtMillis: Long = 0L,
+        isCollapsed: Boolean = false,
+    ) {
+        if (isActive) {
+            val effectiveStart = if (startAtMillis > 0L) startAtMillis else (targetAtMillis - 25 * 60 * 1000L)
+            val elapsedMillis = (System.currentTimeMillis() - effectiveStart).coerceAtLeast(0L)
+            val elapsedBase = SystemClock.elapsedRealtime() - elapsedMillis
+            views.setChronometer(R.id.notif_chronometer, elapsedBase, null, !isPaused)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                views.setChronometerCountDown(R.id.notif_chronometer, false)
+            }
+
+            val diff = (targetAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+            val remainingBase = SystemClock.elapsedRealtime() + diff
+            val remFormat = if (isCollapsed) "%s rem" else "%s remaining"
+            try {
+                views.setViewVisibility(R.id.notif_remaining_chronometer, android.view.View.VISIBLE)
+                views.setChronometer(R.id.notif_remaining_chronometer, remainingBase, remFormat, !isPaused)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    views.setChronometerCountDown(R.id.notif_remaining_chronometer, true)
+                }
+            } catch (_: Exception) {}
+        } else {
+            val diff = (targetAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+            val base = SystemClock.elapsedRealtime() + diff
+            views.setChronometer(R.id.notif_chronometer, base, null, !isPaused)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                views.setChronometerCountDown(R.id.notif_chronometer, true)
+            }
         }
     }
 
@@ -326,7 +351,7 @@ object SessionNotifications {
         )
     }
 
-    /** Build the large, card-like expanded layout with the live countdown. */
+    /** Build the large, card-like expanded layout with live time passed + remaining. */
     private fun buildExpandedView(
         context: Context,
         id: Int,
@@ -338,12 +363,13 @@ object SessionNotifications {
         isOnBreak: Boolean = false,
         remainingBreakSeconds: Int = 0,
         allowBreaks: Boolean = true,
+        startAtMillis: Long = 0L,
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_active else R.layout.notification_reminder
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, formatTitle(title))
         views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
-        bindChronometer(views, targetAtMillis, isPaused = isOnBreak)
+        bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = false)
 
         if (isActive) {
             val skipIntent = sessionActionIntent(context, sessionId, "skip", id + 100)
@@ -357,13 +383,13 @@ object SessionNotifications {
                 views.setInt(R.id.notif_break_btn, "setBackgroundResource", R.drawable.notif_btn_disabled)
                 views.setOnClickPendingIntent(R.id.notif_break_btn, null)
             } else if (!hasBreakBalance) {
-                views.setTextViewText(R.id.notif_label, "Remaining time")
+                views.setTextViewText(R.id.notif_label, "Time passed")
                 views.setTextViewText(R.id.notif_break_btn, "Take a break")
                 views.setTextColor(R.id.notif_break_btn, Color.parseColor("#80FFFFFF"))
                 views.setInt(R.id.notif_break_btn, "setBackgroundResource", R.drawable.notif_btn_disabled)
                 views.setOnClickPendingIntent(R.id.notif_break_btn, null)
             } else {
-                views.setTextViewText(R.id.notif_label, "Remaining time")
+                views.setTextViewText(R.id.notif_label, "Time passed")
                 views.setTextViewText(R.id.notif_break_btn, "Take a break")
                 views.setTextColor(R.id.notif_break_btn, Color.WHITE)
                 views.setInt(R.id.notif_break_btn, "setBackgroundResource", R.drawable.notif_active_break_bg)
@@ -384,12 +410,13 @@ object SessionNotifications {
         targetAtMillis: Long,
         isActive: Boolean,
         isOnBreak: Boolean = false,
+        startAtMillis: Long = 0L,
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_collapsed else R.layout.notification_collapsed_reminder
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, formatTitle(title))
         views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
-        bindChronometer(views, targetAtMillis, isPaused = isOnBreak)
+        bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = true)
         return views
     }
 
@@ -422,6 +449,7 @@ object SessionNotifications {
         isOnBreak: Boolean = false,
         remainingBreakSeconds: Int = 0,
         allowBreaks: Boolean = true,
+        startAtMillis: Long = 0L,
     ): Notification {
         ensureChannels(context)
         val channel = if (isActive) CHANNEL_ACTIVE else CHANNEL_REMINDER
@@ -474,8 +502,8 @@ object SessionNotifications {
         // Fully custom views so our custom surface fills the notification body edge-to-edge
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             builder.setPriority(Notification.PRIORITY_HIGH)
-            builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive, isOnBreak))
-            builder.setCustomBigContentView(buildExpandedView(context, id, sessionId, title, targetAtMillis, isActive, violationsText, isOnBreak, remainingBreakSeconds, allowBreaks))
+            builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive, isOnBreak, startAtMillis))
+            builder.setCustomBigContentView(buildExpandedView(context, id, sessionId, title, targetAtMillis, isActive, violationsText, isOnBreak, remainingBreakSeconds, allowBreaks, startAtMillis))
         }
 
         val soundName = if (isActive) SOUND_ACTIVE else SOUND_REMINDER
@@ -516,6 +544,7 @@ object SessionNotifications {
         isOnBreak: Boolean? = null,
         remainingBreakSeconds: Int? = null,
         allowBreaks: Boolean? = null,
+        startAtMillis: Long = 0L,
     ) {
         val service = AppBlockerService.instance
         val effectiveIsOnBreak = isOnBreak ?: (service?.isBreakActive() ?: false)
@@ -538,7 +567,8 @@ object SessionNotifications {
             context, targetId, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive, violationsText,
             isOnBreak = effectiveIsOnBreak,
             remainingBreakSeconds = effectiveRemainingBreak,
-            allowBreaks = effectiveAllowBreaks
+            allowBreaks = effectiveAllowBreaks,
+            startAtMillis = startAtMillis
         )
         if (isActive) {
             latestActiveNotification = notification
@@ -648,6 +678,7 @@ object SessionNotifications {
         violationsText: String? = null,
         allowBreaks: Boolean = true,
         remainingBreakSeconds: Int = 0,
+        startAtMillis: Long = 0L,
     ) {
         val now = System.currentTimeMillis()
 
@@ -655,7 +686,8 @@ object SessionNotifications {
         if (fireAtMillis <= now + 1000) {
             post(
                 context, id, sessionId, title, body, targetAtMillis, timeoutAtMillis, isActive,
-                violationsText, allowBreaks = allowBreaks, remainingBreakSeconds = remainingBreakSeconds
+                violationsText, allowBreaks = allowBreaks, remainingBreakSeconds = remainingBreakSeconds,
+                startAtMillis = startAtMillis
             )
             return
         }
@@ -672,6 +704,7 @@ object SessionNotifications {
             putExtra("violationsText", violationsText)
             putExtra("allowBreaks", allowBreaks)
             putExtra("remainingBreakSeconds", remainingBreakSeconds)
+            putExtra("startAtMillis", if (startAtMillis > 0L) startAtMillis else fireAtMillis)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context, id, intent,

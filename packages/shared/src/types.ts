@@ -9,6 +9,7 @@ export enum SessionStatus {
   ACTIVE = 'active',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  SKIPPED = 'skipped',
 }
 
 export enum ScheduleType {
