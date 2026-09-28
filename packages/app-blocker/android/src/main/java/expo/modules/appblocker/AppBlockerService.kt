@@ -85,7 +85,9 @@ class AppBlockerService : Service() {
                 .apply()
         }
         if (remainingBreakSec != null && remainingBreakSec >= 0) {
-            this.remainingBreakSeconds = remainingBreakSec
+            if (!this.breakActive || remainingBreakSec <= this.remainingBreakSeconds) {
+                this.remainingBreakSeconds = remainingBreakSec
+            }
         }
         if (allowBreaksParam != null) {
             this.allowBreaks = allowBreaksParam
@@ -184,6 +186,8 @@ class AppBlockerService : Service() {
                 stopForeground(true)
                 SessionNotifications.cancel(this@AppBlockerService, SessionNotifications.ACTIVE_NOTIFICATION_ID)
                 SessionNotifications.postCompleted(this@AppBlockerService, sId, sName)
+                LocalBroadcastManager.getInstance(this@AppBlockerService)
+                    .sendBroadcast(Intent("com.focussive.app.SESSION_ENDED"))
                 stopSelf()
                 return
             }
@@ -418,6 +422,26 @@ class AppBlockerService : Service() {
 
                 val notification = getForegroundNotification()
                 startForeground(SessionNotifications.ACTIVE_NOTIFICATION_ID, notification)
+
+                val isRestart = intent.getBooleanExtra("IS_RESTART", false)
+                if (!isRestart) {
+                    handler.postDelayed({
+                        try {
+                            val resId = resources.getIdentifier("focustone_1_session_reminder_warm_kalimba", "raw", packageName)
+                            if (resId != 0) {
+                                val mp = android.media.MediaPlayer.create(this@AppBlockerService, resId)
+                                mp?.setOnCompletionListener { player ->
+                                    try {
+                                        player.release()
+                                    } catch (_: Exception) {}
+                                }
+                                mp?.start()
+                            }
+                        } catch (e: Exception) {
+                            Log.e("AppBlocker", "Error playing second session start chime", e)
+                        }
+                    }, 1200L)
+                }
 
                 if (!isMonitoring) {
                     isMonitoring = true

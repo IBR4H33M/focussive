@@ -83,7 +83,7 @@ export async function createWebsiteGroup(req: AuthRequest, res: Response): Promi
 
   if (error || !group) {
     console.error('Supabase error creating website group:', error);
-    throw new AppError('Failed to create website group', 500, 'CREATE_ERROR');
+    throw new AppError(error?.message ? `Failed to create website group: ${error.message}` : 'Failed to create website group', 500, 'CREATE_ERROR');
   }
 
   res.status(201).json(group);

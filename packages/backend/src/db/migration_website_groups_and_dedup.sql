@@ -3,16 +3,22 @@
 -- Run this in the Supabase SQL Editor
 -- ============================================================
 
--- Create the website_groups table
+-- Create the website_groups table (referencing public.users explicitly)
 CREATE TABLE IF NOT EXISTS website_groups (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   websites TEXT[] DEFAULT '{}',
   is_default BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Fix foreign key constraint if it was created pointing to auth.users:
+ALTER TABLE website_groups DROP CONSTRAINT IF EXISTS website_groups_user_id_fkey;
+ALTER TABLE website_groups 
+  ADD CONSTRAINT website_groups_user_id_fkey 
+  FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 CREATE INDEX IF NOT EXISTS idx_website_groups_user_id ON website_groups(user_id);
 
@@ -25,6 +31,7 @@ CREATE POLICY website_groups_policy ON website_groups
   FOR ALL USING (user_id = auth.uid());
 
 -- Updated_at trigger
+DROP TRIGGER IF EXISTS update_website_groups_updated_at ON website_groups;
 CREATE TRIGGER update_website_groups_updated_at
   BEFORE UPDATE ON website_groups
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

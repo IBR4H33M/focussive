@@ -1,7 +1,10 @@
 package expo.modules.appblocker
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -11,6 +14,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.Typeface
 import android.widget.*
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 /**
  * BlockOverlayActivity — shown over a blocked app.
@@ -32,6 +36,12 @@ class BlockOverlayActivity : Activity() {
     private var blockedPackage: String? = null
 
     private lateinit var root: LinearLayout
+
+    private val sessionEndedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            finish()
+        }
+    }
 
     // ── Auto-close: dismiss overlay after 15 s of inactivity ──────────────
     private val autoCloseHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -76,8 +86,22 @@ class BlockOverlayActivity : Activity() {
         )
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
+        val prefs = getSharedPreferences("focussive_session", android.content.Context.MODE_PRIVATE)
+        val endAt = prefs.getLong("active_session_end", 0L)
+        if (endAt > 0L && System.currentTimeMillis() >= endAt) {
+            finish()
+            return
+        }
+
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+            sessionEndedReceiver,
+            IntentFilter("com.focussive.app.SESSION_ENDED")
+        )
+
         blockedPackage = intent.getStringExtra("BLOCKED_PACKAGE")
-        val remainingBreakSeconds = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
+        val prefBreakSec = prefs.getInt("remaining_break_seconds", -1)
+        val intentBreakSec = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
+        val remainingBreakSeconds = if (prefBreakSec >= 0) prefBreakSec else intentBreakSec
         val allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", false)
 
         breakAvailable = allowBreaks && remainingBreakSeconds > 0
@@ -98,12 +122,32 @@ class BlockOverlayActivity : Activity() {
         renderScreen()
     }
 
+    override fun onResume() {
+        super.onResume()
+        val prefs = getSharedPreferences("focussive_session", android.content.Context.MODE_PRIVATE)
+        val endAt = prefs.getLong("active_session_end", 0L)
+        if (endAt > 0L && System.currentTimeMillis() >= endAt) {
+            finish()
+        }
+    }
+
+    override fun onDestroy() {
+        cancelAutoClose()
+        try {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(sessionEndedReceiver)
+        } catch (_: Exception) {}
+        super.onDestroy()
+    }
+
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent != null) {
             blockedPackage = intent.getStringExtra("BLOCKED_PACKAGE")
-            val remainingBreakSeconds = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
+            val prefs = getSharedPreferences("focussive_session", android.content.Context.MODE_PRIVATE)
+            val prefBreakSec = prefs.getInt("remaining_break_seconds", -1)
+            val intentBreakSec = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
+            val remainingBreakSeconds = if (prefBreakSec >= 0) prefBreakSec else intentBreakSec
             val allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", false)
             breakAvailable = allowBreaks && remainingBreakSeconds > 0
             breakMaxMinutes = (remainingBreakSeconds / 60).coerceAtLeast(1)
@@ -229,10 +273,10 @@ class BlockOverlayActivity : Activity() {
             renderScreen()
         })
 
-        // Minute number
-        val numberColor = if (isBreak) Color.parseColor("#2F3456") else Color.WHITE
+        // Minute number — white text as requested
+        val numberColor = Color.WHITE
         container.addView(styledText("$current", 72f, numberColor, bold = false, bottomPadDp = 0))
-        container.addView(styledText(if (current == 1) "minute" else "minutes", 15f, if (isBreak) Color.parseColor("#2F3456") else 0x99FFFFFF.toInt(), bold = false, bottomPadDp = 0))
+        container.addView(styledText(if (current == 1) "minute" else "minutes", 15f, 0xCCFFFFFF.toInt(), bold = false, bottomPadDp = 0))
 
         // ▼ Down
         container.addView(arrowButton("▼") {
@@ -324,10 +368,6 @@ class BlockOverlayActivity : Activity() {
         exitToHome()
     }
 
-    override fun onDestroy() {
-        cancelAutoClose()
-        super.onDestroy()
-    }
     // ── View helpers ─────────────────────────────────────────
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()

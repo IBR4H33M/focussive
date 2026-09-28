@@ -409,7 +409,7 @@ async function scheduleLegacyReminders(sessions: Session[]): Promise<void> {
         content: {
           title: 'Session running now',
           body: `${session.name} is live. ${formatCountdown(session.duration)} remaining. Ends at ${formattedEnd}.`,
-          sound: 'focustone_2_session_start_zen_bell.wav',
+          sound: 'focustone_1_session_reminder_warm_kalimba.wav',
           data: {
             sessionId: session.id,
             notificationType: 'active',
@@ -422,7 +422,7 @@ async function scheduleLegacyReminders(sessions: Session[]): Promise<void> {
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: sessionStart,
-          channelId: 'session-active-v3',
+          channelId: 'session-active-v4',
         } as any,
       });
 
@@ -484,7 +484,7 @@ export function notifySessionCompleted(sessionId: string, title: string): void {
         body: sessionName
           ? `Great job! your session ${sessionName} has ended.`
           : 'Great job! your session has ended.',
-        sound: 'focustone_3_session_end_zen_bell.wav',
+        sound: 'focustone_1_session_reminder_warm_kalimba.wav',
       },
       trigger: null,
     }).catch(() => {});
@@ -532,32 +532,32 @@ export function setupNotificationHandler(): void {
     Notifications.deleteNotificationChannelAsync('session-reminder-v2').catch(() => {});
     Notifications.deleteNotificationChannelAsync('session-active-v2').catch(() => {});
     Notifications.deleteNotificationChannelAsync('session-complete-v2').catch(() => {});
+    Notifications.deleteNotificationChannelAsync('session-reminder-v3').catch(() => {});
+    Notifications.deleteNotificationChannelAsync('session-active-v3').catch(() => {});
+    Notifications.deleteNotificationChannelAsync('session-complete-v3').catch(() => {});
 
-    // Reminder: 2 short pulses + warm kalimba tone (name without .wav)
-    Notifications.setNotificationChannelAsync('session-reminder-v3', {
+    // Reminder: warm kalimba tone (name without .wav)
+    Notifications.setNotificationChannelAsync('session-reminder-v4', {
       name: 'Session Reminders',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 150, 100, 150],
-      lightColor: '#FEF3C7',
       sound: 'focustone_1_session_reminder_warm_kalimba',
     }).catch(() => {});
 
-    // Start: 1 short pulse + zen bell tone
-    Notifications.setNotificationChannelAsync('session-active-v3', {
+    // Start: warm kalimba tone (2 rings)
+    Notifications.setNotificationChannelAsync('session-active-v4', {
       name: 'Session Running',
       importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 150],
-      lightColor: '#258F44',
-      sound: 'focustone_2_session_start_zen_bell',
+      vibrationPattern: [0, 150, 100, 150],
+      sound: 'focustone_1_session_reminder_warm_kalimba',
     }).catch(() => {});
 
-    // End: 1 short pulse + zen bell end tone
-    Notifications.setNotificationChannelAsync('session-complete-v3', {
+    // End: warm kalimba tone (1 ring)
+    Notifications.setNotificationChannelAsync('session-complete-v4', {
       name: 'Session Completed',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 150],
-      lightColor: '#258F44',
-      sound: 'focustone_3_session_end_zen_bell',
+      sound: 'focustone_1_session_reminder_warm_kalimba',
     }).catch(() => {});
 
     // Fallback default channel
@@ -565,7 +565,6 @@ export function setupNotificationHandler(): void {
       name: 'Session Reminders',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 150, 100, 150],
-      lightColor: '#FEF3C7',
       sound: 'focustone_1_session_reminder_warm_kalimba',
     }).catch(() => {});
   }

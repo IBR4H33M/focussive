@@ -429,6 +429,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // Attach violation listener — record violation when user taps "Allow anyway" in native overlay
         violationListenerRef.current = addListener('onAppViolation', async (event: { packageName: string; allowMinutes?: number }) => {
           console.log('AppBlocker violation:', event.packageName, '→ session', desiredId);
+          // If session has already ended or changed, do not attempt to log violation against an ended session
+          if (!desiredId || runningSessionIdRef.current !== desiredId) {
+            return;
+          }
           try {
             await violationApi.create({
               session_id: desiredId,
@@ -436,8 +440,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               duration_seconds: (event.allowMinutes ?? 5) * 60,
               action_taken: ViolationAction.ALLOW_ANYWAY,
             } as Record<string, unknown>);
-          } catch (e) {
-            console.error('Failed to record violation:', e);
+          } catch (e: any) {
+            // 404 = session already ended or completed on server — benign
+            if (e?.statusCode !== 404 && e?.code !== 'NOT_FOUND' && !e?.message?.includes('not found')) {
+              console.error('Failed to record violation:', e);
+            }
           }
         });
 

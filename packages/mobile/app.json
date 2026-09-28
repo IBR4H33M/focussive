@@ -43,9 +43,7 @@
           "icon": "./assets/notification-icon.png",
           "color": "#18B864",
           "sounds": [
-            "./assets/sounds/focustone_1_session_reminder_warm_kalimba.wav",
-            "./assets/sounds/focustone_2_session_start_zen_bell.wav",
-            "./assets/sounds/focustone_3_session_end_zen_bell.wav"
+            "./assets/sounds/focustone_1_session_reminder_warm_kalimba.wav"
           ]
         }
       ],

@@ -122,16 +122,6 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
     }
   }, [session.id, onRefresh]);
 
-  const handleEndBreak = useCallback(() => {
-    chrome.runtime.sendMessage({
-      type: 'END_BREAK',
-      sessionId: session.id,
-    });
-    if (onRefresh) {
-      setTimeout(onRefresh, 400);
-    }
-  }, [session.id, onRefresh]);
-
 
   const handleConfirmSkip = useCallback(async () => {
     setActionLoading(true);
@@ -187,12 +177,7 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={styles.breakLabel}>Break ongoing</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={styles.breakCountdown}>{formatCountdown(breakSecondsLeft)}</span>
-              <button style={styles.endBreakBtn} onClick={handleEndBreak} title="End break early">
-                End break
-              </button>
-            </div>
+            <span style={styles.breakCountdown}>{formatCountdown(breakSecondsLeft)}</span>
           </div>
         )}
 
@@ -500,16 +485,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: '#FFFFFF',
     fontVariantNumeric: 'tabular-nums',
-  },
-  endBreakBtn: {
-    padding: '4px 8px',
-    borderRadius: 6,
-    border: '1px solid rgba(255, 255, 255, 0.35)',
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: 600,
-    cursor: 'pointer',
   },
   footer: {
     display: 'flex',

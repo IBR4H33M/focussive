@@ -213,6 +213,24 @@ export default function HistoryDetailScreen() {
         </>
       )}
 
+      {/* Breaks */}
+      {((entry.breaks_count ?? 0) > 0) && (
+        <>
+          <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>BREAKS</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.violationRow}>
+              <View style={styles.violationLeft}>
+                <Ionicons name="cafe-outline" size={20} color={theme.textSecondary} />
+                <Text style={[styles.violationLabel, { color: theme.text }]}>Breaks Taken</Text>
+              </View>
+              <Text style={[styles.violationCount, { color: theme.textSecondary }]}>
+                {entry.breaks_count}
+              </Text>
+            </View>
+          </View>
+        </>
+      )}
+
       {/* Pause count */}
       {((entry as any).pause_count ?? 0) > 0 && (
         <>

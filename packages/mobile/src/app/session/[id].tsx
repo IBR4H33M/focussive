@@ -587,12 +587,12 @@ export default function SessionDetailScreen() {
             </View>
           )}
 
-          {(session.violations_count ?? 0) > 0 && (
-            <DetailRow icon="warning-outline" label="Violations" value={String(session.violations_count)} theme={theme} color={theme.danger} />
-          )}
-          {session.allow_breaks && (
-            <DetailRow icon="pause-circle-outline" label="Break Time" value={`${session.max_break_minutes ?? 0} min (${breakRemaining} remaining)`} theme={theme} />
-          )}
+          <DetailRow
+            icon="pause-circle-outline"
+            label="Breaks"
+            value={session.allow_breaks ? `${session.max_break_minutes ?? 0} min allowed` : 'Disabled'}
+            theme={theme}
+          />
         </View>
 
         {/* Focus Modes Card (borderless) */}

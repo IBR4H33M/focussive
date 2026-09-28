@@ -6,6 +6,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, Alert, Image, KeyboardAvoidingView, Platform,
+  Keyboard,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -76,7 +77,30 @@ export default function CreateSessionScreen() {
   const [allowBreaks, setAllowBreaks] = useState(false);
   const [maxBreakMinutes, setMaxBreakMinutes] = useState('5');
   const [appIconMap, setAppIconMap] = useState<Record<string, string>>({});
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 50);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     appGroupApi.getAll().then(r => setAppGroups(r.data as AppGroup[])).catch(() => {});
@@ -695,7 +719,7 @@ export default function CreateSessionScreen() {
                 value={maxBreakMinutes}
                 onChangeText={setMaxBreakMinutes}
                 onFocus={() => {
-                  setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 150);
+                  setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 250);
                 }}
                 keyboardType="number-pad"
                 maxLength={3}
@@ -715,7 +739,7 @@ export default function CreateSessionScreen() {
         <Text style={styles.createBtnText}>{loading ? 'Creating...' : 'Create Session'}</Text>
       </TouchableOpacity>
 
-      <View style={{ height: 140 }} />
+      <View style={{ height: Math.max(140, keyboardHeight + 120) }} />
       </ScrollView>
       </KeyboardAvoidingView>
     </View>

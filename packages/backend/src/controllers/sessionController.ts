@@ -776,7 +776,7 @@ export async function startBreak(req: AuthRequest, res: Response): Promise<void>
     throw new AppError('Failed to start break', 500, 'CREATE_ERROR');
   }
 
-  res.json({ ...breakRecord, remaining_break_seconds: remainingBreakSeconds });
+  res.json({ ...breakRecord, remaining_break_seconds: Math.max(0, remainingBreakSeconds - plannedSeconds) });
 }
 
 // POST /sessions/:id/break/end
@@ -889,6 +889,7 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
       let isOnBreak = false;
       let breakEndsAt: string | null = null;
       let breakStartedAt: string | null = null;
+      let ongoingBreakSeconds = 0;
       if (session.allow_breaks) {
         const { data: openBreak } = await supabase
           .from('session_breaks')
@@ -924,16 +925,17 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
             breakEndsAt = null;
           } else {
             isOnBreak = true;
+            ongoingBreakSeconds = plannedSec;
             breakStartedAt = openBreak.started_at;
             breakEndsAt = new Date(endsMs).toISOString();
           }
         }
       }
 
-      // Calculate remaining break time
+      // Calculate remaining break time (accounting for any open ongoing break)
       const maxBreakSeconds = (session.max_break_minutes || 0) * 60;
       const remainingBreakSeconds = session.allow_breaks
-        ? Math.max(0, maxBreakSeconds - (session.break_used_seconds || 0))
+        ? Math.max(0, maxBreakSeconds - (session.break_used_seconds || 0) - ongoingBreakSeconds)
         : 0;
 
       return {

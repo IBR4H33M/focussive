@@ -32,13 +32,13 @@ import android.widget.RemoteViews
 object SessionNotifications {
     const val ACTIVE_NOTIFICATION_ID = 1001
     const val COMPLETED_NOTIFICATION_ID = 1002
-    private const val CHANNEL_REMINDER = "session-reminder-v3"
-    private const val CHANNEL_ACTIVE = "session-active-v3"
-    private const val CHANNEL_COMPLETE = "session-complete-v3"
+    private const val CHANNEL_REMINDER = "session-reminder-v4"
+    private const val CHANNEL_ACTIVE = "session-active-v4"
+    private const val CHANNEL_COMPLETE = "session-complete-v4"
 
     private const val SOUND_REMINDER = "focustone_1_session_reminder_warm_kalimba"
-    private const val SOUND_ACTIVE = "focustone_2_session_start_zen_bell"
-    private const val SOUND_COMPLETE = "focustone_3_session_end_zen_bell"
+    private const val SOUND_ACTIVE = "focustone_1_session_reminder_warm_kalimba"
+    private const val SOUND_COMPLETE = "focustone_1_session_reminder_warm_kalimba"
 
     // Reminder: 2 short pulses; Start & End: 1 short pulse
     private val VIBRATION_REMINDER = longArrayOf(0, 150, 100, 150)
@@ -73,13 +73,16 @@ object SessionNotifications {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
 
-        // Delete legacy channels so new v3 channels with custom sound take effect
+        // Delete legacy channels so new v4 channels with custom sound take effect
         try {
             manager.deleteNotificationChannel("session-reminder")
             manager.deleteNotificationChannel("session-active")
             manager.deleteNotificationChannel("session-reminder-v2")
             manager.deleteNotificationChannel("session-active-v2")
             manager.deleteNotificationChannel("session-complete-v2")
+            manager.deleteNotificationChannel("session-reminder-v3")
+            manager.deleteNotificationChannel("session-active-v3")
+            manager.deleteNotificationChannel("session-complete-v3")
         } catch (_: Exception) {}
 
         val audioAttributes = AudioAttributes.Builder()
@@ -386,38 +389,10 @@ object SessionNotifications {
         val layout = if (isActive) R.layout.notification_active else R.layout.notification_reminder
         val views = RemoteViews(context.packageName, layout)
         views.setTextViewText(R.id.notif_title, formatTitle(title))
-        views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
-        bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = false, breakStartedAtMillis = breakStartedAtMillis)
-
         if (isActive) {
-            val skipIntent = sessionActionIntent(context, sessionId, "skip", id + 100)
-            views.setOnClickPendingIntent(R.id.notif_skip_btn, skipIntent)
-
-            val hasBreakBalance = allowBreaks && remainingBreakSeconds > 0
-            if (isOnBreak) {
-                views.setTextViewText(R.id.notif_label, "Break ongoing (timer paused)")
-                views.setTextViewText(R.id.notif_break_btn, "On break")
-                views.setTextColor(R.id.notif_break_btn, Color.parseColor("#80FFFFFF"))
-                views.setInt(R.id.notif_break_btn, "setBackgroundResource", R.drawable.notif_btn_disabled)
-                views.setOnClickPendingIntent(R.id.notif_break_btn, null)
-            } else if (!hasBreakBalance) {
-                views.setTextViewText(R.id.notif_label, "Time passed")
-                views.setTextViewText(R.id.notif_break_btn, "Take a break")
-                views.setTextColor(R.id.notif_break_btn, Color.parseColor("#80FFFFFF"))
-                views.setInt(R.id.notif_break_btn, "setBackgroundResource", R.drawable.notif_btn_disabled)
-                views.setOnClickPendingIntent(R.id.notif_break_btn, null)
-            } else {
-                views.setTextViewText(R.id.notif_label, "Time passed")
-                views.setTextViewText(R.id.notif_break_btn, "Take a break")
-                views.setTextColor(R.id.notif_break_btn, Color.WHITE)
-                views.setInt(R.id.notif_break_btn, "setBackgroundResource", R.drawable.notif_active_break_bg)
-                val breakIntent = sessionActionIntent(context, sessionId, "break", id + 200)
-                views.setOnClickPendingIntent(R.id.notif_break_btn, breakIntent)
-            }
-        } else {
-            val skipIntent = skipSessionPendingIntent(context, sessionId, id)
-            views.setOnClickPendingIntent(R.id.notif_skip_btn, skipIntent)
+            views.setTextViewText(R.id.notif_label, if (isOnBreak) "Break ongoing (timer paused)" else "Time passed")
         }
+        bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = false, breakStartedAtMillis = breakStartedAtMillis)
         return views
     }
 
@@ -480,8 +455,6 @@ object SessionNotifications {
             Notification.Builder(context)
         }
 
-        val surfaceColor = if (isActive) COLOR_SURFACE_ACTIVE else COLOR_SURFACE_REMINDER
-
         builder
             .setContentTitle(formatTitle(title))
             .setContentText(body)
@@ -491,9 +464,29 @@ object SessionNotifications {
             .setOnlyAlertOnce(true)
             .setWhen(targetAtMillis)
             .setShowWhen(true)
-            .setColor(surfaceColor)
-            .setColorized(true)
+            .setColor(Color.parseColor("#18B864"))
             .setContentIntent(openSessionIntent(context, sessionId, id))
+
+        // Native system action buttons (matching Duolingo / Messenger system buttons)
+        if (isActive) {
+            val skipIntent = sessionActionIntent(context, sessionId, "skip", id + 100)
+            builder.addAction(
+                Notification.Action.Builder(0, "Skip session", skipIntent).build()
+            )
+
+            val hasBreakBalance = allowBreaks && remainingBreakSeconds > 0
+            if (!isOnBreak && hasBreakBalance) {
+                val breakIntent = sessionActionIntent(context, sessionId, "break", id + 200)
+                builder.addAction(
+                    Notification.Action.Builder(0, "Take a break", breakIntent).build()
+                )
+            }
+        } else {
+            val skipIntent = skipSessionPendingIntent(context, sessionId, id)
+            builder.addAction(
+                Notification.Action.Builder(0, "Skip this session", skipIntent).build()
+            )
+        }
 
         // Eliminate Android 12+ foreground notification appearance delay
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

@@ -88,7 +88,7 @@ CREATE INDEX IF NOT EXISTS idx_app_groups_user_id ON app_groups(user_id);
 -- ============================================================
 CREATE TABLE IF NOT EXISTS website_groups (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   websites TEXT[] DEFAULT '{}',
   is_default BOOLEAN DEFAULT FALSE,

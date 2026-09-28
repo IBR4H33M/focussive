@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/notification_bg"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="14dp">
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp"
+    android:paddingTop="2dp"
+    android:paddingBottom="4dp">
 
     <TextView
         android:id="@+id/notif_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary"
         android:maxLines="2"
         android:ellipsize="end" />
 
@@ -31,13 +31,18 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Time passed"
-            android:textSize="13sp"
-            android:letterSpacing="0.03"
-            android:textColor="#E8F8ED" />
+            android:textSize="14sp"
+            android:letterSpacing="0.01"
+            android:textColor="?android:attr/textColorSecondary" />
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/notif_timer_container_bg"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
             android:orientation="vertical"
             android:gravity="end">
 
@@ -45,52 +50,19 @@
                 android:id="@+id/notif_chronometer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="40sp"
-                android:textColor="#2D2E46"
-                android:fontFamily="sans-serif-light"
+                android:textSize="28sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:fontFamily="sans-serif-medium"
                 android:gravity="end" />
 
             <Chronometer
                 android:id="@+id/notif_remaining_chronometer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="13sp"
-                android:textColor="#E8F8ED"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
                 android:gravity="end"
                 android:layout_marginTop="-2dp" />
         </LinearLayout>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="12dp">
-
-        <TextView
-            android:id="@+id/notif_skip_btn"
-            android:layout_width="0dp"
-            android:layout_height="34dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:gravity="center"
-            android:text="Skip session"
-            android:textSize="12sp"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:background="@drawable/notif_active_skip_bg" />
-
-        <TextView
-            android:id="@+id/notif_break_btn"
-            android:layout_width="0dp"
-            android:layout_height="34dp"
-            android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            android:gravity="center"
-            android:text="Take a break"
-            android:textSize="12sp"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:background="@drawable/notif_active_break_bg" />
     </LinearLayout>
 </LinearLayout>
