@@ -77,9 +77,12 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
     setRemaining(getRemainingSeconds(sessionLike));
     setElapsed(getElapsedSeconds(sessionLike));
 
-    // When on break, session timer is paused!
+    // When on break, session timer is paused (unless break time has already elapsed)
     if (isOnBreak) {
-      return;
+      const breakEndsMs = session.break_ends_at ? new Date(session.break_ends_at).getTime() : 0;
+      if (breakEndsMs === 0 || Date.now() < breakEndsMs) {
+        return;
+      }
     }
 
     const interval = setInterval(() => {

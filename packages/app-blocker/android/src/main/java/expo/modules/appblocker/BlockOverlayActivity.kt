@@ -272,6 +272,7 @@ class BlockOverlayActivity : Activity() {
     // ── Actions ──────────────────────────────────────────────
 
     private fun confirmBreak() {
+        cancelAutoClose()
         blockedPackage?.let { pkg ->
             val intent = Intent(this, AppBlockerService::class.java).apply {
                 action = "TAKE_BREAK"
@@ -279,8 +280,15 @@ class BlockOverlayActivity : Activity() {
                 putExtra("BREAK_MINUTES", breakMinutes)
             }
             startService(intent)
+
+            // Re-launch or bring the app to front so user stays inside it
+            val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                startActivity(launchIntent)
+            }
         }
-        exitToHome()
+        finish()
     }
 
     private fun confirmAllow() {

@@ -151,6 +151,11 @@ class AppBlockerService : Service() {
         // Update notification: unpause timer & re-evaluate break button
         updateActiveNotification()
 
+        getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
+            .edit()
+            .putInt("remaining_break_seconds", remainingBreakSeconds)
+            .apply()
+
         // Check foreground app immediately! If user is in a blocked app, overlay appears instantly!
         checkForegroundApp()
 
@@ -251,6 +256,12 @@ class AppBlockerService : Service() {
                 sessionRemainingAtBreakStart = (currentTargetMillis - breakStartedAtMillis).coerceAtLeast(0L)
                 breakEndsAtMillis = breakStartedAtMillis + breakMs
 
+                // Persist updated remainingBreakSeconds immediately!
+                getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
+                    .edit()
+                    .putInt("remaining_break_seconds", remainingBreakSeconds)
+                    .apply()
+
                 // Update notification immediately: pause timer & grey out break button
                 updateActiveNotification()
 
@@ -270,6 +281,35 @@ class AppBlockerService : Service() {
                 }
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast)
 
+                return START_STICKY
+            }
+
+            "SYNC_BREAK_STATE" -> {
+                val isOnBreak = intent.getBooleanExtra("IS_ON_BREAK", false)
+                val remainingSec = intent.getIntExtra("REMAINING_BREAK_SECONDS", -1)
+                val allowBreaksExtra = intent.getBooleanExtra("ALLOW_BREAKS", allowBreaks)
+                val breakEndsAtMillis = intent.getLongExtra("BREAK_ENDS_AT_MILLIS", 0L)
+                val breakStartedAt = intent.getLongExtra("BREAK_STARTED_AT_MILLIS", 0L)
+
+                syncBreakState(
+                    isOnBreak = isOnBreak,
+                    newTargetAtMillis = null,
+                    remainingBreakSec = if (remainingSec >= 0) remainingSec else null,
+                    allowBreaksParam = allowBreaksExtra,
+                    breakStartedAt = if (breakStartedAt > 0L) breakStartedAt else null
+                )
+                if (isOnBreak && breakEndsAtMillis > System.currentTimeMillis()) {
+                    this.breakEndsAtMillis = breakEndsAtMillis
+                    breakEndRunnable?.let { breakEndHandler?.removeCallbacks(it) }
+                    val runnable = Runnable { endBreakInternal() }
+                    breakEndRunnable = runnable
+                    breakEndHandler?.postDelayed(runnable, breakEndsAtMillis - System.currentTimeMillis())
+                }
+                getSharedPreferences("focussive_session", Context.MODE_PRIVATE)
+                    .edit()
+                    .putInt("remaining_break_seconds", remainingBreakSeconds)
+                    .putBoolean("allow_breaks", allowBreaks)
+                    .apply()
                 return START_STICKY
             }
 

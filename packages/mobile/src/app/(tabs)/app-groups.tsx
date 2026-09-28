@@ -498,8 +498,8 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
               style={[
                 styles.createSessionTopBtn,
                 {
-                  borderColor: '#686EA7',
-                  backgroundColor: 'transparent',
+                  borderColor: isDark ? '#686EA7' : theme.accent,
+                  backgroundColor: isDark ? 'transparent' : 'rgba(88, 112, 66, 0.08)',
                 },
               ]}
               onPress={() => router.push('/session/create' as never)}
@@ -508,13 +508,13 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
               <Ionicons
                 name="add-circle-outline"
                 size={18}
-                color="#FFFFFF"
+                color={isDark ? '#FFFFFF' : theme.accent}
                 style={{ marginRight: 8 }}
               />
               <Text
                 style={[
                   styles.createSessionTopBtnText,
-                  { color: '#FFFFFF' },
+                  { color: isDark ? '#FFFFFF' : theme.accent },
                 ]}
               >
                 Create new session

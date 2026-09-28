@@ -13,7 +13,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { sessionApi, appGroupApi, violationApi, historyApi } from '@/utils/api';
-import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener, takeBreak, endBreak } from '@focussive/app-blocker';
+import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener, takeBreak, endBreak, syncBreakState } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
 import { type Session, type AppGroup, ViolationAction, SessionStatus, isSessionInActiveWindow, getRemainingSeconds, getEffectiveSessionStartMs } from '@focussive/shared';
 import { scheduleSessionReminders, notifySessionCompleted } from '@/utils/sessionReminders';
@@ -327,8 +327,37 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const mobileActiveSession = state.activeSessions.find(s => s.mobile_focus === true) ?? null;
       const desiredId = mobileActiveSession?.id ?? null;
 
-      // ── Nothing changed — skip ─────────────────────────────────────────────
-      if (desiredId === runningSessionIdRef.current) return;
+      // ── Same session ID → sync dynamic break & remaining time to native service ──
+      if (desiredId === runningSessionIdRef.current) {
+        if (mobileActiveSession) {
+          const remainingBreakSec = (mobileActiveSession as any).remaining_break_seconds != null
+            ? (mobileActiveSession as any).remaining_break_seconds
+            : (mobileActiveSession.allow_breaks
+                ? Math.max(0, ((mobileActiveSession.max_break_minutes || 5) * 60) - (mobileActiveSession.break_used_seconds ?? 0))
+                : 0);
+
+          const breakEndsMs = (mobileActiveSession as any).break_ends_at
+            ? new Date((mobileActiveSession as any).break_ends_at).getTime()
+            : null;
+          const breakStartedMs = (mobileActiveSession as any).break_started_at
+            ? new Date((mobileActiveSession as any).break_started_at).getTime()
+            : null;
+
+          // If break_ends_at has already passed while on break, auto-close it
+          if ((mobileActiveSession as any).is_on_break && breakEndsMs && Date.now() >= breakEndsMs) {
+            sessionApi.endBreak(mobileActiveSession.id).catch(() => {});
+          }
+
+          syncBreakState(
+            (mobileActiveSession as any).is_on_break ?? false,
+            remainingBreakSec,
+            mobileActiveSession.allow_breaks ?? false,
+            breakEndsMs,
+            breakStartedMs,
+          );
+        }
+        return;
+      }
 
       // ── Tear down previous state ───────────────────────────────────────────
       if (violationListenerRef.current) { violationListenerRef.current.remove(); violationListenerRef.current = null; }

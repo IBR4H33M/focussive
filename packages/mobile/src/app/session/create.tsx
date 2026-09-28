@@ -2,10 +2,10 @@
 // Focussive Mobile — Create Session Screen
 // ============================================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, Image,
+  ScrollView, Alert, Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -76,6 +76,7 @@ export default function CreateSessionScreen() {
   const [allowBreaks, setAllowBreaks] = useState(false);
   const [maxBreakMinutes, setMaxBreakMinutes] = useState('5');
   const [appIconMap, setAppIconMap] = useState<Record<string, string>>({});
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     appGroupApi.getAll().then(r => setAppGroups(r.data as AppGroup[])).catch(() => {});
@@ -293,11 +294,17 @@ export default function CreateSessionScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
       >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={true}
+        >
         {/* Session Name */}
         <Text style={[styles.label, { color: theme.textSecondary, marginTop: 4 }]}>SESSION NAME</Text>
         <TextInput
@@ -687,6 +694,9 @@ export default function CreateSessionScreen() {
                 placeholderTextColor={theme.textSecondary}
                 value={maxBreakMinutes}
                 onChangeText={setMaxBreakMinutes}
+                onFocus={() => {
+                  setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 150);
+                }}
                 keyboardType="number-pad"
                 maxLength={3}
               />
@@ -705,8 +715,9 @@ export default function CreateSessionScreen() {
         <Text style={styles.createBtnText}>{loading ? 'Creating...' : 'Create Session'}</Text>
       </TouchableOpacity>
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: 140 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

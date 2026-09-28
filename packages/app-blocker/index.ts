@@ -40,6 +40,22 @@ export function endBreak() {
   return AppBlockerModule.endBreak();
 }
 
+export function syncBreakState(
+  isOnBreak: boolean,
+  remainingBreakSec: number,
+  allowBreaks: boolean,
+  breakEndsAtMillis?: number | null,
+  breakStartedAtMillis?: number | null,
+) {
+  return AppBlockerModule.syncBreakState(
+    isOnBreak,
+    remainingBreakSec,
+    allowBreaks,
+    breakEndsAtMillis ?? null,
+    breakStartedAtMillis ?? null,
+  );
+}
+
 export function updateBlockedApps(blockedPackages: string[]) {
   return AppBlockerModule.updateBlockedApps(blockedPackages);
 }

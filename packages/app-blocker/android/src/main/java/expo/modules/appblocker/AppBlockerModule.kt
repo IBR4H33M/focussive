@@ -157,6 +157,20 @@ class AppBlockerModule : Module() {
       return@Function null
     }
 
+    Function("syncBreakState") { isOnBreak: Boolean, remainingBreakSec: Int, allowBreaks: Boolean, breakEndsAtMillis: Double?, breakStartedAtMillis: Double? ->
+      val context = appContext.reactContext ?: return@Function null
+      val intent = Intent(context, AppBlockerService::class.java).apply {
+        action = "SYNC_BREAK_STATE"
+        putExtra("IS_ON_BREAK", isOnBreak)
+        putExtra("REMAINING_BREAK_SECONDS", remainingBreakSec)
+        putExtra("ALLOW_BREAKS", allowBreaks)
+        if (breakEndsAtMillis != null) putExtra("BREAK_ENDS_AT_MILLIS", breakEndsAtMillis.toLong())
+        if (breakStartedAtMillis != null) putExtra("BREAK_STARTED_AT_MILLIS", breakStartedAtMillis.toLong())
+      }
+      context.startService(intent)
+      return@Function null
+    }
+
     Function("requestUsageStatsPermission") {
       val context = appContext.reactContext ?: return@Function null
       try {

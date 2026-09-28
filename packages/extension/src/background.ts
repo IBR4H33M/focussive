@@ -78,7 +78,14 @@ async function pollSessions() {
     // Sync in-memory breakActive from API (catches breaks started from mobile)
     const wasBreakActive = breakActive;
     if (storedSession?.is_on_break) {
-      breakActive = true;
+      const breakEndsMs = storedSession.break_ends_at ? new Date(storedSession.break_ends_at).getTime() : 0;
+      if (breakEndsMs > 0 && Date.now() >= breakEndsMs) {
+        sessionApi.endBreak(storedSession.id).catch(() => {});
+        storedSession.is_on_break = false;
+        breakActive = false;
+      } else {
+        breakActive = true;
+      }
     } else if (!activeBreakTimer) {
       // Only clear if we don't have a locally-managed timer
       breakActive = false;

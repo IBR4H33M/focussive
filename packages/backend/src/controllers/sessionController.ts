@@ -7,8 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { AuthRequest } from '../middleware/auth';
-import { isSessionOverlap, SessionStatus, sortByNextOccurrence, getRemainingSeconds } from '@focussive/shared';
-import { completeExpiredSessions } from '../services/sessionScheduler';
+import { isSessionOverlap, SessionStatus, ScheduleType, sortByNextOccurrence, getRemainingSeconds } from '@focussive/shared';
+import { completeExpiredSessions, shouldSessionBeActive } from '../services/sessionScheduler';
 
 // POST /sessions/:id/start  — manually start a scheduled session
 export async function startSession(req: AuthRequest, res: Response): Promise<void> {
@@ -41,6 +41,26 @@ export async function startSession(req: AuthRequest, res: Response): Promise<voi
     const scheduledEnd = new Date(scheduledStart.getTime() + (session.duration || 25) * 60_000);
     if (scheduledStart <= now && now < scheduledEnd) {
       startedAt = scheduledStart.toISOString();
+    }
+  }
+
+  // Ensure no other active session exists for this user
+  const { data: currentActive } = await supabase
+    .from('sessions')
+    .select('id, name, schedule')
+    .eq('user_id', userId)
+    .eq('status', SessionStatus.ACTIVE)
+    .neq('id', id);
+
+  if (currentActive && currentActive.length > 0) {
+    for (const ca of currentActive) {
+      const nextStatus = (ca.schedule === ScheduleType.RECURRING || ca.schedule === ScheduleType.SCHEDULED)
+        ? SessionStatus.SCHEDULED
+        : SessionStatus.COMPLETED;
+      await supabase
+        .from('sessions')
+        .update({ status: nextStatus, completed_at: now.toISOString(), started_at: null })
+        .eq('id', ca.id);
     }
   }
 
@@ -865,12 +885,6 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
         .select('app_name, website_name')
         .eq('session_id', session.id);
 
-      // Calculate remaining break time
-      const maxBreakSeconds = (session.max_break_minutes || 0) * 60;
-      const remainingBreakSeconds = session.allow_breaks
-        ? Math.max(0, maxBreakSeconds - (session.break_used_seconds || 0))
-        : 0;
-
       // Check for an active (open) break
       let isOnBreak = false;
       let breakEndsAt: string | null = null;
@@ -886,15 +900,41 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
           .maybeSingle();
 
         if (openBreak) {
-          isOnBreak = true;
-          breakStartedAt = openBreak.started_at;
-          // If we know the planned duration, compute end time
-          if (openBreak.duration_seconds) {
-            const endsMs = new Date(openBreak.started_at).getTime() + openBreak.duration_seconds * 1000;
+          const nowMs = Date.now();
+          const plannedSec = openBreak.duration_seconds || 60;
+          const endsMs = new Date(openBreak.started_at).getTime() + plannedSec * 1000;
+
+          if (nowMs >= endsMs) {
+            // Break has elapsed! Auto-close it now in DB so it doesn't linger forever
+            const endedAtIso = new Date(endsMs).toISOString();
+            await supabase
+              .from('session_breaks')
+              .update({ ended_at: endedAtIso, duration_seconds: plannedSec })
+              .eq('id', openBreak.id);
+
+            const newUsed = (session.break_used_seconds || 0) + plannedSec;
+            await supabase
+              .from('sessions')
+              .update({ break_used_seconds: newUsed })
+              .eq('id', session.id);
+
+            session.break_used_seconds = newUsed;
+            isOnBreak = false;
+            breakStartedAt = null;
+            breakEndsAt = null;
+          } else {
+            isOnBreak = true;
+            breakStartedAt = openBreak.started_at;
             breakEndsAt = new Date(endsMs).toISOString();
           }
         }
       }
+
+      // Calculate remaining break time
+      const maxBreakSeconds = (session.max_break_minutes || 0) * 60;
+      const remainingBreakSeconds = session.allow_breaks
+        ? Math.max(0, maxBreakSeconds - (session.break_used_seconds || 0))
+        : 0;
 
       return {
         ...session,
@@ -908,7 +948,37 @@ export async function getActiveSessions(req: AuthRequest, res: Response): Promis
     })
   );
 
-  res.json({ data: sessionsWithDetails });
+  // Ensure only the single legitimately current active session is returned per user.
+  // If multiple exist (e.g. from previous bugs or race conditions), auto-complete older ones.
+  let validSessions = sessionsWithDetails;
+  if (validSessions.length > 1) {
+    validSessions.sort((a, b) => {
+      const aInWindow = shouldSessionBeActive(a);
+      const bInWindow = shouldSessionBeActive(b);
+      if (aInWindow && !bInWindow) return -1;
+      if (!aInWindow && bInWindow) return 1;
+      return new Date(b.started_at || 0).getTime() - new Date(a.started_at || 0).getTime();
+    });
+
+    const legitimate = validSessions[0];
+    const staleSessions = validSessions.slice(1);
+
+    // Auto-complete stale extra active sessions in background
+    for (const stale of staleSessions) {
+      const nextStatus = (stale.schedule === ScheduleType.RECURRING || stale.schedule === ScheduleType.SCHEDULED)
+        ? SessionStatus.SCHEDULED
+        : SessionStatus.COMPLETED;
+      supabase
+        .from('sessions')
+        .update({ status: nextStatus, completed_at: new Date().toISOString(), started_at: null })
+        .eq('id', stale.id)
+        .then(() => {});
+    }
+
+    validSessions = [legitimate];
+  }
+
+  res.json({ data: validSessions });
 }
 
 // GET /sessions/upcoming

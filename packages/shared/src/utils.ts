@@ -238,12 +238,16 @@ export const getRemainingSeconds = (session: {
   const sessionEndMs = startedAtMs + totalDurationMs;
 
   // When a break is currently active, freeze the countdown at break start
+  // (unless the break_ends_at has already passed, in which case the break has expired)
   if (session.is_on_break) {
-    let breakStartMs = Date.now();
-    if (session.break_started_at) {
-      breakStartMs = new Date(session.break_started_at).getTime();
+    const breakEndsMs = session.break_ends_at ? new Date(session.break_ends_at).getTime() : 0;
+    if (breakEndsMs === 0 || Date.now() < breakEndsMs) {
+      let breakStartMs = Date.now();
+      if (session.break_started_at) {
+        breakStartMs = new Date(session.break_started_at).getTime();
+      }
+      return Math.max(0, Math.floor((sessionEndMs - breakStartMs) / 1000));
     }
-    return Math.max(0, Math.floor((sessionEndMs - breakStartMs) / 1000));
   }
 
   // Active session running (or resumed after break):
@@ -265,11 +269,14 @@ export const getElapsedSeconds = (session: {
   const startedAtMs = getEffectiveSessionStartMs(session);
 
   if (session.is_on_break) {
-    let breakStartMs = Date.now();
-    if (session.break_started_at) {
-      breakStartMs = new Date(session.break_started_at).getTime();
+    const breakEndsMs = session.break_ends_at ? new Date(session.break_ends_at).getTime() : 0;
+    if (breakEndsMs === 0 || Date.now() < breakEndsMs) {
+      let breakStartMs = Date.now();
+      if (session.break_started_at) {
+        breakStartMs = new Date(session.break_started_at).getTime();
+      }
+      return Math.max(0, Math.floor((breakStartMs - startedAtMs) / 1000));
     }
-    return Math.max(0, Math.floor((breakStartMs - startedAtMs) / 1000));
   }
 
   return Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));

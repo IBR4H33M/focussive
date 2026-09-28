@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { useSessions } from '@/context/SessionContext';
+import { sessionApi } from '@/utils/api';
 import { formatDuration, formatCountdown, getRemainingSeconds, getElapsedSeconds } from '@focussive/shared';
 import type { Session } from '@focussive/shared';
 import { SessionStatus } from '@focussive/shared';
@@ -138,6 +139,7 @@ export default function SessionCard({ session, isActive, isUpcoming, nextOccurre
       if (left <= 0 && !breakEndedRef.current) {
         breakEndedRef.current = true;
         clearInterval(interval);
+        sessionApi.endBreak(session.id).catch(() => {});
         // Immediately refresh so UI stops showing "Break ongoing"
         refreshSessions();
       }
