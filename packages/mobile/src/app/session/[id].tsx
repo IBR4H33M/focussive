@@ -20,7 +20,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { sessionApi, appGroupApi } from '@/utils/api';
-import { useSessions } from '@/context/SessionContext';
+import { useSessions, markSessionAsSkipped } from '@/context/SessionContext';
+import { cancelSessionNotification, stopMonitoring } from '@focussive/app-blocker';
 import { ScheduleType, Weekday, PREDEFINED_BLOCKED_WEBSITES, SessionStatus, formatDuration, formatTime, formatCountdown, getRemainingSeconds, getElapsedSeconds } from '@focussive/shared';
 import type { Session, AppGroup, SessionTimeSlot } from '@focussive/shared';
 import InstalledApps from '@focussive/installed-apps';
@@ -274,6 +275,11 @@ export default function SessionDetailScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
+                markSessionAsSkipped(session.id);
+                try {
+                  cancelSessionNotification(1001);
+                  stopMonitoring();
+                } catch {}
                 const res = await sessionApi.skip(session.id);
                 await refreshSessions();
                 const remainingAfter = res.skips_remaining !== undefined ? ` (${res.skips_remaining} skip${res.skips_remaining === 1 ? '' : 's'} remaining this month)` : '';
@@ -305,6 +311,11 @@ export default function SessionDetailScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
+                markSessionAsSkipped(session.id);
+                try {
+                  cancelSessionNotification(1001);
+                  stopMonitoring();
+                } catch {}
                 await sessionApi.skip(session.id);
                 await refreshSessions();
                 Alert.alert('Session Skipped', 'The session has been skipped for today.', [

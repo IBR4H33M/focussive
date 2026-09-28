@@ -8,8 +8,11 @@ import android.app.PendingIntent
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.Icon
 import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
@@ -64,6 +67,14 @@ object SessionNotifications {
     private var lastCompletedSessionId: String? = null
     @Volatile
     private var lastCompletedTimestamp: Long = 0L
+
+    fun isSystemInDarkMode(context: Context): Boolean {
+        val sysUiMode = Resources.getSystem().configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        if (sysUiMode == Configuration.UI_MODE_NIGHT_YES) return true
+        if (sysUiMode == Configuration.UI_MODE_NIGHT_NO) return false
+        val appUiMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        return appUiMode == Configuration.UI_MODE_NIGHT_YES
+    }
 
     fun getSoundUri(context: Context, soundName: String): Uri {
         return Uri.parse("${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/raw/$soundName")
@@ -328,17 +339,6 @@ object SessionNotifications {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 views.setChronometerCountDown(R.id.notif_chronometer, false)
             }
-
-            val diff = (targetAtMillis - now).coerceAtLeast(0L)
-            val remainingBase = SystemClock.elapsedRealtime() + diff
-            val remFormat = if (isCollapsed) "%s rem" else "%s remaining"
-            try {
-                views.setViewVisibility(R.id.notif_remaining_chronometer, android.view.View.VISIBLE)
-                views.setChronometer(R.id.notif_remaining_chronometer, remainingBase, remFormat, !isPaused)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    views.setChronometerCountDown(R.id.notif_remaining_chronometer, true)
-                }
-            } catch (_: Exception) {}
         } else {
             val diff = (targetAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
             val base = SystemClock.elapsedRealtime() + diff
@@ -371,7 +371,7 @@ object SessionNotifications {
         )
     }
 
-    /** Build the large, card-like expanded layout with live time passed + remaining. */
+    /** Build the large, card-like expanded layout with live Focus time. */
     private fun buildExpandedView(
         context: Context,
         id: Int,
@@ -388,10 +388,17 @@ object SessionNotifications {
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_active else R.layout.notification_reminder
         val views = RemoteViews(context.packageName, layout)
+
         views.setTextViewText(R.id.notif_title, formatTitle(title))
-        if (isActive) {
-            views.setTextViewText(R.id.notif_label, if (isOnBreak) "Break ongoing (timer paused)" else "Time passed")
+        val timerColor = when {
+            !isActive -> Color.parseColor("#EF4444")
+            isOnBreak -> if (isSystemInDarkMode(context)) Color.parseColor("#F59E0B") else Color.parseColor("#D97706")
+            else -> Color.parseColor("#2FB556")
         }
+        if (isActive) {
+            views.setTextViewText(R.id.notif_label, if (isOnBreak) "Break ongoing (timer paused)" else "Focus time")
+        }
+        views.setTextColor(R.id.notif_chronometer, timerColor)
         bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = false, breakStartedAtMillis = breakStartedAtMillis)
         return views
     }
@@ -408,8 +415,14 @@ object SessionNotifications {
     ): RemoteViews {
         val layout = if (isActive) R.layout.notification_collapsed else R.layout.notification_collapsed_reminder
         val views = RemoteViews(context.packageName, layout)
+
         views.setTextViewText(R.id.notif_title, formatTitle(title))
-        views.setTextColor(R.id.notif_chronometer, if (isActive) COLOR_ACTIVE else COLOR_REMINDER)
+        val timerColor = when {
+            !isActive -> Color.parseColor("#EF4444")
+            isOnBreak -> if (isSystemInDarkMode(context)) Color.parseColor("#F59E0B") else Color.parseColor("#D97706")
+            else -> Color.parseColor("#2FB556")
+        }
+        views.setTextColor(R.id.notif_chronometer, timerColor)
         bindChronometer(views, targetAtMillis, isActive = isActive, isPaused = isOnBreak, startAtMillis = startAtMillis, isCollapsed = true, breakStartedAtMillis = breakStartedAtMillis)
         return views
     }
@@ -464,28 +477,46 @@ object SessionNotifications {
             .setOnlyAlertOnce(true)
             .setWhen(targetAtMillis)
             .setShowWhen(true)
-            .setColor(Color.parseColor("#18B864"))
+            .setColor(Notification.COLOR_DEFAULT)
             .setContentIntent(openSessionIntent(context, sessionId, id))
 
-        // Native system action buttons (matching Duolingo / Messenger system buttons)
+        // Native system action buttons (matching system default like Gmail / Messenger)
+        val actionIcon = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Icon.createWithResource(context, getSmallIconResId(context))
+        } else null
+
         if (isActive) {
             val skipIntent = sessionActionIntent(context, sessionId, "skip", id + 100)
-            builder.addAction(
-                Notification.Action.Builder(0, "Skip session", skipIntent).build()
-            )
-
-            val hasBreakBalance = allowBreaks && remainingBreakSeconds > 0
-            if (!isOnBreak && hasBreakBalance) {
-                val breakIntent = sessionActionIntent(context, sessionId, "break", id + 200)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && actionIcon != null) {
                 builder.addAction(
-                    Notification.Action.Builder(0, "Take a break", breakIntent).build()
+                    Notification.Action.Builder(actionIcon, "Skip session", skipIntent).build()
                 )
+            } else {
+                @Suppress("DEPRECATION")
+                builder.addAction(0, "Skip session", skipIntent)
+            }
+
+            if (!isOnBreak && allowBreaks) {
+                val breakIntent = sessionActionIntent(context, sessionId, "break", id + 200)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && actionIcon != null) {
+                    builder.addAction(
+                        Notification.Action.Builder(actionIcon, "Take a break", breakIntent).build()
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    builder.addAction(0, "Take a break", breakIntent)
+                }
             }
         } else {
             val skipIntent = skipSessionPendingIntent(context, sessionId, id)
-            builder.addAction(
-                Notification.Action.Builder(0, "Skip this session", skipIntent).build()
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && actionIcon != null) {
+                builder.addAction(
+                    Notification.Action.Builder(actionIcon, "Skip this session", skipIntent).build()
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                builder.addAction(0, "Skip this session", skipIntent)
+            }
         }
 
         // Eliminate Android 12+ foreground notification appearance delay
@@ -512,8 +543,9 @@ object SessionNotifications {
             builder.setDeleteIntent(dismissPendingIntent)
         }
 
-        // Fully custom views so our custom surface fills the notification body edge-to-edge
+        // Fully custom views styled with standard system decoration (attaches system actions container at bottom)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            builder.setStyle(Notification.DecoratedCustomViewStyle())
             builder.setPriority(Notification.PRIORITY_HIGH)
             builder.setCustomContentView(buildCollapsedView(context, title, targetAtMillis, isActive, isOnBreak, startAtMillis, breakStartedAtMillis))
             builder.setCustomBigContentView(buildExpandedView(context, id, sessionId, title, targetAtMillis, isActive, violationsText, isOnBreak, remainingBreakSeconds, allowBreaks, startAtMillis, breakStartedAtMillis))
@@ -650,9 +682,9 @@ object SessionNotifications {
         }
 
         val contentText = if (cleanTitle.isNotBlank()) {
-            "Great job! your session $cleanTitle has ended."
+            "Great job! your session $cleanTitle was successfully completed."
         } else {
-            "Great job! your session has ended."
+            "Great job! your session was successfully completed."
         }
 
         builder
@@ -663,7 +695,7 @@ object SessionNotifications {
             .setOngoing(false)
             .setShowWhen(true)
             .setWhen(now)
-            .setColor(COLOR_SURFACE_ACTIVE)
+            .setColor(Notification.COLOR_DEFAULT)
             .setContentIntent(openSessionIntent(context, sessionId, COMPLETED_NOTIFICATION_ID))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

@@ -14,40 +14,20 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
+        android:textColor="?android:attr/textColorPrimary"
         android:textSize="14sp"
         android:textStyle="bold"
-        android:textColor="?android:attr/textColorPrimary"
         android:maxLines="2"
         android:ellipsize="end" />
 
-    <LinearLayout
+    <Chronometer
+        android:id="@+id/notif_chronometer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/notif_timer_container_bg"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp"
+        android:textSize="20sp"
+        android:textColor="#2FB556"
+        android:fontFamily="sans-serif-medium"
         android:layout_marginStart="10dp"
-        android:orientation="vertical"
-        android:gravity="end">
-
-        <Chronometer
-            android:id="@+id/notif_chronometer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="20sp"
-            android:textColor="?android:attr/textColorPrimary"
-            android:fontFamily="sans-serif-medium"
-            android:gravity="end" />
-
-        <Chronometer
-            android:id="@+id/notif_remaining_chronometer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="10sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:gravity="end"
-            android:layout_marginTop="-2dp" />
-    </LinearLayout>
+        android:gravity="end" />
 </LinearLayout>

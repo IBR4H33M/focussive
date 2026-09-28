@@ -46,11 +46,12 @@ class SessionAlarmReceiver : BroadcastReceiver() {
         }
 
         if (intent.action == "ACTION_SESSION_SKIP") {
-            // Dismiss upcoming notification immediately
+            // Dismiss upcoming or active notification immediately
             val notifId = intent.getIntExtra("id", -1)
             if (notifId != -1) {
                 SessionNotifications.cancel(context, notifId)
             }
+            SessionNotifications.cancel(context, SessionNotifications.ACTIVE_NOTIFICATION_ID)
             try {
                 val serviceIntent = Intent(context, AppBlockerService::class.java).apply {
                     action = "STOP"

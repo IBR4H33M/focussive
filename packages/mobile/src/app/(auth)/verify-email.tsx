@@ -153,7 +153,7 @@ export default function VerifyEmailScreen() {
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             We sent a 6-digit verification code to
           </Text>
-          <Text style={[styles.emailHighlight, { color: theme.accent }]}>
+          <Text style={[styles.emailHighlight, { color: '#2FB556' }]}>
             {email || 'your email'}
           </Text>
         </View>

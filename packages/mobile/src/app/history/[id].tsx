@@ -15,15 +15,20 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { historyApi } from '@/utils/api';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { formatDate, formatDuration, formatTime } from '@focussive/shared';
 import type { SessionHistory } from '@focussive/shared';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+
+const RETENTION_DAYS = 21;
+const RETENTION_MS = RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 export default function HistoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const isDark = useIsDark();
   const router = useRouter();
+  const { isPremium, openPaywall } = useSubscription();
 
   const [entry, setEntry] = useState<SessionHistory & { violations?: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +36,15 @@ export default function HistoryDetailScreen() {
   const fetchEntry = useCallback(async () => {
     try {
       const data = await historyApi.getById(id) as SessionHistory & { violations?: any[] };
+      if (!isPremium && (Date.now() - new Date(data.created_at).getTime() > RETENTION_MS)) {
+        openPaywall('history_detail_locked');
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/history');
+        }
+        return;
+      }
       setEntry(data);
     } catch {
       Alert.alert('Error', 'History entry not found');
@@ -42,7 +56,7 @@ export default function HistoryDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, router]);
+  }, [id, router, isPremium, openPaywall]);
 
   useEffect(() => {
     fetchEntry();

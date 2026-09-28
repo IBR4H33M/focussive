@@ -21,6 +21,7 @@ import InstalledApps from '@focussive/installed-apps';
 import TimeSlotPicker from '@/components/TimeSlotPicker';
 import MiniCalendar from '@/components/MiniCalendar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSubscription } from '@/context/SubscriptionContext';
 
 // ── Weekday picker ────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ export default function CreateSessionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { refreshSessions } = useSessions();
+  const { isPremium, openPaywall } = useSubscription();
 
   const [name, setName] = useState('');
   const [timeSlots, setTimeSlots] = useState<SessionTimeSlot[]>([
@@ -171,10 +173,30 @@ export default function CreateSessionScreen() {
   function toggleScheduledDate(iso: string) {
     setScheduledDates(prev => prev.includes(iso) ? prev.filter(d => d !== iso) : [...prev, iso]);
   }
+  function isAppGroupLocked(group: AppGroup, index: number): boolean {
+    if (isPremium) return false;
+    return index >= 2 || (group.apps?.length || 0) > 3;
+  }
+
+  function isWebsiteGroupLocked(group: WebsiteGroup, index: number): boolean {
+    if (isPremium) return false;
+    return index >= 2 || (group.websites?.length || 0) > 3;
+  }
+
   function toggleAppGroup(id: string) {
+    const idx = appGroups.findIndex(g => g.id === id);
+    if (idx !== -1 && isAppGroupLocked(appGroups[idx], idx)) {
+      openPaywall('session_locked_group');
+      return;
+    }
     setSelectedAppGroupIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   }
   function toggleWebsiteGroup(id: string) {
+    const idx = websiteGroups.findIndex(g => g.id === id);
+    if (idx !== -1 && isWebsiteGroupLocked(websiteGroups[idx], idx)) {
+      openPaywall('session_locked_group');
+      return;
+    }
     setSelectedWebsiteGroupIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   }
   function addCustomWebsite() {
@@ -494,19 +516,35 @@ export default function CreateSessionScreen() {
                 No app groups created yet. You can create them in the Groups tab.
               </Text>
             ) : (
-              appGroups.map(group => {
+              appGroups.map((group, index) => {
                 const isSelected = selectedAppGroupIds.includes(group.id);
                 const isExpanded = expandedAppGroupId === group.id;
+                const isLocked = isAppGroupLocked(group, index);
                 return (
                   <View key={group.id}>
                     <View
                       style={[
                         styles.groupItem,
                         { backgroundColor: isSelected ? `${theme.accent}20` : innerBg },
+                        isLocked && { borderColor: 'rgba(212, 175, 55, 0.35)', borderWidth: 1 },
                       ]}
                     >
-                      <View style={{ flex: 1 }}>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
+                        {isLocked && (
+                          <TouchableOpacity
+                            onPress={() => openPaywall('session_locked_group')}
+                            style={styles.proBadge}
+                            activeOpacity={0.8}
+                          >
+                            <Image
+                              source={require('../../../assets/pro_icon.png')}
+                              style={{ width: 12, height: 12 }}
+                              resizeMode="contain"
+                            />
+                            <Text style={styles.proBadgeText}>PRO</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                         <TouchableOpacity 
@@ -517,7 +555,15 @@ export default function CreateSessionScreen() {
                           <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => toggleAppGroup(group.id)}>
-                          <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={isSelected ? theme.accent : theme.textSecondary} />
+                          {isLocked ? (
+                            <Image
+                              source={require('../../../assets/pro_icon.png')}
+                              style={{ width: 20, height: 20 }}
+                              resizeMode="contain"
+                            />
+                          ) : (
+                            <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={isSelected ? theme.accent : theme.textSecondary} />
+                          )}
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -596,19 +642,35 @@ export default function CreateSessionScreen() {
             {websiteGroups.length > 0 && (
               <>
                 <Text style={[styles.subLabel, { color: theme.textSecondary }]}>Website Groups</Text>
-                {websiteGroups.map(group => {
+                {websiteGroups.map((group, index) => {
                   const isSelected = selectedWebsiteGroupIds.includes(group.id);
                   const isExpanded = expandedWebsiteGroupId === group.id;
+                  const isLocked = isWebsiteGroupLocked(group, index);
                   return (
                     <View key={group.id}>
                       <View
                         style={[
                           styles.groupItem,
                           { backgroundColor: isSelected ? `${theme.accent}20` : innerBg },
+                          isLocked && { borderColor: 'rgba(212, 175, 55, 0.35)', borderWidth: 1 },
                         ]}
                       >
-                        <View style={{ flex: 1 }}>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <Text style={[styles.groupItemText, { color: theme.text }]}>{group.name}</Text>
+                          {isLocked && (
+                            <TouchableOpacity
+                              onPress={() => openPaywall('session_locked_group')}
+                              style={styles.proBadge}
+                              activeOpacity={0.8}
+                            >
+                              <Image
+                                source={require('../../../assets/pro_icon.png')}
+                                style={{ width: 12, height: 12 }}
+                                resizeMode="contain"
+                              />
+                              <Text style={styles.proBadgeText}>PRO</Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                           <TouchableOpacity 
@@ -619,7 +681,15 @@ export default function CreateSessionScreen() {
                             <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textSecondary} />
                           </TouchableOpacity>
                           <TouchableOpacity onPress={() => toggleWebsiteGroup(group.id)}>
-                            <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={isSelected ? theme.accent : theme.textSecondary} />
+                            {isLocked ? (
+                              <Image
+                                source={require('../../../assets/pro_icon.png')}
+                                style={{ width: 20, height: 20 }}
+                                resizeMode="contain"
+                              />
+                            ) : (
+                              <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={isSelected ? theme.accent : theme.textSecondary} />
+                            )}
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -807,4 +877,21 @@ const styles = StyleSheet.create({
   websiteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 12 },
   websiteChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 0 },
   websiteText: { fontSize: 13 },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.45)',
+  },
+  proBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#D4AF37',
+    letterSpacing: 0.5,
+  },
 });

@@ -26,6 +26,11 @@ import {
 // Poll every 30 seconds — aggressive 5s polling was causing Supabase rate-limits
 const POLL_INTERVAL_MS = 30_000;
 
+export const skippedSessionIds = new Set<string>();
+export function markSessionAsSkipped(sessionId: string) {
+  skippedSessionIds.add(sessionId);
+}
+
 interface SessionState {
   activeSessions: Session[];
   upcomingSessions: Session[];
@@ -194,25 +199,38 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           if (!activeIds.has(prev.id)) {
             // Check if session was skipped or cancelled
             const currentSession = allSessions.find(s => s.id === prev.id);
-            const isSkipped = currentSession?.skipped_until && new Date(currentSession.skipped_until).getTime() > Date.now();
+            const isExplicitlySkipped = skippedSessionIds.has(prev.id);
+            const isSkipped = isExplicitlySkipped ||
+              currentSession?.status === SessionStatus.SKIPPED ||
+              Boolean(currentSession?.skipped_until && new Date(currentSession.skipped_until).getTime() > Date.now());
             const isCancelled = currentSession?.status === SessionStatus.CANCELLED;
 
             if (isSkipped || isCancelled) {
-              // Skipped or cancelled sessions do NOT earn quality tier badges or show celebration modal
+              // Skipped or cancelled sessions do NOT earn quality tier badges, show celebration modal, or post completed notification
+              skippedSessionIds.delete(prev.id);
               continue;
             }
 
-            // Post completed notification with end tone & vibration
-            notifySessionCompleted(prev.id, prev.name);
-
             // Verify in history that backend actually recorded a 'completed' session
+            // ONLY post completed notification if history confirms the session was successfully completed!
             historyApi.getAll(1, 5).then((historyRes: any) => {
               const historyList = historyRes?.data || historyRes || [];
+              const latestRecord = Array.isArray(historyList)
+                ? historyList.find((h: any) => h.session_id === prev.id)
+                : null;
+
+              if (latestRecord && (latestRecord.status === 'skipped' || latestRecord.status === 'cancelled')) {
+                return;
+              }
+
               const completedRecord = Array.isArray(historyList)
                 ? historyList.find((h: any) => h.session_id === prev.id && h.status === 'completed')
                 : null;
 
               if (completedRecord) {
+                // Post completed notification ONLY when confirmed completed!
+                notifySessionCompleted(prev.id, prev.name);
+
                 const actualDuration = completedRecord.actual_duration ?? prev.duration;
                 const scheduledDuration = completedRecord.scheduled_duration ?? prev.duration;
                 const violationsCount = completedRecord.violations_count ?? 0;

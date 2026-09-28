@@ -128,7 +128,11 @@ export async function updateWebsiteGroup(req: AuthRequest, res: Response): Promi
 
   if (error || !group) {
     console.error('Supabase error updating website group:', error);
-    throw new AppError('Failed to update website group', 500, 'UPDATE_ERROR');
+    throw new AppError(
+      error?.message ? `Failed to update website group: ${error.message}` : 'Failed to update website group',
+      500,
+      'UPDATE_ERROR'
+    );
   }
 
   res.json(group);

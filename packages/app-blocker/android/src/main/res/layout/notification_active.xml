@@ -12,9 +12,10 @@
         android:id="@+id/notif_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
+        android:textColor="?android:attr/textColorPrimary"
         android:textSize="15sp"
         android:textStyle="bold"
-        android:textColor="?android:attr/textColorPrimary"
         android:maxLines="2"
         android:ellipsize="end" />
 
@@ -30,39 +31,18 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Time passed"
-            android:textSize="14sp"
-            android:letterSpacing="0.01"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:text="Focus time"
+            android:textAppearance="@android:style/TextAppearance.Material.Notification.Line2"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="14sp" />
 
-        <LinearLayout
+        <Chronometer
+            android:id="@+id/notif_chronometer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/notif_timer_container_bg"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
-            android:orientation="vertical"
-            android:gravity="end">
-
-            <Chronometer
-                android:id="@+id/notif_chronometer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="28sp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:fontFamily="sans-serif-medium"
-                android:gravity="end" />
-
-            <Chronometer
-                android:id="@+id/notif_remaining_chronometer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="?android:attr/textColorSecondary"
-                android:gravity="end"
-                android:layout_marginTop="-2dp" />
-        </LinearLayout>
+            android:textSize="28sp"
+            android:textColor="#2FB556"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="end" />
     </LinearLayout>
 </LinearLayout>

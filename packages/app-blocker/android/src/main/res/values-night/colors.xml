@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notif_text_primary">#F9FAFB</color>
+    <color name="notif_text_secondary">#D1D5DB</color>
+    <color name="notif_timer_container_bg">#26FFFFFF</color>
+    <color name="notif_timer_container_stroke">#33FFFFFF</color>
+</resources>

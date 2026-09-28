@@ -16,7 +16,8 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme, useIsDark } from '@/utils/theme';
-import { useSessions } from '@/context/SessionContext';
+import { useSessions, markSessionAsSkipped } from '@/context/SessionContext';
+import { cancelSessionNotification, stopMonitoring } from '@focussive/app-blocker';
 import SessionCard from '@/components/SessionCard';
 import { sessionApi, historyApi } from '@/utils/api';
 import type { Session, SessionHistory } from '@focussive/shared';
@@ -159,6 +160,11 @@ export default function DashboardScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
+                markSessionAsSkipped(session.id);
+                try {
+                  cancelSessionNotification(1001);
+                  stopMonitoring();
+                } catch {}
                 const res = await sessionApi.skip(session.id);
                 const remainingAfter = res.skips_remaining !== undefined
                   ? ` (${res.skips_remaining} skip${res.skips_remaining === 1 ? '' : 's'} remaining this month)`
@@ -190,6 +196,11 @@ export default function DashboardScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
+                markSessionAsSkipped(session.id);
+                try {
+                  cancelSessionNotification(1001);
+                  stopMonitoring();
+                } catch {}
                 await sessionApi.skip(session.id);
                 Alert.alert('Session Skipped', 'The session has been skipped.');
                 await refreshSessions();

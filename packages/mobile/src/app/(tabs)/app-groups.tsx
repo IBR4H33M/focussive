@@ -83,6 +83,21 @@ export default function RulesScreen() {
   const [selectedWebsites, setSelectedWebsites] = useState<string[]>([]);
   const [customWebsite, setCustomWebsite] = useState('');
 
+  // Pro lock checks
+  function isAppGroupLocked(group: AppGroup, index: number): { locked: boolean; reason?: string } {
+    if (isPremium) return { locked: false };
+    if (index >= 2) return { locked: true, reason: 'Exceeds 2 groups (Free limit)' };
+    if ((group.apps?.length || 0) > 3) return { locked: true, reason: 'Exceeds 3 apps (Free limit)' };
+    return { locked: false };
+  }
+
+  function isWebsiteGroupLocked(group: WebsiteGroup, index: number): { locked: boolean; reason?: string } {
+    if (isPremium) return { locked: false };
+    if (index >= 2) return { locked: true, reason: 'Exceeds 2 groups (Free limit)' };
+    if ((group.websites?.length || 0) > 3) return { locked: true, reason: 'Exceeds 3 websites (Free limit)' };
+    return { locked: false };
+  }
+
   // Sort sessions latest first
   const sortedSessions = useMemo(() => {
     return [...allSessions].sort((a, b) => {
@@ -718,10 +733,35 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                 <Ionicons name="phone-portrait-outline" size={28} color={theme.textSecondary} />
                 <Text style={[styles.emptyCardText, { color: theme.textSecondary }]}>No app groups yet</Text>
               </View>
-            ) : appGroups.map(group => (
-              <View key={group.id} style={[styles.groupCard, { backgroundColor: theme.card }]}>
+            ) : appGroups.map((group, index) => {
+              const lockInfo = isAppGroupLocked(group, index);
+              return (
+              <View
+                key={group.id}
+                style={[
+                  styles.groupCard,
+                  { backgroundColor: theme.card },
+                  lockInfo.locked && { borderColor: 'rgba(212, 175, 55, 0.35)', borderWidth: 1 },
+                ]}
+              >
                 <View style={styles.groupHeader}>
-                  <Text style={[styles.groupName, { color: theme.text }]}>{group.name}</Text>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <Text style={[styles.groupName, { color: theme.text }]}>{group.name}</Text>
+                    {lockInfo.locked && (
+                      <TouchableOpacity
+                        onPress={() => openPaywall('locked_group')}
+                        style={styles.proBadge}
+                        activeOpacity={0.8}
+                      >
+                        <Image
+                          source={require('../../../assets/pro_icon.png')}
+                          style={{ width: 13, height: 13 }}
+                          resizeMode="contain"
+                        />
+                        <Text style={styles.proBadgeText}>PRO</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   <View style={styles.groupActions}>
                     <TouchableOpacity onPress={() => openEditAppGroup(group)} style={[styles.actionBtn, { backgroundColor: theme.surface }]}>
                       <Ionicons name="create-outline" size={16} color={theme.textSecondary} />
@@ -731,6 +771,22 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                     </TouchableOpacity>
                   </View>
                 </View>
+                {lockInfo.locked && (
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -4, marginBottom: 8 }}
+                    onPress={() => openPaywall('locked_group')}
+                    activeOpacity={0.8}
+                  >
+                    <Image
+                      source={require('../../../assets/pro_icon.png')}
+                      style={{ width: 11, height: 11 }}
+                      resizeMode="contain"
+                    />
+                    <Text style={{ fontSize: 11, color: '#D4AF37', fontWeight: '500' }}>
+                      {lockInfo.reason} • Tap to unlock
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <View style={styles.chipRow}>
                   {(group.apps || []).slice(0, 5).map(app => (
                     <View key={app.id} style={[styles.chip, { backgroundColor: theme.surface }]}>
@@ -745,7 +801,8 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                   )}
                 </View>
               </View>
-            ))}
+            );
+            })}
 
             {/* Subtle Spacing */}
             <View style={{ height: 16 }} />
@@ -770,15 +827,38 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                 <Ionicons name="globe-outline" size={28} color={theme.textSecondary} />
                 <Text style={[styles.emptyCardText, { color: theme.textSecondary }]}>No website groups</Text>
               </View>
-            ) : websiteGroups.map(group => (
-              <View key={group.id} style={[styles.groupCard, { backgroundColor: theme.card }]}>
+            ) : websiteGroups.map((group, index) => {
+              const lockInfo = isWebsiteGroupLocked(group, index);
+              return (
+              <View
+                key={group.id}
+                style={[
+                  styles.groupCard,
+                  { backgroundColor: theme.card },
+                  lockInfo.locked && { borderColor: 'rgba(212, 175, 55, 0.35)', borderWidth: 1 },
+                ]}
+              >
                 <View style={styles.groupHeader}>
-                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <Text style={[styles.groupName, { color: theme.text }]}>{group.name}</Text>
                     {group.is_default && (
                       <View style={[styles.defaultBadge, { backgroundColor: `${theme.accent}20` }]}>
                         <Text style={[styles.defaultBadgeText, { color: theme.accent }]}>default</Text>
                       </View>
+                    )}
+                    {lockInfo.locked && (
+                      <TouchableOpacity
+                        onPress={() => openPaywall('locked_group')}
+                        style={styles.proBadge}
+                        activeOpacity={0.8}
+                      >
+                        <Image
+                          source={require('../../../assets/pro_icon.png')}
+                          style={{ width: 13, height: 13 }}
+                          resizeMode="contain"
+                        />
+                        <Text style={styles.proBadgeText}>PRO</Text>
+                      </TouchableOpacity>
                     )}
                   </View>
                   <View style={styles.groupActions}>
@@ -790,6 +870,22 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                     </TouchableOpacity>
                   </View>
                 </View>
+                {lockInfo.locked && (
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -4, marginBottom: 8 }}
+                    onPress={() => openPaywall('locked_group')}
+                    activeOpacity={0.8}
+                  >
+                    <Image
+                      source={require('../../../assets/pro_icon.png')}
+                      style={{ width: 11, height: 11 }}
+                      resizeMode="contain"
+                    />
+                    <Text style={{ fontSize: 11, color: '#D4AF37', fontWeight: '500' }}>
+                      {lockInfo.reason} • Tap to unlock
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <View style={styles.chipRow}>
                   {(group.websites || []).slice(0, 5).map(site => {
                     const domain = site.replace(/^https?:\/\//, '').split('/')[0];
@@ -806,7 +902,8 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
                   )}
                 </View>
               </View>
-            ))}
+            );
+            })}
           </View>
         )}
 
@@ -1229,5 +1326,22 @@ const styles = StyleSheet.create({
   freeNoticeSubtitle: {
     fontSize: 11,
     marginTop: 2,
+  },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.45)',
+  },
+  proBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#D4AF37',
+    letterSpacing: 0.5,
   },
 });

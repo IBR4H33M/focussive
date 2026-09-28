@@ -221,7 +221,7 @@ export default function LoginScreen() {
                   ? 'We sent a 6-digit verification code via SMS to'
                   : 'We sent a 6-digit verification code to'}
               </Text>
-              <Text style={[styles.emailHighlight, { color: theme.accent }]}>
+              <Text style={[styles.emailHighlight, { color: '#2FB556' }]}>
                 {email.trim() || 'your email'}
               </Text>
             </View>
