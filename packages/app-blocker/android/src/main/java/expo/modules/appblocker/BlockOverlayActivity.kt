@@ -33,6 +33,19 @@ class BlockOverlayActivity : Activity() {
 
     private lateinit var root: LinearLayout
 
+    // ── Auto-close: dismiss overlay after 15 s of inactivity ──────────────
+    private val autoCloseHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val autoCloseRunnable = Runnable { exitToHome() }
+
+    private fun startAutoClose() {
+        autoCloseHandler.removeCallbacks(autoCloseRunnable)
+        autoCloseHandler.postDelayed(autoCloseRunnable, 15_000L)
+    }
+
+    private fun cancelAutoClose() {
+        autoCloseHandler.removeCallbacks(autoCloseRunnable)
+    }
+
     private val quotes = arrayOf(
         "\"The secret of getting ahead is getting started.\" — Mark Twain",
         "\"Focus is a muscle. The more you practice, the stronger it gets.\"",
@@ -113,6 +126,9 @@ class BlockOverlayActivity : Activity() {
     private fun renderIdle() {
         val container = verticalLayout(Gravity.CENTER, padDp = 32)
 
+        // Start auto-close countdown — dismissed by any user tap
+        startAutoClose()
+
         // Title
         container.addView(styledText("You are distracted!", 24f, Color.WHITE, bold = true, bottomPadDp = 8))
         container.addView(styledText(
@@ -133,13 +149,13 @@ class BlockOverlayActivity : Activity() {
 
         container.addView(styledText(
             quoteBody,
-            20f, Color.parseColor("#FFD166"), bold = true, bottomPadDp = if (author != null) 6 else 30
+            20f, Color.parseColor("#86EFAC"), bold = true, bottomPadDp = if (author != null) 6 else 30
         ))
 
         if (author != null) {
             container.addView(styledText(
                 author,
-                13f, Color.parseColor("#FFD166"), bold = false, bottomPadDp = 30
+                13f, Color.parseColor("#86EFAC"), bold = false, bottomPadDp = 30
             ))
         }
 
@@ -150,6 +166,7 @@ class BlockOverlayActivity : Activity() {
             bgColor = Color.parseColor("#1A1A1A"),
             borderColor = 0x40FFFFFF.toInt()
         ) {
+            cancelAutoClose()
             exitToHome()
         })
 
@@ -163,6 +180,7 @@ class BlockOverlayActivity : Activity() {
                 bgColor = Color.parseColor("#1A1A1A"),
                 borderColor = 0x40FFFFFF.toInt()
             ) {
+                cancelAutoClose()
                 breakMinutes = 1
                 screen = Screen.BREAK_PICK
                 renderScreen()
@@ -177,6 +195,7 @@ class BlockOverlayActivity : Activity() {
             bgColor = Color.parseColor("#3A0A0A"),
             borderColor = Color.parseColor("#CC4444")
         ) {
+            cancelAutoClose()
             allowMinutes = 1
             screen = Screen.ALLOW_PICK
             renderScreen()
@@ -293,9 +312,14 @@ class BlockOverlayActivity : Activity() {
     }
 
     override fun onBackPressed() {
+        cancelAutoClose()
         exitToHome()
     }
 
+    override fun onDestroy() {
+        cancelAutoClose()
+        super.onDestroy()
+    }
     // ── View helpers ─────────────────────────────────────────
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()

@@ -425,12 +425,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         });
 
         // Break ended from native overlay → call API endpoint, refresh
+        // Note: 404 "No open break found" is benign — means extension already ended it.
         breakEndedListenerRef.current = addListener('onBreakEnded', async () => {
           console.log('AppBlocker: native break ended');
           try {
             await sessionApi.endBreak(desiredId);
-          } catch (e) {
-            console.error('Failed to record native break end:', e);
+          } catch (e: any) {
+            // 404 = break already closed by extension or another client — not an error
+            if (e?.statusCode !== 404 && e?.code !== 'NOT_FOUND') {
+              console.error('Failed to record native break end:', e);
+            }
           }
           await refreshSessions();
         });

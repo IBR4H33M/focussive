@@ -193,11 +193,11 @@ function renderIdle() {
 
       ${currentSettings.overlay_quote_enabled && selectedQuote ? `
         <div style="margin:0 0 22px; padding:0 8px; text-align:center;">
-          <p style="font-style:italic; color:#FFFFFF; font-size:24px; font-weight:700; margin:0; line-height:1.35; letter-spacing:-0.2px; text-shadow:0 2px 8px rgba(0,0,0,0.6);">
+          <p style="font-style:italic; color:#86EFAC; font-size:24px; font-weight:700; margin:0; line-height:1.35; letter-spacing:-0.2px; text-shadow:0 2px 8px rgba(0,0,0,0.6);">
             "${quoteWords}"
           </p>
           ${quotePerson ? `
-            <div style="color:rgba(255,255,255,0.7); font-size:14px; font-weight:400; margin-top:8px; font-style:normal; letter-spacing:0.3px;">
+            <div style="color:#86EFAC; font-size:14px; font-weight:400; margin-top:8px; font-style:normal; letter-spacing:0.3px; opacity:0.85;">
               — ${quotePerson}
             </div>
           ` : ''}
@@ -228,9 +228,9 @@ function renderIdle() {
 
         <!-- Take a break — only if break time available -->
         ${breakAvailable
-          ? `<button id="foc-break" style="${BTN_BASE} background:#16652D; border:none; color:#FFFFFF; display:flex; justify-content:space-between; align-items:center; padding:14px 20px;">
-               <span style="font-size:15px; font-weight:600; color:#FFFFFF;">Take a break?</span>
-               <span style="font-size:17px; font-weight:700; color:#FFFFFF;">${breakMaxMinutes} min</span>
+          ? `<button id="foc-break" style="${BTN_BASE} background:rgba(255,255,255,0.12); border:none; color:#FFFFFF; display:flex; justify-content:space-between; align-items:center; padding:14px 20px;">
+               <span style="font-size:15px; font-weight:500; color:#FFFFFF;">Take a break?</span>
+               <span style="font-size:16px; font-weight:600; color:#FFFFFF;">${breakMaxMinutes} min</span>
              </button>`
           : ''
         }

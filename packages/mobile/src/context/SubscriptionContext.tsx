@@ -176,6 +176,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         try {
           const { customerInfo: cInfo } = await Purchases.logIn(user.id);
           setCustomerInfo(cInfo);
+          if (user.email) Purchases.setEmail(user.email).catch(() => {});
+          if (user.name) Purchases.setDisplayName(user.name).catch(() => {});
           const hasRcPremium =
             cInfo.entitlements.active['premium'] !== undefined ||
             cInfo.entitlements.active['pro'] !== undefined ||

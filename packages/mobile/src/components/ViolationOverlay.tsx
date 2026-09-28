@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   quoteBodyText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFD166',
+    color: '#86EFAC',
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: 26,
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   quoteAuthorText: {
     fontSize: 13,
     fontWeight: '400',
-    color: '#FFD166',
+    color: '#86EFAC',
     textAlign: 'center',
   },
   buttons: {

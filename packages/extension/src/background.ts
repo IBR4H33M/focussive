@@ -249,30 +249,36 @@ async function handleStartBreak(sessionId: string, minutes: number) {
 }
 
 async function endBreak(sessionId: string, breakId?: string) {
-  try {
-    breakActive = false;
-    if (activeBreakTimer) {
-      clearTimeout(activeBreakTimer.timeoutId);
-      activeBreakTimer = null;
-    }
-    chrome.alarms.clear(`break_timer_${sessionId}`).catch(() => {});
-
-    await sessionApi.endBreak(sessionId, breakId);
-    await pollSessions();
-    chrome.runtime.sendMessage({ type: 'BREAK_ENDED' }).catch(() => {});
-
-    // Crucial: Re-check all open tabs immediately so blocked sites like YouTube
-    // are blocked right away without waiting for the user to switch tabs!
-    await checkAllTabs();
-  } catch (error) {
-    console.error('[Focussive BG] End break error:', error);
+  // Clear local break state immediately before API call
+  breakActive = false;
+  if (activeBreakTimer) {
+    clearTimeout(activeBreakTimer.timeoutId);
+    activeBreakTimer = null;
   }
+  chrome.alarms.clear(`break_timer_${sessionId}`).catch(() => {});
+
+  try {
+    await sessionApi.endBreak(sessionId, breakId);
+  } catch (error: any) {
+    // 404 = break already closed by mobile/another client — not an error
+    if (!error?.message?.includes('404') && error?.statusCode !== 404) {
+      console.error('[Focussive BG] End break error:', error);
+    }
+  }
+
+  // Always poll and re-block regardless of API result
+  await pollSessions();
+  chrome.runtime.sendMessage({ type: 'BREAK_ENDED' }).catch(() => {});
+  // Re-check all open tabs immediately so blocked sites are blocked right away
+  await checkAllTabs();
 }
 
 async function checkAllTabs() {
   try {
     const session = await getActiveSession();
     if (!session || !session.browser_focus) return;
+    // Don't re-block during an active break (covers SW restart where breakActive is stale)
+    if (breakActive || (session.is_on_break ?? false)) return;
     const blockedList = session.blocked_websites || [];
     if (blockedList.length === 0) return;
 
@@ -322,10 +328,13 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 const VIOLATION_DELAY_MS = 5000; // 5 seconds before triggering violation
 
 async function checkTab(tabId: number, url: string) {
-  // Skip if on a break
-  if (breakActive) return;
+  // Skip if on a break — also check stored session in case SW restarted and
+  // in-memory breakActive was reset to false while a break is still active.
+  const sessionForBreakCheck = await getActiveSession();
+  const isCurrentlyOnBreak = breakActive || (sessionForBreakCheck?.is_on_break ?? false);
+  if (isCurrentlyOnBreak) return;
 
-  const session = await getActiveSession();
+  const session = sessionForBreakCheck;
   if (!session || !session.browser_focus) return;
 
   const blockedList = session.blocked_websites || [];
@@ -349,8 +358,9 @@ async function checkTab(tabId: number, url: string) {
       // After 5 seconds, check if still on blocked site
       setTimeout(async () => {
         try {
-          // Re-check break status before showing overlay
-          if (breakActive) {
+          // Re-check break status before showing overlay (including stored session fallback)
+          const sessionCheck = await getActiveSession();
+          if (breakActive || (sessionCheck?.is_on_break ?? false)) {
             await clearBlockedTimer(hostname);
             return;
           }
