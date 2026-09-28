@@ -571,12 +571,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
   primaryBreakBtnText: {
     fontSize: 14,
-    fontWeight: 600,
+    fontWeight: 400,
     color: '#FFFFFF',
   },
   primaryBreakBtnSub: {
     fontSize: 12,
-    fontWeight: 500,
+    fontWeight: 400,
     color: 'rgba(255, 255, 255, 0.85)',
   },
   quickBreakRow: {

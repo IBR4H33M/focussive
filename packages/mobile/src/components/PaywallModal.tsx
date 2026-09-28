@@ -248,8 +248,8 @@ export default function PaywallModal() {
                   style={[
                     styles.manageCard,
                     {
-                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : theme.border,
+                      backgroundColor: '#2D2E46',
+                      borderWidth: 0,
                     },
                   ]}
                 >
@@ -351,8 +351,8 @@ export default function PaywallModal() {
                   style={[
                     styles.privilegesCard,
                     {
-                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : theme.border,
+                      backgroundColor: '#2D2E46',
+                      borderWidth: 0,
                     },
                   ]}
                 >
@@ -379,10 +379,6 @@ export default function PaywallModal() {
                     <Ionicons name="checkmark-circle" size={18} color="#34C759" />
                     <Text style={[styles.privilegeText, { color: theme.text }]}>100% Ad-Free Experience</Text>
                   </View>
-                  <View style={styles.privilegeItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#34C759" />
-                    <Text style={[styles.privilegeText, { color: theme.text }]}>Chrome Extension Sync</Text>
-                  </View>
                 </View>
 
                 {/* Store Management & Cancellation */}
@@ -390,8 +386,8 @@ export default function PaywallModal() {
                   style={[
                     styles.storeManageCard,
                     {
-                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : theme.border,
+                      backgroundColor: '#2D2E46',
+                      borderWidth: 0,
                     },
                   ]}
                 >
@@ -408,8 +404,8 @@ export default function PaywallModal() {
                     style={[
                       styles.manageStoreBtn,
                       {
-                        borderColor: theme.accent,
-                        backgroundColor: isDark ? 'rgba(139, 167, 148, 0.12)' : 'rgba(88, 112, 66, 0.08)',
+                        borderWidth: 0,
+                        backgroundColor: isDark ? 'rgba(139, 167, 148, 0.16)' : 'rgba(88, 112, 66, 0.12)',
                       },
                     ]}
                     onPress={handleOpenStore}
@@ -877,7 +873,8 @@ const styles = StyleSheet.create({
   // Subscribed / Manage Subscription Styles
   manageCard: {
     borderRadius: 18,
-    borderWidth: 1,
+    borderWidth: 0,
+    backgroundColor: '#2D2E46',
     padding: 16,
     marginVertical: 12,
   },
@@ -910,16 +907,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   manageDivider: {
-    height: 1,
-    marginVertical: 12,
+    height: 0,
+    marginVertical: 6,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 9,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(150, 150, 150, 0.15)',
+    paddingVertical: 8,
+    borderBottomWidth: 0,
   },
   detailLabel: {
     fontSize: 13.5,
@@ -949,7 +945,8 @@ const styles = StyleSheet.create({
   },
   privilegesCard: {
     borderRadius: 18,
-    borderWidth: 1,
+    borderWidth: 0,
+    backgroundColor: '#2D2E46',
     padding: 16,
     marginVertical: 8,
   },
@@ -971,7 +968,8 @@ const styles = StyleSheet.create({
   },
   storeManageCard: {
     borderRadius: 18,
-    borderWidth: 1,
+    borderWidth: 0,
+    backgroundColor: '#2D2E46',
     padding: 16,
     marginVertical: 10,
   },
