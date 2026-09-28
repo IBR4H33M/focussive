@@ -31,9 +31,10 @@ export async function startSession(req: AuthRequest, res: Response): Promise<voi
   }
 
   const now = new Date();
-  let startedAt = now.toISOString();
+  const requestedStartedAt = req.body?.started_at;
+  let startedAt = requestedStartedAt || now.toISOString();
 
-  if (session.start_time) {
+  if (!requestedStartedAt && session.start_time) {
     const [sh, sm] = session.start_time.split(':').map(Number);
     const scheduledStart = new Date(now);
     scheduledStart.setHours(sh, sm, 0, 0);

@@ -128,32 +128,6 @@ export default function ThemedAlert() {
   const isWarning =
     !isDelete && combined.includes('warning');
 
-  const isNoContainerIcon = isSuccess || isDelete || isWarning;
-
-  const iconName = isError
-    ? 'alert-circle'
-    : isSuccess
-    ? 'checkmark'
-    : (isDelete || isWarning)
-    ? 'warning-outline'
-    : 'information-circle';
-
-  const iconColor = isError
-    ? theme.danger
-    : isSuccess
-    ? '#34C759'
-    : (isDelete || isWarning)
-    ? theme.danger
-    : theme.accent;
-
-  const iconBg = isError
-    ? theme.dangerBg
-    : isNoContainerIcon
-    ? 'transparent'
-    : isDark
-    ? 'rgba(139, 167, 148, 0.18)'
-    : 'rgba(88, 112, 66, 0.15)';
-
   const buttons =
     alert.buttons && alert.buttons.length > 0
       ? alert.buttons
@@ -199,23 +173,22 @@ export default function ThemedAlert() {
             >
               {/* Content Row: Left Icon, Right Text Details */}
               <View style={styles.bodyRow}>
-                <View
-                  style={[
-                    styles.iconContainer,
-                    {
-                      backgroundColor: iconBg,
-                      width: isNoContainerIcon ? 32 : 44,
-                      height: isNoContainerIcon ? 32 : 44,
-                      borderRadius: isNoContainerIcon ? 0 : 22,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={iconName}
-                    size={isSuccess ? 36 : (isDelete || isWarning ? 28 : 24)}
-                    color={iconColor}
-                  />
-                </View>
+                {isSuccess ? (
+                  <View style={styles.successCircle}>
+                    <Ionicons name="checkmark-circle" size={38} color="#34C759" />
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.whiteCircle,
+                      {
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.08)',
+                      },
+                    ]}
+                  >
+                    <Text style={styles.exclamationText}>!</Text>
+                  </View>
+                )}
 
                 <View style={styles.textColumn}>
                   <Text style={[styles.title, { color: theme.text }]}>
@@ -306,10 +279,33 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 14,
   },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  whiteCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  exclamationText: {
+    color: '#2D2E46',
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+    includeFontPadding: false,
+    lineHeight: 24,
+  },
+  successCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 2,

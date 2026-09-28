@@ -24,6 +24,8 @@ export interface StoredSession {
   /** ISO timestamp when the current break will end (null if not on break) */
   break_ends_at: string | null;
   skipped_until?: string | null;
+  schedule?: string;
+  time_slots?: Array<{ start_time: string; end_time: string }>;
 }
 
 export async function getActiveSession(): Promise<StoredSession | null> {

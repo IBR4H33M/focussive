@@ -15,7 +15,7 @@ import React, {
 import { sessionApi, appGroupApi, violationApi, historyApi } from '@/utils/api';
 import { startMonitoring, stopMonitoring, hasRequiredPermissions, addListener, takeBreak } from '@focussive/app-blocker';
 import { useAuth } from './AuthContext';
-import { type Session, type AppGroup, ViolationAction, SessionStatus, isSessionInActiveWindow } from '@focussive/shared';
+import { type Session, type AppGroup, ViolationAction, SessionStatus, isSessionInActiveWindow, getRemainingSeconds, getEffectiveSessionStartMs } from '@focussive/shared';
 import { scheduleSessionReminders, notifySessionCompleted } from '@/utils/sessionReminders';
 import {
   evaluateSessionQualityTier,
@@ -153,12 +153,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           return s;
         })
         .filter((s) => {
-          if (s.started_at) {
-            const startedAtMs = new Date(s.started_at).getTime();
-            const endAtMs = startedAtMs + s.duration * 60_000;
-            if (nowMs >= endAtMs) {
-              return false; // Session time has elapsed
-            }
+          if (getRemainingSeconds(s) <= 0) {
+            return false; // Session time has elapsed
           }
           return true;
         });
@@ -181,8 +177,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           newlyActivated.push(activeSession);
           activeIds.add(s.id);
 
-          // Asynchronously notify backend to mark active
-          sessionApi.start(s.id).catch(() => {});
+          // Asynchronously notify backend to mark active with exact local slot start ISO
+          sessionApi.start(s.id, startD.toISOString()).catch(() => {});
         }
       }
 
@@ -387,21 +383,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               ? Math.max(0, ((mobileActiveSession.max_break_minutes || 5) * 60) - (mobileActiveSession.break_used_seconds ?? 0))
               : 0);
 
-        let startedAtMs = Date.now();
-        if (mobileActiveSession.start_time && (mobileActiveSession as any).schedule && (mobileActiveSession as any).schedule !== 'adhoc') {
-          const [hStr, mStr] = mobileActiveSession.start_time.split(':');
-          const startD = new Date();
-          startD.setHours(parseInt(hStr, 10) || 0, parseInt(mStr, 10) || 0, 0, 0);
-          const endD = new Date(startD.getTime() + mobileActiveSession.duration * 60_000);
-          if (startD.getTime() <= Date.now() && Date.now() < endD.getTime()) {
-            startedAtMs = startD.getTime();
-          } else if (mobileActiveSession.started_at) {
-            startedAtMs = new Date(mobileActiveSession.started_at).getTime();
-          }
-        } else if (mobileActiveSession.started_at) {
-          startedAtMs = new Date(mobileActiveSession.started_at).getTime();
-        }
-        const endAtMs = startedAtMs + mobileActiveSession.duration * 60_000;
+        const startedAtMs = getEffectiveSessionStartMs(mobileActiveSession);
+        const breakUsedMs = (mobileActiveSession.break_used_seconds || 0) * 1000;
+        const endAtMs = startedAtMs + mobileActiveSession.duration * 60_000 + breakUsedMs;
 
         startMonitoring(
           blockedPackages,

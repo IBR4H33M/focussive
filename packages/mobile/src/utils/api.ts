@@ -200,8 +200,8 @@ export const sessionApi = {
       skips_remaining: number;
     }>('/sessions/skip-status'),
 
-  start: (id: string) =>
-    apiRequest(`/sessions/${id}/start`, { method: 'POST' }),
+  start: (id: string, started_at?: string) =>
+    apiRequest(`/sessions/${id}/start`, { method: 'POST', body: started_at ? { started_at } : undefined }),
 
   startBreak: (id: string, source: 'manual' | 'violation' = 'manual', minutes?: number) =>
     apiRequest<{ id: string; remaining_break_seconds: number }>(
@@ -353,6 +353,13 @@ export const subscriptionApi = {
   startTrial: () =>
     apiRequest<SubscriptionStatusResponse>('/user/trial/start', { method: 'POST' }),
 
-  sync: (body: { revenuecat_customer_id?: string; tier?: 'free' | 'premium'; status?: string }) =>
-    apiRequest<SubscriptionStatusResponse>('/user/subscription/sync', { method: 'POST', body }),
+  sync: (body: { revenuecat_customer_id?: string; customer_id?: string; tier?: 'free' | 'premium'; is_premium?: boolean; status?: string }) =>
+    apiRequest<SubscriptionStatusResponse>('/user/subscription/sync', {
+      method: 'POST',
+      body: {
+        ...body,
+        is_premium: body.is_premium ?? (body.tier === 'premium'),
+        customer_id: body.customer_id ?? body.revenuecat_customer_id,
+      },
+    }),
 };

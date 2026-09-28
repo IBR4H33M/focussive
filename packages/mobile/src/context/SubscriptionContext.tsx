@@ -167,6 +167,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
+      let rcHasPremium = false;
       // 1. Identify user with RevenueCat if initialized
       if (isRcInitialized && user.id) {
         try {
@@ -177,11 +178,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
             Object.keys(customerInfo.entitlements.active).length > 0;
 
           if (hasRcPremium) {
+            rcHasPremium = true;
             // Inform backend of active store entitlement
             await subscriptionApi.sync({
               revenuecat_customer_id: customerInfo.originalAppUserId,
               tier: 'premium',
               status: 'active',
+              is_premium: true,
             });
           }
         } catch (rcLoginErr) {
@@ -191,12 +194,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       // 2. Fetch ground-truth subscription status from backend
       const res = await subscriptionApi.getStatus();
-      setTier(res.tier);
-      setStatus(res.status);
+      const effectiveTier = (rcHasPremium || res.tier === 'premium') ? 'premium' : res.tier;
+      const effectiveStatus = (rcHasPremium || res.status === 'active') ? 'active' : res.status;
+      setTier(effectiveTier);
+      setStatus(effectiveStatus);
       setTrialUsed(res.trial_used);
       setTrialEndsAt(res.trial_ends_at ?? null);
       setTrialDaysRemaining(res.trial_days_remaining);
-      setIsTrialActive(res.tier === 'premium' && res.status === 'trial');
+      setIsTrialActive(effectiveTier === 'premium' && effectiveStatus === 'trial');
     } catch (err) {
       console.warn('[Subscription] Refresh error:', err);
     } finally {

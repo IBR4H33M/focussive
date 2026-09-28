@@ -463,6 +463,7 @@ export default function SessionDetailScreen() {
   const breakRemaining = Math.floor((session.break_used_seconds != null
     ? Math.max(0, ((session.max_break_minutes ?? 0) * 60) - session.break_used_seconds)
     : (session.max_break_minutes ?? 0) * 60) / 60);
+  const activeGreen = '#22B14C';
   const [liveRemaining, setLiveRemaining] = useState(() => (isActive ? getRemainingSeconds(session) : 0));
   const [liveElapsed, setLiveElapsed] = useState(() => (isActive ? getElapsedSeconds(session) : 0));
 

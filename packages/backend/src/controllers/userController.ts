@@ -227,7 +227,12 @@ export async function startTrial(req: AuthRequest, res: Response): Promise<void>
 // POST /user/subscription/sync
 export async function syncSubscriptionController(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
-  const { is_premium, customer_id } = req.body;
-  const status = await syncSubscription(userId, Boolean(is_premium), customer_id);
+  const { is_premium, customer_id, revenuecat_customer_id, tier, status: subStatus } = req.body;
+  const isPremium =
+    is_premium !== undefined
+      ? Boolean(is_premium)
+      : (tier === 'premium' || subStatus === 'active');
+  const custId = customer_id || revenuecat_customer_id;
+  const status = await syncSubscription(userId, isPremium, custId);
   res.json(status);
 }

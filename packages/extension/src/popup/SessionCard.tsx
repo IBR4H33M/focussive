@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { StoredSession } from '../utils/storage';
-import { formatCountdown, getRemainingSeconds } from '@focussive/shared';
+import { formatCountdown, getRemainingSeconds, getElapsedSeconds } from '@focussive/shared';
 import type { Session } from '@focussive/shared';
 import { sessionApi } from '../utils/api';
 
@@ -44,6 +44,7 @@ const VIOLATION_RED = '#FFD1D1';
 
 export default function SessionCard({ session, onRefresh }: SessionCardProps) {
   const [remaining, setRemaining] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   const [breakModalOpen, setBreakModalOpen] = useState(false);
   const [breakMinutes, setBreakMinutes] = useState(1);
   const [showSkipModal, setShowSkipModal] = useState(false);
@@ -64,6 +65,9 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
     const sessionLike = {
       started_at: session.started_at,
       duration: session.duration,
+      start_time: session.start_time,
+      schedule: session.schedule,
+      time_slots: session.time_slots,
       break_used_seconds: session.break_used_seconds,
       is_on_break: session.is_on_break,
       break_started_at: session.break_started_at,
@@ -71,6 +75,7 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
     } as any;
 
     setRemaining(getRemainingSeconds(sessionLike));
+    setElapsed(getElapsedSeconds(sessionLike));
 
     // When on break, session timer is paused!
     if (isOnBreak) {
@@ -79,6 +84,7 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
 
     const interval = setInterval(() => {
       setRemaining(getRemainingSeconds(sessionLike));
+      setElapsed(getElapsedSeconds(sessionLike));
     }, 1000);
     return () => clearInterval(interval);
   }, [session, isOnBreak]);
@@ -164,7 +170,7 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
           </div>
           <div style={styles.timerBox}>
             <span style={{ ...styles.durationBig, color: timerColor }}>
-              {formatCountdown(Math.max(0, (session.duration || 0) * 60 - remaining))}
+              {formatCountdown(elapsed)}
             </span>
             <span style={styles.remainingSubText}>
               {formatCountdown(remaining)} remaining
