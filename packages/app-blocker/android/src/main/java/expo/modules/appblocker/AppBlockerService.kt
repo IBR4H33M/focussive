@@ -1,5 +1,6 @@
 package expo.modules.appblocker
 
+import android.app.ActivityOptions
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
@@ -14,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
@@ -183,6 +185,10 @@ class AppBlockerService : Service() {
                 if (pkgs != null) blockedPackages = pkgs
                 allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", false)
                 remainingBreakSeconds = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
+                Log.d("AppBlocker", "UPDATE_PACKAGES: Updated ${blockedPackages.size} blocked packages: $blockedPackages")
+                if (currentSessionId != null && currentSessionName != null) {
+                    saveSessionState(currentSessionId!!, currentSessionName!!, currentTargetMillis, currentStartMillis)
+                }
                 updateActiveNotification()
                 return START_STICKY
             }
@@ -312,6 +318,13 @@ class AppBlockerService : Service() {
                     val savedStart = getSharedPreferences("focussive_session", Context.MODE_PRIVATE).getLong("active_session_start", 0L)
                     currentStartMillis = if (savedStart > 0L) savedStart else (if (currentTargetMillis > 0L) currentTargetMillis - 25 * 60 * 1000L else System.currentTimeMillis())
                 }
+
+                val newBlockedPackages = intent.getStringArrayListExtra("BLOCKED_PACKAGES")
+                if (newBlockedPackages != null) {
+                    blockedPackages = newBlockedPackages
+                }
+                Log.d("AppBlocker", "START_ACTIVE: Loaded ${blockedPackages.size} blocked packages: $blockedPackages")
+
                 allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", true)
                 val intentBreakSec = intent.getIntExtra("REMAINING_BREAK_SECONDS", -1)
                 remainingBreakSeconds = if (intentBreakSec >= 0) {
@@ -434,15 +447,23 @@ class AppBlockerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private var lastOverlayShownTime = 0L
+    private var lastOverlayPackage: String? = null
+
     private fun checkForegroundApp() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        if (powerManager?.isInteractive == false) {
+            return
+        }
+
         val time = System.currentTimeMillis()
-        val events = usageStatsManager.queryEvents(time - 10_000, time)
+        val events = usageStatsManager.queryEvents(time - 15_000, time)
         val event = UsageEvents.Event()
         var currentPackage: String? = null
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED || event.eventType == 1) {
                 currentPackage = event.packageName
             }
         }
@@ -462,16 +483,48 @@ class AppBlockerService : Service() {
     }
 
     private fun showBlockOverlay(packageName: String) {
+        val now = System.currentTimeMillis()
+        if (packageName == lastOverlayPackage && now - lastOverlayShownTime < 1500L) {
+            return
+        }
+        lastOverlayShownTime = now
+        lastOverlayPackage = packageName
+
         val intent = Intent(this, BlockOverlayActivity::class.java).apply {
             // FLAG_ACTIVITY_NEW_TASK required to start activity from a Service.
-            // Do NOT use CLEAR_TOP — it would clear the blocked app from the stack
-            // causing it to close when the overlay finishes.
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra("BLOCKED_PACKAGE", packageName)
             putExtra("ALLOW_BREAKS", allowBreaks)
             putExtra("REMAINING_BREAK_SECONDS", remainingBreakSeconds)
         }
-        startActivity(intent)
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val options = ActivityOptions.makeBasic().apply {
+                    setPendingIntentBackgroundActivityStartMode(
+                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                    )
+                }.toBundle()
+                val pendingIntent = PendingIntent.getActivity(
+                    this,
+                    (System.currentTimeMillis() % 10000).toInt(),
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    options
+                )
+                pendingIntent.send(this, 0, null, null, null, null, options)
+            } else {
+                startActivity(intent)
+            }
+            Log.d("AppBlocker", "Launched BlockOverlayActivity for $packageName")
+        } catch (e: Exception) {
+            Log.e("AppBlocker", "Failed to launch BlockOverlayActivity via PendingIntent, falling back to startActivity", e)
+            try {
+                startActivity(intent)
+            } catch (e2: Exception) {
+                Log.e("AppBlocker", "Fallback startActivity also failed", e2)
+            }
+        }
     }
 
     private fun getForegroundNotification(): Notification {

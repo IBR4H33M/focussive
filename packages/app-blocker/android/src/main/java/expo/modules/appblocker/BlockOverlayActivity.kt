@@ -85,6 +85,20 @@ class BlockOverlayActivity : Activity() {
         renderScreen()
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent != null) {
+            blockedPackage = intent.getStringExtra("BLOCKED_PACKAGE")
+            val remainingBreakSeconds = intent.getIntExtra("REMAINING_BREAK_SECONDS", 0)
+            val allowBreaks = intent.getBooleanExtra("ALLOW_BREAKS", false)
+            breakAvailable = allowBreaks && remainingBreakSeconds > 0
+            breakMaxMinutes = (remainingBreakSeconds / 60).coerceAtLeast(1)
+            screen = Screen.IDLE
+            renderScreen()
+        }
+    }
+
     // ── Rendering ─────────────────────────────────────────────
 
     private fun renderScreen() {

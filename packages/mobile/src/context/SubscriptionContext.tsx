@@ -57,6 +57,7 @@ export interface SubscriptionContextType {
   trialDaysRemaining: number;
   trialUsed: boolean;
   trialEndsAt: string | null;
+  customerInfo: CustomerInfo | null;
   packages: PurchasesPackage[];
   isLoading: boolean;
   isPaywallVisible: boolean;
@@ -95,6 +96,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number>(0);
   const [trialUsed, setTrialUsed] = useState<boolean>(false);
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
 
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -160,6 +162,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setTrialDaysRemaining(0);
       setTrialUsed(false);
       setTrialEndsAt(null);
+      setCustomerInfo(null);
       setIsLoading(false);
       return;
     }
@@ -171,17 +174,18 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       // 1. Identify user with RevenueCat if initialized
       if (isRcInitialized && user.id) {
         try {
-          const { customerInfo } = await Purchases.logIn(user.id);
+          const { customerInfo: cInfo } = await Purchases.logIn(user.id);
+          setCustomerInfo(cInfo);
           const hasRcPremium =
-            customerInfo.entitlements.active['premium'] !== undefined ||
-            customerInfo.entitlements.active['pro'] !== undefined ||
-            Object.keys(customerInfo.entitlements.active).length > 0;
+            cInfo.entitlements.active['premium'] !== undefined ||
+            cInfo.entitlements.active['pro'] !== undefined ||
+            Object.keys(cInfo.entitlements.active).length > 0;
 
           if (hasRcPremium) {
             rcHasPremium = true;
             // Inform backend of active store entitlement
             await subscriptionApi.sync({
-              revenuecat_customer_id: customerInfo.originalAppUserId,
+              revenuecat_customer_id: cInfo.originalAppUserId,
               tier: 'premium',
               status: 'active',
               is_premium: true,
@@ -189,6 +193,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           }
         } catch (rcLoginErr) {
           console.warn('[RevenueCat] logIn error:', rcLoginErr);
+          try {
+            const fallbackInfo = await Purchases.getCustomerInfo();
+            setCustomerInfo(fallbackInfo);
+          } catch {}
         }
       }
 
@@ -267,18 +275,20 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         }
 
         if ('packageType' in pkg) {
-          const { customerInfo } = await Purchases.purchasePackage(pkg as PurchasesPackage);
-          console.log('[RevenueCat] Purchase completed, active entitlements:', Object.keys(customerInfo.entitlements.active));
+          const { customerInfo: cInfo } = await Purchases.purchasePackage(pkg as PurchasesPackage);
+          setCustomerInfo(cInfo);
+          console.log('[RevenueCat] Purchase completed, active entitlements:', Object.keys(cInfo.entitlements.active));
           const hasPremium =
-            customerInfo.entitlements.active['premium'] !== undefined ||
-            customerInfo.entitlements.active['pro'] !== undefined ||
-            Object.keys(customerInfo.entitlements.active).length > 0;
+            cInfo.entitlements.active['premium'] !== undefined ||
+            cInfo.entitlements.active['pro'] !== undefined ||
+            Object.keys(cInfo.entitlements.active).length > 0;
 
           if (hasPremium) {
             await subscriptionApi.sync({
-              revenuecat_customer_id: customerInfo.originalAppUserId,
+              revenuecat_customer_id: cInfo.originalAppUserId,
               tier: 'premium',
               status: 'active',
+              is_premium: true,
             });
             await refreshSubscription();
             Alert.alert('Subscribed', 'Welcome to Focussive Premium!');
@@ -307,18 +317,20 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         Alert.alert('Restore Purchases', 'No purchases found for this account.');
         return false;
       }
-      const customerInfo: CustomerInfo = await Purchases.restorePurchases();
-      console.log('[RevenueCat] Restore completed, active entitlements:', Object.keys(customerInfo.entitlements.active));
+      const cInfo: CustomerInfo = await Purchases.restorePurchases();
+      setCustomerInfo(cInfo);
+      console.log('[RevenueCat] Restore completed, active entitlements:', Object.keys(cInfo.entitlements.active));
       const hasPremium =
-        customerInfo.entitlements.active['premium'] !== undefined ||
-        customerInfo.entitlements.active['pro'] !== undefined ||
-        Object.keys(customerInfo.entitlements.active).length > 0;
+        cInfo.entitlements.active['premium'] !== undefined ||
+        cInfo.entitlements.active['pro'] !== undefined ||
+        Object.keys(cInfo.entitlements.active).length > 0;
 
       if (hasPremium) {
         await subscriptionApi.sync({
-          revenuecat_customer_id: customerInfo.originalAppUserId,
+          revenuecat_customer_id: cInfo.originalAppUserId,
           tier: 'premium',
           status: 'active',
+          is_premium: true,
         });
         await refreshSubscription();
         Alert.alert('Purchases Restored', 'Your premium subscription has been successfully restored!');
@@ -350,6 +362,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         trialDaysRemaining,
         trialUsed,
         trialEndsAt,
+        customerInfo,
         packages,
         isLoading,
         isPaywallVisible,
