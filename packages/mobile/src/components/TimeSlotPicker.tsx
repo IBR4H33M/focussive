@@ -1,18 +1,20 @@
 // ============================================================
 // Focussive Mobile — TimeSlotPicker Component
-// Free-scrollable Samsung Alarm Clock Style Wheel Picker
+// Buttery-smooth Samsung OneUI Clock Style Wheel Picker
+// Native 120fps GPU-accelerated scaling & opacity transitions
 // Supports both 24-hour and 12-hour (with AM/PM toggle) modes
 // ============================================================
 
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   ScrollView,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
+  Animated,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
@@ -29,10 +31,86 @@ interface TimeSlotPickerProps {
   use24Hour?: boolean;
   theme: any;
   maxSlots?: number;
+  onScrollStart?: () => void;
+  onScrollEnd?: () => void;
+}
+
+interface WheelItemProps {
+  num: number;
+  index: number;
+  scrollY: Animated.Value;
+  onPress: (index: number) => void;
+  textColor: string;
 }
 
 /**
- * Free-scrollable column with physics momentum (Samsung Alarm clock style)
+ * Individual wheel item driven entirely by the native RenderThread.
+ * Scale: 0.65 -> 0.80 -> 1.16 -> 0.80 -> 0.65 (Samsung OneUI magnification)
+ * Opacity: 0.08 -> 0.38 -> 1.00 -> 0.38 -> 0.08 (Smooth fading)
+ */
+const WheelItem = React.memo(function WheelItem({
+  num,
+  index,
+  scrollY,
+  onPress,
+  textColor,
+}: WheelItemProps) {
+  const itemOffset = index * ITEM_HEIGHT;
+
+  const scale = useMemo(() => {
+    return scrollY.interpolate({
+      inputRange: [
+        itemOffset - 2 * ITEM_HEIGHT,
+        itemOffset - ITEM_HEIGHT,
+        itemOffset,
+        itemOffset + ITEM_HEIGHT,
+        itemOffset + 2 * ITEM_HEIGHT,
+      ],
+      outputRange: [0.65, 0.80, 1.16, 0.80, 0.65],
+      extrapolate: 'clamp',
+    });
+  }, [scrollY, itemOffset]);
+
+  const opacity = useMemo(() => {
+    return scrollY.interpolate({
+      inputRange: [
+        itemOffset - 2 * ITEM_HEIGHT,
+        itemOffset - ITEM_HEIGHT,
+        itemOffset,
+        itemOffset + ITEM_HEIGHT,
+        itemOffset + 2 * ITEM_HEIGHT,
+      ],
+      outputRange: [0.08, 0.38, 1.0, 0.38, 0.08],
+      extrapolate: 'clamp',
+    });
+  }, [scrollY, itemOffset]);
+
+  return (
+    <Pressable
+      onPress={() => onPress(index)}
+      style={styles.wheelItem}
+      hitSlop={{ top: 2, bottom: 2 }}
+    >
+      <Animated.View
+        style={[
+          styles.wheelItemContent,
+          {
+            transform: [{ scale }],
+            opacity,
+          },
+        ]}
+      >
+        <Text style={[styles.wheelNumber, { color: textColor }]}>
+          {num.toString().padStart(2, '0')}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  );
+});
+
+/**
+ * Free-scrollable column with Samsung OneUI physics momentum.
+ * Uses Animated.ScrollView with useNativeDriver for true 120fps fluid motion.
  */
 function WheelColumn({
   value,
@@ -41,6 +119,8 @@ function WheelColumn({
   onChange,
   theme,
   width = 54,
+  onScrollStart,
+  onScrollEnd,
 }: {
   value: number;
   count: number;
@@ -48,16 +128,19 @@ function WheelColumn({
   onChange: (val: number) => void;
   theme: any;
   width?: number;
+  onScrollStart?: () => void;
+  onScrollEnd?: () => void;
 }) {
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<any>(null);
   const isDragging = useRef(false);
+  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Middle cycle starts at index (1 * count)
-  const initialIndex = 1 * count + (value - min);
+  const safeValue = isNaN(value) ? min : Math.max(min, Math.min(min + count - 1, value));
+  const initialIndex = 1 * count + (safeValue - min);
   const initialOffset = initialIndex * ITEM_HEIGHT;
-  const currentCenter = useRef(initialIndex);
-  // centerIndex only updates when scroll fully settles — prevents flicker during fling
-  const [centerIndex, setCenterIndex] = useState(initialIndex);
+
+  const scrollY = useRef(new Animated.Value(initialOffset)).current;
+  const internalValueRef = useRef(safeValue);
 
   // Generate 3 repetitions of numbers [min .. min + count - 1]
   const items = useMemo(() => {
@@ -72,118 +155,142 @@ function WheelColumn({
 
   // Sync when prop value changes from outside (e.g. AM/PM toggle)
   useEffect(() => {
-    if (!isDragging.current) {
+    if (value !== internalValueRef.current) {
+      internalValueRef.current = value;
       const targetIndex = 1 * count + (value - min);
-      currentCenter.current = targetIndex;
-      setCenterIndex(targetIndex);
-      scrollRef.current?.scrollTo({ y: targetIndex * ITEM_HEIGHT, animated: false });
+      const targetY = targetIndex * ITEM_HEIGHT;
+      scrollY.setValue(targetY);
+      scrollRef.current?.scrollTo({ y: targetY, animated: false });
     }
-  }, [value, count, min]);
+  }, [value, count, min, scrollY]);
 
-  // Do NOT update centerIndex during scroll frames — doing so causes rapid
-  // re-renders of all items as the scroll decelerates, producing the flicker
-  // where numbers appear to jump between values mid-spin.
-  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    // Only track the raw position for internal use; do not setState here
-    const y = e.nativeEvent.contentOffset.y;
-    currentCenter.current = Math.round(y / ITEM_HEIGHT);
-  };
+  // Safety timer to guarantee page scrolling is re-enabled even in unexpected touch cancels
+  const resetSafetyTimer = useCallback(() => {
+    if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = setTimeout(() => {
+      if (isDragging.current) {
+        isDragging.current = false;
+        onScrollEnd?.();
+      }
+    }, 1200);
+  }, [onScrollEnd]);
 
-  const handleScrollEnd = (offsetY: number) => {
-    isDragging.current = false;
-    const idx = Math.round(offsetY / ITEM_HEIGHT);
-    const offsetInCycle = ((idx % count) + count) % count;
-    const val = offsetInCycle + min;
-    const normalizedIndex = 1 * count + offsetInCycle;
-    currentCenter.current = normalizedIndex;
-    // Only NOW update the visual selection state — scroll has fully settled
-    setCenterIndex(normalizedIndex);
-    onChange(val);
+  useEffect(() => {
+    return () => {
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+      onScrollEnd?.();
+    };
+  }, [onScrollEnd]);
 
-    // Silently re-center into middle cycle so user can scroll indefinitely
-    const normalizedY = normalizedIndex * ITEM_HEIGHT;
-    scrollRef.current?.scrollTo({ y: normalizedY, animated: false });
-  };
+  const handleScrollEnd = useCallback(
+    (offsetY: number) => {
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+      isDragging.current = false;
+      onScrollEnd?.();
 
-  const handleItemPress = (index: number) => {
-    const offsetInCycle = ((index % count) + count) % count;
-    const val = offsetInCycle + min;
-    const targetY = index * ITEM_HEIGHT;
-    scrollRef.current?.scrollTo({ y: targetY, animated: true });
-    currentCenter.current = index;
-    setCenterIndex(index);
-    onChange(val);
-  };
+      const idx = Math.round(offsetY / ITEM_HEIGHT);
+      const offsetInCycle = ((idx % count) + count) % count;
+      const val = offsetInCycle + min;
+      const normalizedIndex = 1 * count + offsetInCycle;
+
+      internalValueRef.current = val;
+      onChange(val);
+
+      // Silently re-center into middle cycle only if the user flung far into cycle 0 or cycle 2
+      if (idx !== normalizedIndex) {
+        const normalizedY = normalizedIndex * ITEM_HEIGHT;
+        scrollY.setValue(normalizedY);
+        scrollRef.current?.scrollTo({ y: normalizedY, animated: false });
+      }
+    },
+    [count, min, onChange, onScrollEnd, scrollY]
+  );
+
+  const handleItemPress = useCallback(
+    (index: number) => {
+      const offsetInCycle = ((index % count) + count) % count;
+      const val = offsetInCycle + min;
+      const targetY = index * ITEM_HEIGHT;
+      scrollRef.current?.scrollTo({ y: targetY, animated: true });
+      internalValueRef.current = val;
+      onChange(val);
+    },
+    [count, min, onChange]
+  );
+
+  const onScrollAnimated = useMemo(() => {
+    return Animated.event(
+      [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+      {
+        useNativeDriver: true,
+        listener: () => {
+          resetSafetyTimer();
+        },
+      }
+    );
+  }, [scrollY, resetSafetyTimer]);
 
   return (
     <View style={[styles.wheelContainer, { width, height: VISIBLE_HEIGHT }]}>
-      <ScrollView
+      <Animated.ScrollView
         ref={scrollRef}
         nestedScrollEnabled={true}
         showsVerticalScrollIndicator={false}
-        decelerationRate="fast"
+        decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.988}
         snapToInterval={ITEM_HEIGHT}
         snapToAlignment="start"
+        disableIntervalMomentum={false}
+        fadingEdgeLength={24}
+        bounces={false}
+        overScrollMode="never"
         contentOffset={{ x: 0, y: initialOffset }}
         contentContainerStyle={{ paddingVertical: ITEM_HEIGHT }}
         onScrollBeginDrag={() => {
           isDragging.current = true;
+          onScrollStart?.();
         }}
-        onScroll={handleScroll}
+        onScroll={onScrollAnimated}
         scrollEventThrottle={16}
-        onMomentumScrollEnd={(e) => handleScrollEnd(e.nativeEvent.contentOffset.y)}
-        onScrollEndDrag={(e) => {
-          if (!e.nativeEvent.velocity?.y || Math.abs(e.nativeEvent.velocity.y) < 0.1) {
+        onMomentumScrollEnd={(e: any) => handleScrollEnd(e.nativeEvent.contentOffset.y)}
+        onScrollEndDrag={(e: any) => {
+          const vy = e.nativeEvent.velocity?.y;
+          if (!vy || Math.abs(vy) < 0.05) {
             handleScrollEnd(e.nativeEvent.contentOffset.y);
           }
         }}
-        overScrollMode="never"
       >
-        {items.map((num, idx) => {
-          const isCenter = idx === centerIndex;
-          const isAdjacent = Math.abs(idx - centerIndex) === 1;
-
-          return (
-            <TouchableOpacity
-              key={`item-${idx}`}
-              onPress={() => handleItemPress(idx)}
-              activeOpacity={0.7}
-              style={styles.wheelItem}
-            >
-              <Text
-                style={[
-                  styles.wheelNumber,
-                  {
-                    color: isCenter ? theme.text : theme.textSecondary,
-                    fontSize: isCenter ? 32 : isAdjacent ? 18 : 14,
-                    fontWeight: isCenter ? '700' : '400',
-                    opacity: isCenter ? 1 : isAdjacent ? 0.35 : 0.12,
-                  },
-                ]}
-              >
-                {num.toString().padStart(2, '0')}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+        {items.map((num, idx) => (
+          <WheelItem
+            key={`item-${idx}`}
+            num={num}
+            index={idx}
+            scrollY={scrollY}
+            onPress={handleItemPress}
+            textColor={theme.text}
+          />
+        ))}
+      </Animated.ScrollView>
     </View>
   );
 }
 
 /**
- * Free-floating time display [HH : MM] with optional AM/PM toggle below
+ * Free-floating time display [HH : MM] with Samsung OneUI selection capsule & optional AM/PM toggle
  */
 function TimeBox({
   timeStr,
   onChangeTime,
   use24Hour = false,
   theme,
+  onScrollStart,
+  onScrollEnd,
 }: {
   timeStr: string;
   onChangeTime: (time: string) => void;
   use24Hour?: boolean;
   theme: any;
+  onScrollStart?: () => void;
+  onScrollEnd?: () => void;
 }) {
   const isDark = useIsDark();
   const toggleBg = isDark ? '#2D2E46' : theme.surface;
@@ -230,14 +337,27 @@ function TimeBox({
 
   return (
     <View style={styles.timeBoxColumn}>
-      {/* Wheels row: [HH] : [MM] */}
+      {/* Wheels row: [HH] : [MM] with Samsung OneUI selection capsule behind */}
       <View style={styles.wheelsRow}>
+        <View
+          pointerEvents="none"
+          style={[
+            styles.selectionCapsule,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+            },
+          ]}
+        />
+
         <WheelColumn
           value={displayHours}
           count={use24Hour ? 24 : 12}
           min={use24Hour ? 0 : 1}
           onChange={setHours}
           theme={theme}
+          onScrollStart={onScrollStart}
+          onScrollEnd={onScrollEnd}
         />
 
         <View style={styles.colonContainer}>
@@ -250,6 +370,8 @@ function TimeBox({
           min={0}
           onChange={setMinutes}
           theme={theme}
+          onScrollStart={onScrollStart}
+          onScrollEnd={onScrollEnd}
         />
       </View>
 
@@ -305,6 +427,8 @@ export default function TimeSlotPicker({
   use24Hour = false,
   theme,
   maxSlots = 5,
+  onScrollStart,
+  onScrollEnd,
 }: TimeSlotPickerProps) {
   function handleUpdateSlot(index: number, field: 'start_time' | 'end_time', value: string) {
     const updated = slots.map((s, i) => (i === index ? { ...s, [field]: value } : s));
@@ -337,12 +461,14 @@ export default function TimeSlotPicker({
     <View style={styles.container}>
       {slots.map((slot, index) => (
         <View key={`slot-${index}`} style={styles.slotRow}>
-          {/* Left: Start time without container */}
+          {/* Left: Start time */}
           <TimeBox
             timeStr={slot.start_time}
             onChangeTime={(val) => handleUpdateSlot(index, 'start_time', val)}
             use24Hour={use24Hour}
             theme={theme}
+            onScrollStart={onScrollStart}
+            onScrollEnd={onScrollEnd}
           />
 
           {/* Dash separator in between */}
@@ -350,12 +476,14 @@ export default function TimeSlotPicker({
             <Ionicons name="remove-outline" size={22} color={theme.textSecondary} />
           </View>
 
-          {/* Right: End time without container */}
+          {/* Right: End time */}
           <TimeBox
             timeStr={slot.end_time}
             onChangeTime={(val) => handleUpdateSlot(index, 'end_time', val)}
             use24Hour={use24Hour}
             theme={theme}
+            onScrollStart={onScrollStart}
+            onScrollEnd={onScrollEnd}
           />
 
           {/* Remove icon if more than 1 slot */}
@@ -371,7 +499,7 @@ export default function TimeSlotPicker({
         </View>
       ))}
 
-      {/* Plus icon ONLY: single, larger and fatter plus without borders or circle fill */}
+      {/* Plus icon: clean SVG plus */}
       {slots.length < maxSlots && (
         <TouchableOpacity
           onPress={handleAddSlot}
@@ -409,11 +537,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   wheelsRow: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
-    borderWidth: 0,
+    paddingHorizontal: 4,
+  },
+  selectionCapsule: {
+    position: 'absolute',
+    top: ITEM_HEIGHT, // Center row offset
+    height: ITEM_HEIGHT,
+    left: 2,
+    right: 2,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   wheelContainer: {
     overflow: 'hidden',
@@ -423,7 +561,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  wheelItemContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   wheelNumber: {
+    fontSize: 27,
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
     letterSpacing: 0.5,
   },
@@ -431,12 +575,12 @@ const styles = StyleSheet.create({
     height: VISIBLE_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 3,
+    paddingHorizontal: 4,
   },
   colon: {
-    fontSize: 28,
-    fontWeight: '300',
-    lineHeight: 32,
+    fontSize: 26,
+    fontWeight: '600',
+    lineHeight: 30,
   },
   dashContainer: {
     paddingHorizontal: 8,

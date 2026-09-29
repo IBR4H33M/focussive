@@ -94,6 +94,7 @@ export default function SessionDetailScreen() {
   const [appGroups, setAppGroups] = useState<AppGroup[]>([]);
   const [breakModalVisible, setBreakModalVisible] = useState(false);
   const [breakPickerMinutes, setBreakPickerMinutes] = useState(1);
+  const [editModalScrollEnabled, setEditModalScrollEnabled] = useState(true);
 
   // Edit form state
   const [editName, setEditName] = useState('');
@@ -769,7 +770,11 @@ export default function SessionDetailScreen() {
 
       {/* Edit Modal */}
       <Modal visible={editModalVisible} animationType="slide">
-        <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
+        <ScrollView
+          style={[styles.container, { backgroundColor: theme.background }]}
+          contentContainerStyle={styles.content}
+          scrollEnabled={editModalScrollEnabled}
+        >
           <View style={[styles.modalHeader, { justifyContent: 'flex-end' }]}>
             <TouchableOpacity onPress={() => setEditModalVisible(false)}>
               <Ionicons name="close" size={24} color={theme.textSecondary} />
@@ -794,6 +799,8 @@ export default function SessionDetailScreen() {
             use24Hour={use24Hour}
             theme={theme}
             maxSlots={5}
+            onScrollStart={() => setEditModalScrollEnabled(false)}
+            onScrollEnd={() => setEditModalScrollEnabled(true)}
           />
 
           <Text style={[styles.label, { color: theme.textSecondary }]}>SCHEDULE</Text>

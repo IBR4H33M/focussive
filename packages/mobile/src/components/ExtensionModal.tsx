@@ -451,8 +451,8 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                     tab === 'scan' && [
                       styles.tabItemActive,
                       {
-                        backgroundColor: isDark ? '#383A59' : '#FFFFFF',
-                        borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.08)',
+                        backgroundColor: '#62774C',
+                        borderColor: '#62774C',
                       },
                     ],
                   ]}
@@ -462,13 +462,13 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                   <Ionicons
                     name="qr-code-outline"
                     size={17}
-                    color={tab === 'scan' ? '#D4AF37' : POPUP_MUTED}
+                    color={tab === 'scan' ? '#FFFFFF' : POPUP_MUTED}
                   />
                   <Text
                     style={[
                       styles.tabText,
                       {
-                        color: tab === 'scan' ? POPUP_TEXT : POPUP_MUTED,
+                        color: tab === 'scan' ? '#FFFFFF' : POPUP_MUTED,
                         fontWeight: tab === 'scan' ? '700' : '500',
                       },
                     ]}
@@ -483,8 +483,8 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                     tab === 'code' && [
                       styles.tabItemActive,
                       {
-                        backgroundColor: isDark ? '#383A59' : '#FFFFFF',
-                        borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.08)',
+                        backgroundColor: '#62774C',
+                        borderColor: '#62774C',
                       },
                     ],
                   ]}
@@ -494,13 +494,13 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                   <Ionicons
                     name="keypad-outline"
                     size={17}
-                    color={tab === 'code' ? '#D4AF37' : POPUP_MUTED}
+                    color={tab === 'code' ? '#FFFFFF' : POPUP_MUTED}
                   />
                   <Text
                     style={[
                       styles.tabText,
                       {
-                        color: tab === 'code' ? POPUP_TEXT : POPUP_MUTED,
+                        color: tab === 'code' ? '#FFFFFF' : POPUP_MUTED,
                         fontWeight: tab === 'code' ? '700' : '500',
                       },
                     ]}
@@ -513,27 +513,14 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
               {/* TAB 1: Scan QR Code from Desktop Extension */}
               {tab === 'scan' && (
                 <View style={styles.tabContent}>
-                  {/* Chrome Web Store Guide Banner */}
-                  <View
-                    style={[
-                      styles.webstoreGuideCard,
-                      {
-                        backgroundColor: isDark ? 'rgba(212, 175, 55, 0.08)' : 'rgba(212, 175, 55, 0.09)',
-                        borderColor: isDark ? 'rgba(212, 175, 55, 0.28)' : 'rgba(212, 175, 55, 0.35)',
-                      },
-                    ]}
-                  >
-                    <View style={styles.webstoreIconCircle}>
-                      <Ionicons name="globe-outline" size={18} color="#D4AF37" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.webstoreTitle, { color: POPUP_TEXT }]}>
-                        First time setting up?
-                      </Text>
-                      <Text style={[styles.webstoreSubtitle, { color: POPUP_MUTED }]}>
-                        Search for <Text style={{ color: '#D4AF37', fontWeight: '700' }}>&ldquo;FOCUSSIVE companion&rdquo;</Text> in the Chrome Web Store on your computer.
-                      </Text>
-                    </View>
+                  {/* Chrome Web Store Guide Info */}
+                  <View style={styles.webstoreGuideTextContainer}>
+                    <Text style={[styles.webstoreTitle, { color: POPUP_TEXT }]}>
+                      First time setting up?
+                    </Text>
+                    <Text style={[styles.webstoreSubtitle, { color: POPUP_MUTED }]}>
+                      Search for <Text style={{ color: '#2FB556', fontWeight: '700' }}>&ldquo;FOCUSSIVE companion&rdquo;</Text> in the Chrome Web Store.
+                    </Text>
                   </View>
 
                   {scanMode === 'camera' ? (
@@ -893,32 +880,20 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     letterSpacing: 0.2,
   },
-  webstoreGuideCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 13,
-    borderRadius: 14,
-    borderWidth: 1,
+  webstoreGuideTextContainer: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
     marginBottom: 8,
-  },
-  webstoreIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    gap: 3,
   },
   webstoreTitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
-    marginBottom: 2,
     letterSpacing: 0.2,
   },
   webstoreSubtitle: {
-    fontSize: 12.5,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 18,
   },
   tabContent: {
     gap: 12,

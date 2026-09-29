@@ -80,6 +80,7 @@ export default function CreateSessionScreen() {
   const [maxBreakMinutes, setMaxBreakMinutes] = useState('5');
   const [appIconMap, setAppIconMap] = useState<Record<string, string>>({});
   const [breakKeyboardSpacer, setBreakKeyboardSpacer] = useState(0);
+  const [pageScrollEnabled, setPageScrollEnabled] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
   const isBreakInputFocused = useRef(false);
   const currentKeyboardHeight = useRef(0);
@@ -372,6 +373,7 @@ export default function CreateSessionScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          scrollEnabled={pageScrollEnabled}
         >
         {/* Session Name */}
         <Text style={[styles.label, { color: theme.textSecondary, marginTop: 4 }]}>SESSION NAME</Text>
@@ -396,6 +398,8 @@ export default function CreateSessionScreen() {
         use24Hour={use24Hour}
         theme={theme}
         maxSlots={5}
+        onScrollStart={() => setPageScrollEnabled(false)}
+        onScrollEnd={() => setPageScrollEnabled(true)}
       />
 
       {/* Schedule Type */}

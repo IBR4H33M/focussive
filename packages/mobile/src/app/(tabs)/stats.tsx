@@ -903,37 +903,31 @@ export default function StatsScreen() {
           style={[
             styles.segmentContainer,
             {
-              borderColor: theme.accent,
-              backgroundColor: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.04)',
+              backgroundColor: isDark ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0.05)',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
             },
           ]}
         >
           {SECTIONS.map((sectionName, index) => {
             const isSelected = activeSection === index;
-            const isFirst = index === 0;
-            const isLast = index === SECTIONS.length - 1;
             return (
               <TouchableOpacity
                 key={sectionName}
                 style={[
                   styles.segmentTab,
-                  isFirst && styles.segmentTabLeft,
-                  isLast && styles.segmentTabRight,
-                  isSelected && {
-                    backgroundColor: theme.accent,
-                  },
+                  isSelected && styles.segmentTabActive,
                 ]}
                 onPress={() => goToSection(index)}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
               >
                 <Text
                   style={[
                     styles.segmentText,
                     {
                       color: isSelected
-                        ? (isDark ? '#2F3456' : '#FFFFFF')
-                        : theme.accent,
-                      fontWeight: isSelected ? '700' : '600',
+                        ? '#FFFFFF'
+                        : (isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary),
+                      fontWeight: isSelected ? '700' : '500',
                     },
                   ]}
                 >
@@ -1367,30 +1361,34 @@ const styles = StyleSheet.create({
   },
   segmentContainer: {
     flexDirection: 'row',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    overflow: 'hidden',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 4,
+    gap: 6,
+    width: '100%',
   },
   segmentTab: {
     flex: 1,
-    paddingVertical: 10,
-    marginVertical: -2,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  segmentTabLeft: {
-    marginLeft: -2,
-    borderTopLeftRadius: 10.5,
-    borderBottomLeftRadius: 10.5,
-  },
-  segmentTabRight: {
-    marginRight: -2,
-    borderTopRightRadius: 10.5,
-    borderBottomRightRadius: 10.5,
+  segmentTabActive: {
+    backgroundColor: '#62774C',
+    borderColor: '#62774C',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
   },
   segmentText: {
-    fontSize: 14,
-    letterSpacing: 0.3,
+    fontSize: 13.5,
+    letterSpacing: 0.2,
   },
 
   sectionContent: { padding: 16, paddingBottom: 160 },

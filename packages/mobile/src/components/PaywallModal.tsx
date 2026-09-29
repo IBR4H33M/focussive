@@ -281,12 +281,6 @@ export default function PaywallModal() {
                         {planTitle}
                       </Text>
                     </View>
-                    <View style={[styles.activeStatusPill, { backgroundColor: 'rgba(52, 199, 89, 0.15)' }]}>
-                      <View style={styles.greenDot} />
-                      <Text style={styles.activeStatusText}>
-                        {isTrial ? 'Free Trial' : willRenew ? 'Active' : 'Cancels Soon'}
-                      </Text>
-                    </View>
                   </View>
 
                   <View

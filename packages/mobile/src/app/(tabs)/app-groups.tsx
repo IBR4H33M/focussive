@@ -428,37 +428,31 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Top Segmented Control: "sessions" and "groups" in a single bordered container */}
+      {/* Top Segmented Control: "sessions" and "groups" */}
       <View style={[styles.topBarWrapper, { paddingTop: Math.max(insets.top + 16, 36) }]}>
         <View
           style={[
             styles.segmentContainer,
             {
-              borderColor: theme.accent,
-              backgroundColor: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.04)',
+              backgroundColor: isDark ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0.05)',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
             },
           ]}
         >
           <TouchableOpacity
             style={[
               styles.segmentTab,
-              styles.segmentTabLeft,
-              activeTab === 'sessions' && {
-                backgroundColor: theme.accent,
-              },
+              activeTab === 'sessions' && styles.segmentTabActive,
             ]}
             onPress={() => setActiveTab('sessions')}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
             <Text
               style={[
                 styles.segmentText,
                 {
-                  color:
-                    activeTab === 'sessions'
-                      ? (isDark ? '#2F3456' : '#FFFFFF')
-                      : theme.accent,
-                  fontWeight: activeTab === 'sessions' ? '700' : '600',
+                  color: activeTab === 'sessions' ? '#FFFFFF' : (isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary),
+                  fontWeight: activeTab === 'sessions' ? '700' : '500',
                 },
               ]}
             >
@@ -469,23 +463,17 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
           <TouchableOpacity
             style={[
               styles.segmentTab,
-              styles.segmentTabRight,
-              activeTab === 'groups' && {
-                backgroundColor: theme.accent,
-              },
+              activeTab === 'groups' && styles.segmentTabActive,
             ]}
             onPress={() => setActiveTab('groups')}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
             <Text
               style={[
                 styles.segmentText,
                 {
-                  color:
-                    activeTab === 'groups'
-                      ? (isDark ? '#2F3456' : '#FFFFFF')
-                      : theme.accent,
-                  fontWeight: activeTab === 'groups' ? '700' : '600',
+                  color: activeTab === 'groups' ? '#FFFFFF' : (isDark ? 'rgba(255, 255, 255, 0.65)' : theme.textSecondary),
+                  fontWeight: activeTab === 'groups' ? '700' : '500',
                 },
               ]}
             >
@@ -539,9 +527,8 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
             {sessionsLoading ? (
               <ActivityIndicator size="small" color={theme.accent} style={{ marginVertical: 32 }} />
             ) : sortedSessions.length === 0 ? (
-              <View style={[styles.emptyCard, { backgroundColor: theme.card }]}>
-                <Ionicons name="bulb-outline" size={36} color={theme.textSecondary} />
-                <Text style={[styles.emptyCardText, { color: theme.textSecondary }]}>
+              <View style={styles.emptySessionsCenter}>
+                <Text style={[styles.emptySessionsText, { color: theme.textSecondary }]}>
                   No sessions created yet
                 </Text>
               </View>
@@ -939,8 +926,7 @@ function isDayActiveForSession(dayKey: string, session: Session): boolean {
             {/* Recommended Apps (based on usage) — top 4 apps */}
             {recommendedApps.length > 0 && (
               <View style={{ marginTop: 2, marginBottom: 14 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, paddingHorizontal: 2 }}>
-                  <Ionicons name="sparkles" size={14} color={theme.accent} />
+                <View style={{ marginBottom: 8, paddingHorizontal: 2 }}>
                   <Text style={[styles.recommendedHeader, { color: theme.accent }]}>RECOMMENDED BASED ON USAGE</Text>
                 </View>
                 {recommendedApps.map(app => {
@@ -1142,30 +1128,34 @@ const styles = StyleSheet.create({
   },
   segmentContainer: {
     flexDirection: 'row',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    overflow: 'hidden',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 4,
+    gap: 6,
+    width: '100%',
   },
   segmentTab: {
     flex: 1,
-    paddingVertical: 10,
-    marginVertical: -2,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  segmentTabLeft: {
-    marginLeft: -2,
-    borderTopLeftRadius: 10.5,
-    borderBottomLeftRadius: 10.5,
-  },
-  segmentTabRight: {
-    marginRight: -2,
-    borderTopRightRadius: 10.5,
-    borderBottomRightRadius: 10.5,
+  segmentTabActive: {
+    backgroundColor: '#62774C',
+    borderColor: '#62774C',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
   },
   segmentText: {
-    fontSize: 14,
-    letterSpacing: 0.3,
+    fontSize: 13.5,
+    letterSpacing: 0.2,
   },
   scrollContent: {
     padding: 16,
@@ -1291,6 +1281,17 @@ const styles = StyleSheet.create({
   defaultBadgeText: { fontSize: 11, fontWeight: '500' },
   emptyCard: { borderRadius: 14, borderWidth: 0, padding: 24, alignItems: 'center', gap: 8, marginBottom: 12 },
   emptyCardText: { fontSize: 14 },
+  emptySessionsCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 100,
+    paddingHorizontal: 20,
+  },
+  emptySessionsText: {
+    fontSize: 15,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   modalContainer: { flex: 1, padding: 20, paddingTop: 50 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 22, fontWeight: '500' },
