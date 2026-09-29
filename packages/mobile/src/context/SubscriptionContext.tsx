@@ -75,7 +75,7 @@ const SubscriptionContext = createContext<SubscriptionContextType | null>(null);
 const REVENUECAT_PUBLIC_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_PUBLIC_KEY ||
   (Constants.expoConfig?.extra as Record<string, string> | undefined)?.revenuecatPublicKey ||
-  'test_MuSObdIzFoUVskINilLfIZiqRZT';
+  'goog_BQVfmhJstHPhPqEvCFoCHiiIEEr';
 
 const REVENUECAT_APPLE_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY ||

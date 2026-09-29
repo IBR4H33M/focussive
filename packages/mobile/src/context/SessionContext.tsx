@@ -113,6 +113,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setCompletedSessionTierData(data);
   }, []);
 
+  const hasLoadedOnceRef = useRef(false);
+
   const [state, dispatch] = useReducer(sessionReducer, {
     activeSessions: [],
     upcomingSessions: [],
@@ -126,7 +128,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_LOADING', payload: false });
       return;
     }
-    if (!silent || allSessionsRef.current.length === 0) {
+    // Only dispatch SET_LOADING if it's explicitly non-silent and hasn't loaded once yet
+    if (!silent && !hasLoadedOnceRef.current) {
       dispatch({ type: 'SET_LOADING', payload: true });
     }
     try {
@@ -263,6 +266,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       prevActiveSessionsRef.current = activeSessions;
 
+      hasLoadedOnceRef.current = true;
       dispatch({
         type: 'SET_SESSIONS',
         payload: {
@@ -275,6 +279,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // Schedule/refresh local notification reminders based on latest sessions
       scheduleSessionReminders(allSessions, activeSessions).catch(() => {});
     } catch (error) {
+      hasLoadedOnceRef.current = true;
       dispatch({
         type: 'SET_ERROR',
         payload: error instanceof Error ? error.message : 'Failed to load sessions',

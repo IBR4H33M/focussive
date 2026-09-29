@@ -44,6 +44,7 @@ export default function DashboardScreen() {
 
   const [isSkippingUpcoming, setIsSkippingUpcoming] = useState(false);
   const [history, setHistory] = useState<SessionHistory[]>([]);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -53,6 +54,15 @@ export default function DashboardScreen() {
       // silently fail
     }
   }, []);
+
+  const handleManualRefresh = useCallback(async () => {
+    setManualRefreshing(true);
+    try {
+      await Promise.all([refreshSessions(false), fetchHistory()]);
+    } finally {
+      setManualRefreshing(false);
+    }
+  }, [refreshSessions, fetchHistory]);
 
   useFocusEffect(
     useCallback(() => {
@@ -224,19 +234,44 @@ export default function DashboardScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 24) + 16 }]}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading}
-            onRefresh={() => {
-              refreshSessions();
-              fetchHistory();
-            }}
+            refreshing={manualRefreshing}
+            onRefresh={handleManualRefresh}
             tintColor={theme.accent}
           />
         }
       >
-        {/* Loading State when starting up or loading sessions */}
-        {allSessions.length === 0 && isLoading && (
-          <View style={styles.loadingContainer}>
-            <LoadingSpinner size={56} />
+        {/* Empty State when no sessions created yet — moved to top with no bulb icon */}
+        {allSessions.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No sessions created yet</Text>
+            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+              Create your first focus session to get started
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.emptyCreateBtn,
+                {
+                  backgroundColor: isDark ? theme.accent : theme.accentDark,
+                },
+              ]}
+              onPress={() => router.push('/session/create' as never)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={18}
+                color="#FFFFFF"
+              />
+              <Text
+                style={[
+                  styles.emptyCreateBtnText,
+                  { color: '#FFFFFF' },
+                ]}
+              >
+                Create new session
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -347,52 +382,6 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Ad Banner for non-pro users (RevenueCat SDK powered, hidden for Pro users) */}
-        {!isPro && (
-          <TouchableOpacity
-            style={[
-              styles.adBannerContainer,
-              {
-                backgroundColor: isDark ? 'rgba(217, 119, 6, 0.14)' : '#FEF3C7',
-                borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : '#FDE68A',
-              },
-            ]}
-            onPress={() => openPaywall('dashboard_ad_banner')}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.adBannerTopRow, { justifyContent: 'flex-end' }]}>
-              <Text
-                style={[
-                  styles.adSponsoredTag,
-                  {
-                    color: isDark ? 'rgba(255, 255, 255, 0.5)' : '#92400E',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(146, 64, 14, 0.2)',
-                  },
-                ]}
-              >
-                Ad
-              </Text>
-            </View>
-
-            <Text style={[styles.adBannerTitle, { color: isDark ? '#FFFFFF' : '#78350F' }]}>
-              Unlock Unlimited Distraction Blocking
-            </Text>
-            <Text style={[styles.adBannerSubtitle, { color: isDark ? 'rgba(255, 255, 255, 0.8)' : '#92400E' }]}>
-              Get unlimited website & app groups, ad-free focus sessions, and complete history.
-            </Text>
-
-            <View style={styles.adBannerFooter}>
-              <Text style={[styles.adBannerPrice, { color: isDark ? '#FCD34D' : '#B45309' }]}>
-                {adPriceText}
-              </Text>
-              <View style={[styles.adBannerCtaBtn, { backgroundColor: isDark ? '#F59E0B' : '#D97706' }]}>
-                <Text style={styles.adBannerCtaText}>Upgrade Now</Text>
-                <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
-
         {/* Milestone Progression Section */}
         {nearestMilestone && (
           <View style={styles.progressionSection}>
@@ -481,40 +470,51 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Empty State */}
-        {allSessions.length === 0 && !isLoading && (
-          <View style={styles.emptyState}>
-            <Ionicons name="bulb-outline" size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No sessions Created Yet</Text>
-            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-              Create your first focus session to get started
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.emptyCreateBtn,
-                {
-                  backgroundColor: isDark ? theme.accent : theme.accentDark,
-                },
-              ]}
-              onPress={() => router.push('/session/create' as never)}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={18}
-                color="#FFFFFF"
-              />
+        {/* Ad Banner for non-pro users (RevenueCat SDK powered, placed below Milestones) */}
+        {!isPro && (
+          <TouchableOpacity
+            style={[
+              styles.adBannerContainer,
+              {
+                backgroundColor: isDark ? 'rgba(217, 119, 6, 0.14)' : '#FEF3C7',
+                borderWidth: 0,
+              },
+            ]}
+            onPress={() => openPaywall('dashboard_ad_banner')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.adBannerTopRow, { justifyContent: 'flex-end' }]}>
               <Text
                 style={[
-                  styles.emptyCreateBtnText,
-                  { color: '#FFFFFF' },
+                  styles.adSponsoredTag,
+                  {
+                    color: isDark ? 'rgba(255, 255, 255, 0.6)' : '#92400E',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(146, 64, 14, 0.1)',
+                    borderWidth: 0,
+                  },
                 ]}
               >
-                Create new session
+                Ad
               </Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+
+            <Text style={[styles.adBannerTitle, { color: isDark ? '#FFFFFF' : '#78350F' }]}>
+              Unlock Unlimited Distraction Blocking
+            </Text>
+            <Text style={[styles.adBannerSubtitle, { color: isDark ? 'rgba(255, 255, 255, 0.8)' : '#92400E' }]}>
+              Get unlimited website & app groups, ad-free focus sessions, and complete history.
+            </Text>
+
+            <View style={styles.adBannerFooter}>
+              <Text style={[styles.adBannerPrice, { color: isDark ? '#FCD34D' : '#B45309' }]}>
+                {adPriceText}
+              </Text>
+              <View style={[styles.adBannerCtaBtn, { backgroundColor: isDark ? '#F59E0B' : '#D97706' }]}>
+                <Text style={styles.adBannerCtaText}>Upgrade Now</Text>
+                <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
+              </View>
+            </View>
+          </TouchableOpacity>
         )}
       </ScrollView>
 
@@ -656,8 +656,10 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingTop: 80,
+    paddingTop: 24,
+    paddingBottom: 28,
     paddingHorizontal: 24,
+    marginBottom: 8,
   },
   emptyIcon: {
     fontSize: 48,
@@ -756,7 +758,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1.5,
+    borderWidth: 0,
     overflow: 'hidden',
   },
   adBannerTopRow: {

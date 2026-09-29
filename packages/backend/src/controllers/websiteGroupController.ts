@@ -12,7 +12,7 @@ import { isUserPremium } from '../services/subscriptionService';
 
 const DEFAULT_SOCIAL_MEDIA_GROUP = {
   name: 'Social Media',
-  websites: ['facebook.com', 'instagram.com', 'x.com', 'twitter.com', 'tiktok.com', 'reddit.com', 'pinterest.com'],
+  websites: ['facebook.com', 'instagram.com', 'x.com'],
   is_default: true,
 };
 

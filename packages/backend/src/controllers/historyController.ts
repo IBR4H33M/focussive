@@ -163,14 +163,25 @@ export async function deleteHistoryEntry(req: AuthRequest, res: Response): Promi
   res.status(204).send();
 }
 
-// DELETE /history — delete ALL history for this user
+// DELETE /history — delete history for this user (all, or filtered by range=week|month)
 export async function deleteAllHistory(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.userId!;
+  const { range, days } = req.query as { range?: string; days?: string };
 
-  const { error } = await supabase
+  let query = supabase
     .from('session_history')
     .delete()
     .eq('user_id', userId);
+
+  if (range === 'week' || days === '7') {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    query = query.gte('created_at', cutoff);
+  } else if (range === 'month' || days === '30') {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    query = query.gte('created_at', cutoff);
+  }
+
+  const { error } = await query;
 
   if (error) {
     throw new AppError('Failed to delete history', 500, 'DELETE_ERROR');

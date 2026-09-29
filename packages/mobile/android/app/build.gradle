@@ -89,7 +89,7 @@ android {
 
     namespace 'com.focussive.app'
     defaultConfig {
-        applicationId 'com.focussive.app'
+        applicationId 'com.solase.focussive'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

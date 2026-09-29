@@ -116,21 +116,32 @@ export default function PermissionModal({
 
           <View style={styles.buttonRow}>
             <TouchableOpacity
-              style={styles.buttonGrant}
+              style={[
+                styles.buttonGrant,
+                {
+                  backgroundColor: isDark ? '#595F8E' : theme.accent,
+                  borderColor: isDark ? '#595F8E' : theme.accent,
+                },
+              ]}
               onPress={handleGrantPermissions}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonTextGrant}>
+              <Text style={[styles.buttonTextGrant, { color: '#FFFFFF' }]}>
                 Grant Permissions
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.buttonLater}
+              style={[
+                styles.buttonLater,
+                {
+                  borderColor: isDark ? '#595F8E' : theme.border,
+                },
+              ]}
               onPress={onDismiss}
               activeOpacity={0.8}
             >
-              <Text style={[styles.buttonTextLater, isDark && { color: '#FFFFFF' }]}>
+              <Text style={[styles.buttonTextLater, { color: isDark ? '#FFFFFF' : theme.textSecondary }]}>
                 Later
               </Text>
             </TouchableOpacity>

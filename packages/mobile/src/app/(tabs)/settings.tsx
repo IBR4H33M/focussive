@@ -18,6 +18,7 @@ import {
   Switch,
   ActivityIndicator,
   Platform,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
@@ -253,6 +254,8 @@ export default function SettingsScreen() {
   const [extensionPaired, setExtensionPaired] = useState(false);
   const [extensionConnected, setExtensionConnected] = useState(false);
   const [showExtensionModal, setShowExtensionModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showManageAccountModal, setShowManageAccountModal] = useState(false);
 
   const allPermsGranted =
     hasUsageStats === true && hasOverlay === true && hasExactAlarm === true && hasNotifications === true && (Platform.OS !== 'android' || hasBatteryOpt === true);
@@ -704,7 +707,7 @@ export default function SettingsScreen() {
     <ScrollView
       ref={scrollViewRef}
       style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={{ paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 24) + 120 }}
+      contentContainerStyle={{ paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 24) + 40 }}
     >
 
       {/* Profile Section */}
@@ -1100,54 +1103,15 @@ export default function SettingsScreen() {
 
           <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
-          {/* Version */}
-          <View style={[styles.cardItem, { flexDirection: 'column', alignItems: 'stretch', gap: 4 }]}>
-            <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7}>
-              <Text style={[styles.menuText, { color: CARD_TEXT }]}>Version</Text>
-              <Text style={{ fontSize: 13, color: CARD_TEXT_MUTED, marginTop: 2 }}>v1.0.0</Text>
-            </TouchableOpacity>
-
-            {backendStatus !== 'idle' && (
-              <View style={{ marginTop: 8, paddingTop: 8, borderTopColor: CARD_BORDER, borderTopWidth: StyleSheet.hairlineWidth }}>
-                {backendStatus === 'checking' && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ fontSize: 13, color: CARD_TEXT_MUTED }}>Checking</Text>
-                    <Text style={{ fontSize: 14, color: CARD_TEXT_MUTED, fontWeight: '600', fontFamily: 'monospace' }}>
-                      {spinnerChar}
-                    </Text>
-                  </View>
-                )}
-
-                {backendStatus === 'online' && (
-                  <View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="checkmark-circle" size={14} color={theme.accent} />
-                      <Text style={{ fontSize: 13, color: theme.accent, fontWeight: '600' }}>Server online</Text>
-                    </View>
-                    {lastCheckedTime && (
-                      <Text style={{ fontSize: 11, color: CARD_TEXT_MUTED, marginTop: 4 }}>
-                        Last checked: {lastCheckedTime}
-                      </Text>
-                    )}
-                  </View>
-                )}
-
-                {backendStatus === 'offline' && (
-                  <View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="close-circle" size={14} color="#FF6B6B" />
-                      <Text style={{ fontSize: 13, color: theme.danger, fontWeight: '600' }}>Server offline</Text>
-                    </View>
-                    {lastCheckedTime && (
-                      <Text style={{ fontSize: 11, color: CARD_TEXT_MUTED, marginTop: 4 }}>
-                        Last checked: {lastCheckedTime}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
+          {/* About */}
+          <TouchableOpacity
+            style={styles.cardItem}
+            onPress={() => setShowAboutModal(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.menuText, { color: CARD_TEXT }]}>About</Text>
+            <Ionicons name="chevron-forward" size={18} color={CARD_ICON} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1163,12 +1127,10 @@ export default function SettingsScreen() {
 
           <View style={[styles.cardDivider, { backgroundColor: CARD_BORDER }]} />
 
-          <View style={{ padding: 12 }}>
-            <TouchableOpacity style={[styles.deleteAccountBtn, { backgroundColor: theme.danger, borderWidth: 2, borderColor: theme.dangerBorder }]} onPress={handleDeleteAccount} activeOpacity={0.8}>
-              <Ionicons name="trash-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.deleteAccountText}>Delete Account</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.cardItem} onPress={() => setShowManageAccountModal(true)} activeOpacity={0.7}>
+            <Text style={[styles.menuText, { color: CARD_TEXT }]}>Manage Account</Text>
+            <Ionicons name="chevron-forward" size={18} color={CARD_ICON} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1180,7 +1142,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={[styles.version, { color: theme.textSecondary }]}>Focussive v1.0.0</Text>
+      <Text style={[styles.version, { color: theme.textSecondary }]}>Focussive</Text>
 
       {/* Edit Profile Modal */}
       <Modal visible={editModalVisible} transparent animationType="fade">
@@ -1646,6 +1608,187 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
+      {/* About Modal (matching ExtensionModal & App Permissions bottom sheet) */}
+      <Modal
+        visible={showAboutModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAboutModal(false)}
+      >
+        <View style={styles.sheetOverlay}>
+          <View style={[styles.sheetModalCard, { backgroundColor: CARD_BG, borderColor: CARD_BORDER }]}>
+            {/* Header */}
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetHeaderTitle, { color: CARD_TEXT }]}>About Focussive</Text>
+              <TouchableOpacity
+                onPress={() => setShowAboutModal(false)}
+                style={styles.sheetCloseBtn}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={22} color={CARD_TEXT} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 22, gap: 18 }}>
+              {/* App Info Card */}
+              <View
+                style={{
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+                  borderRadius: 16,
+                  padding: 20,
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Image
+                  source={require('../../../assets/icon.png')}
+                  style={{ width: 60, height: 60, borderRadius: 14 }}
+                  resizeMode="contain"
+                />
+                <Text style={{ fontSize: 18, fontWeight: '700', color: CARD_TEXT, marginTop: 6 }}>
+                  Focussive
+                </Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.accent }}>
+                  App Version: 1.0.0
+                </Text>
+              </View>
+
+              {/* Contact Us Button */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: theme.accent,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  gap: 8,
+                }}
+                onPress={() => {
+                  Linking.openURL('mailto:contact@solase.studio').catch(() => {
+                    Alert.alert('Contact Us', 'Please email us at contact@solase.studio');
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
+                  Contact Us
+                </Text>
+              </TouchableOpacity>
+
+              {/* Copyright */}
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: CARD_TEXT_MUTED,
+                  textAlign: 'center',
+                  marginTop: 2,
+                }}
+              >
+                © 2026 Solase Studio. All rights reserved.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Manage Account Bottom Sheet Modal */}
+      <Modal visible={showManageAccountModal} transparent animationType="slide" onRequestClose={() => setShowManageAccountModal(false)}>
+        <View style={styles.sheetOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowManageAccountModal(false)}
+          />
+          <View
+            style={[
+              styles.sheetModalCard,
+              {
+                backgroundColor: isDark ? '#1F2232' : theme.card,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : theme.border,
+              },
+            ]}
+          >
+            {/* Header */}
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetHeaderTitle, { color: CARD_TEXT }]}>Manage Account</Text>
+              <TouchableOpacity
+                onPress={() => setShowManageAccountModal(false)}
+                style={styles.sheetCloseBtn}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={22} color={CARD_TEXT} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 22, gap: 16 }}>
+              {/* Account Details Card */}
+              <View
+                style={{
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+                  borderRadius: 14,
+                  padding: 16,
+                  gap: 6,
+                }}
+              >
+                <Text style={{ fontSize: 12, color: CARD_TEXT_MUTED, fontWeight: '600', letterSpacing: 0.5 }}>ACCOUNT</Text>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: CARD_TEXT }}>
+                  {profile?.email || user?.email || 'Current User'}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <Ionicons name="shield-checkmark" size={14} color={theme.accent} />
+                  <Text style={{ fontSize: 13, color: theme.accent, fontWeight: '600' }}>
+                    {isPremium ? 'Pro Member' : 'Free Plan'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Danger Zone */}
+              <View
+                style={{
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+                  borderRadius: 14,
+                  padding: 16,
+                  gap: 12,
+                }}
+              >
+                <View style={{ gap: 4 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: theme.danger }}>
+                    Delete Account
+                  </Text>
+                  <Text style={{ fontSize: 13, color: CARD_TEXT_MUTED, lineHeight: 18 }}>
+                    Permanently delete your account, session logs, and personal settings. This action is irreversible.
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.deleteAccountBtn,
+                    {
+                      backgroundColor: theme.danger,
+                      borderWidth: 2,
+                      borderColor: theme.dangerBorder,
+                      marginTop: 2,
+                    },
+                  ]}
+                  onPress={() => {
+                    setShowManageAccountModal(false);
+                    setTimeout(() => {
+                      handleDeleteAccount();
+                    }, 350);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.deleteAccountText}>Delete Account</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Extension Management Popup Modal */}
       <ExtensionModal
         visible={showExtensionModal}
@@ -1722,7 +1865,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   deleteAccountText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
-  version: { textAlign: 'center', fontSize: 12, marginTop: 10, marginBottom: 16 },
+  version: { textAlign: 'center', fontSize: 12, marginTop: 4, marginBottom: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
   modalContent: { borderRadius: 16, padding: 24 },
   modalTitle: { fontSize: 20, fontWeight: '500', marginBottom: 20 },

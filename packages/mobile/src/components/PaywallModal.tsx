@@ -248,8 +248,9 @@ export default function PaywallModal() {
                   style={[
                     styles.manageCard,
                     {
-                      backgroundColor: '#2D2E46',
-                      borderWidth: 0,
+                      backgroundColor: isDark ? '#2D2E46' : theme.card,
+                      borderWidth: isDark ? 0 : 1,
+                      borderColor: theme.border,
                     },
                   ]}
                 >
@@ -351,8 +352,9 @@ export default function PaywallModal() {
                   style={[
                     styles.privilegesCard,
                     {
-                      backgroundColor: '#2D2E46',
-                      borderWidth: 0,
+                      backgroundColor: isDark ? '#2D2E46' : theme.card,
+                      borderWidth: isDark ? 0 : 1,
+                      borderColor: theme.border,
                     },
                   ]}
                 >
@@ -386,8 +388,9 @@ export default function PaywallModal() {
                   style={[
                     styles.storeManageCard,
                     {
-                      backgroundColor: '#2D2E46',
-                      borderWidth: 0,
+                      backgroundColor: isDark ? '#2D2E46' : theme.card,
+                      borderWidth: isDark ? 0 : 1,
+                      borderColor: theme.border,
                     },
                   ]}
                 >
@@ -874,7 +877,6 @@ const styles = StyleSheet.create({
   manageCard: {
     borderRadius: 18,
     borderWidth: 0,
-    backgroundColor: '#2D2E46',
     padding: 16,
     marginVertical: 12,
   },
@@ -946,7 +948,6 @@ const styles = StyleSheet.create({
   privilegesCard: {
     borderRadius: 18,
     borderWidth: 0,
-    backgroundColor: '#2D2E46',
     padding: 16,
     marginVertical: 8,
   },
@@ -969,7 +970,6 @@ const styles = StyleSheet.create({
   storeManageCard: {
     borderRadius: 18,
     borderWidth: 0,
-    backgroundColor: '#2D2E46',
     padding: 16,
     marginVertical: 10,
   },

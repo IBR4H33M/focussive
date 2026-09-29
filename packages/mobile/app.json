@@ -12,7 +12,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.ibr4h33m.focussive",
+      "package": "com.solase.focussive",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/adaptive-icon.png"
@@ -71,7 +71,8 @@
     "extra": {
       "apiUrl": "https://focussive-backend-cd9ac796ce02.herokuapp.com",
       "clerkPublishableKey": "pk_live_Y2xlcmsuZm9jdXNzaXZlLnNvbGFzZS5zdHVkaW8k",
-      "revenuecatPublicKey": "test_MuSObdIzFoUVskINilLfIZiqRZT",
+      "revenuecatPublicKey": "goog_BQVfmhJstHPhPqEvCFoCHiiIEEr",
+      "revenuecatGoogleKey": "goog_BQVfmhJstHPhPqEvCFoCHiiIEEr",
       "router": {},
       "eas": {
         "projectId": "c71a2169-5cb4-452a-b07c-61809b84ac9c"

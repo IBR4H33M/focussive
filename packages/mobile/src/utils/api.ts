@@ -265,8 +265,8 @@ export const historyApi = {
   deleteOne: (id: string) =>
     apiRequest(`/history/${id}`, { method: 'DELETE' }),
 
-  deleteAll: () =>
-    apiRequest('/history', { method: 'DELETE' }),
+  deleteAll: (range?: 'week' | 'month' | 'all') =>
+    apiRequest(`/history${range && range !== 'all' ? `?range=${range}` : ''}`, { method: 'DELETE' }),
 };
 
 // --- User API ---
