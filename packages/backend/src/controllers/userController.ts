@@ -12,6 +12,7 @@ import {
   getSubscriptionStatus,
   startFreeTrial,
   syncSubscription,
+  redeemPromoCode,
 } from '../services/subscriptionService';
 
 const SALT_ROUNDS = 12;
@@ -236,3 +237,12 @@ export async function syncSubscriptionController(req: AuthRequest, res: Response
   const status = await syncSubscription(userId, isPremium, custId);
   res.json(status);
 }
+
+// POST /user/promo/redeem
+export async function redeemPromoController(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.userId!;
+  const { code } = req.body;
+  const result = await redeemPromoCode(userId, code);
+  res.json(result);
+}
+

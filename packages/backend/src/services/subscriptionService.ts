@@ -2,6 +2,7 @@
 // Focussive Backend — Subscription & Trial Service
 // ============================================================
 
+import { v4 as uuidv4 } from 'uuid';
 import supabase from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import type { SubscriptionStatusResponse } from '@focussive/shared';
@@ -121,4 +122,112 @@ export async function syncSubscription(
   }
 
   return getSubscriptionStatus(userId);
+}
+
+export async function redeemPromoCode(
+  userId: string,
+  rawCode: string
+): Promise<SubscriptionStatusResponse & { message: string }> {
+  if (!rawCode || typeof rawCode !== 'string') {
+    throw new AppError('Promo code is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const code = rawCode.trim().toUpperCase();
+
+  // Find promo code
+  const { data: promo, error: promoErr } = await supabase
+    .from('promo_codes')
+    .select('*')
+    .eq('code', code)
+    .single();
+
+  if (promoErr || !promo) {
+    throw new AppError('Invalid promo code. Please check and try again.', 404, 'INVALID_CODE');
+  }
+
+  if (!promo.is_active) {
+    throw new AppError('This promo code is no longer active.', 400, 'CODE_INACTIVE');
+  }
+
+  if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+    throw new AppError('This promo code has expired.', 400, 'CODE_EXPIRED');
+  }
+
+  if (promo.max_uses && promo.times_used >= promo.max_uses) {
+    throw new AppError('This promo code has reached its maximum redemptions.', 400, 'CODE_DEPLETED');
+  }
+
+  // Check if user has already redeemed this code
+  const { data: existingRedemption } = await supabase
+    .from('promo_redemptions')
+    .select('id')
+    .eq('promo_code_id', promo.id)
+    .eq('user_id', userId)
+    .single();
+
+  if (existingRedemption) {
+    throw new AppError('You have already redeemed this promo code.', 400, 'ALREADY_REDEEMED');
+  }
+
+  // Calculate new expiration date
+  const now = new Date();
+  let newEndsAt: string | null = null;
+  const durationDays = promo.duration_days;
+
+  if (durationDays) {
+    const { data: currentUser } = await supabase
+      .from('users')
+      .select('trial_ends_at')
+      .eq('id', userId)
+      .single();
+
+    const baseDate =
+      currentUser?.trial_ends_at && new Date(currentUser.trial_ends_at) > now
+        ? new Date(currentUser.trial_ends_at)
+        : now;
+
+    newEndsAt = new Date(baseDate.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  // Record redemption
+  const { error: redErr } = await supabase
+    .from('promo_redemptions')
+    .insert({
+      id: uuidv4(),
+      promo_code_id: promo.id,
+      user_id: userId,
+      redeemed_at: now.toISOString(),
+    });
+
+  if (redErr) {
+    console.error('Failed to insert redemption:', redErr);
+    throw new AppError('Failed to redeem promo code. Please try again.', 500, 'REDEMPTION_ERROR');
+  }
+
+  // Increment usage count
+  await supabase
+    .from('promo_codes')
+    .update({ times_used: (promo.times_used || 0) + 1 })
+    .eq('id', promo.id);
+
+  // Update user subscription
+  const userUpdates: Record<string, unknown> = {
+    subscription_tier: 'premium',
+    subscription_status: 'active',
+  };
+  if (newEndsAt) {
+    userUpdates.trial_ends_at = newEndsAt;
+  }
+
+  await supabase
+    .from('users')
+    .update(userUpdates)
+    .eq('id', userId);
+
+  const updatedStatus = await getSubscriptionStatus(userId);
+  const durationText = durationDays ? `${durationDays} days of ` : 'Lifetime ';
+  return {
+    ...updatedStatus,
+    message: `Congratulations! ${durationText}Focussive Premium has been unlocked.`,
+  };
 }

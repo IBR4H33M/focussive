@@ -846,6 +846,17 @@ export default function SettingsScreen() {
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color={CARD_ICON} />
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 6, paddingBottom: 2 }}
+                onPress={() => openPaywall('settings')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="gift-outline" size={14} color={theme.accent} />
+                <Text style={{ color: theme.accent, fontSize: 13, fontWeight: '600' }}>
+                  Have a promo code? Redeem here
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>

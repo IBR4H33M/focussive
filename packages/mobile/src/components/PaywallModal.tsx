@@ -15,6 +15,7 @@ import {
   Linking,
   Platform,
   Alert,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
@@ -66,10 +67,25 @@ export default function PaywallModal() {
     startTrial,
     purchasePackage,
     restorePurchases,
+    redeemPromoCode,
     isLoading,
   } = useSubscription();
 
   const [selectedPlanId, setSelectedPlanId] = useState<string>('focussive_annual_36');
+  const [showPromoInput, setShowPromoInput] = useState(false);
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [isRedeemingPromo, setIsRedeemingPromo] = useState(false);
+
+  const handleRedeemPromo = async () => {
+    if (!promoCodeInput.trim()) return;
+    setIsRedeemingPromo(true);
+    const success = await redeemPromoCode(promoCodeInput.trim());
+    setIsRedeemingPromo(false);
+    if (success) {
+      setPromoCodeInput('');
+      setShowPromoInput(false);
+    }
+  };
 
   if (!isPaywallVisible) return null;
 
@@ -661,6 +677,77 @@ export default function PaywallModal() {
                     ? 'Free for 21 days, then the selected plan begins. Cancel anytime.'
                     : 'Payment will be charged through your app store account. Cancel anytime.'}
                 </Text>
+
+                {/* Promo Code Redemption Section */}
+                <View style={{ marginTop: 16, marginBottom: 6, alignItems: 'center' }}>
+                  {showPromoInput ? (
+                    <View style={{ width: '100%', gap: 8 }}>
+                      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                        <TextInput
+                          style={{
+                            flex: 1,
+                            height: 44,
+                            borderRadius: 10,
+                            paddingHorizontal: 14,
+                            borderWidth: 1,
+                            borderColor: isDark ? 'rgba(255,255,255,0.15)' : theme.border,
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                            color: theme.text,
+                            fontSize: 14,
+                            fontWeight: '600',
+                            letterSpacing: 1,
+                          }}
+                          placeholder="ENTER PROMO CODE"
+                          placeholderTextColor={theme.textSecondary}
+                          value={promoCodeInput}
+                          onChangeText={setPromoCodeInput}
+                          autoCapitalize="characters"
+                          autoCorrect={false}
+                          editable={!isRedeemingPromo}
+                        />
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: theme.accent,
+                            height: 44,
+                            paddingHorizontal: 18,
+                            borderRadius: 10,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            opacity: !promoCodeInput.trim() || isRedeemingPromo ? 0.6 : 1,
+                          }}
+                          onPress={handleRedeemPromo}
+                          disabled={isRedeemingPromo || !promoCodeInput.trim()}
+                          activeOpacity={0.8}
+                        >
+                          {isRedeemingPromo ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>
+                              Redeem
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => setShowPromoInput(false)}
+                        style={{ alignSelf: 'center', paddingVertical: 4 }}
+                      >
+                        <Text style={{ fontSize: 12, color: theme.textSecondary }}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => setShowPromoInput(true)}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="gift-outline" size={16} color={theme.accent} />
+                      <Text style={{ fontSize: 13, color: theme.accent, fontWeight: '600' }}>
+                        Have a promo code? Redeem here
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
                 {/* Secondary actions: Restore Purchases */}
                 <View style={styles.footerRow}>

@@ -362,4 +362,10 @@ export const subscriptionApi = {
         customer_id: body.customer_id ?? body.revenuecat_customer_id,
       },
     }),
+
+  redeemPromo: (code: string) =>
+    apiRequest<SubscriptionStatusResponse & { message: string }>('/user/promo/redeem', {
+      method: 'POST',
+      body: { code },
+    }),
 };

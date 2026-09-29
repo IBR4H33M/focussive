@@ -11,6 +11,7 @@ import {
   getSubscription,
   startTrial,
   syncSubscriptionController,
+  redeemPromoController,
 } from '../controllers/userController';
 import { authMiddleware } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -28,5 +29,6 @@ router.delete('/account', asyncHandler(deleteAccount));
 router.get('/subscription', asyncHandler(getSubscription));
 router.post('/trial/start', asyncHandler(startTrial));
 router.post('/subscription/sync', asyncHandler(syncSubscriptionController));
+router.post('/promo/redeem', asyncHandler(redeemPromoController));
 
 export default router;

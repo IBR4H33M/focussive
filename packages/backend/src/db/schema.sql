@@ -352,3 +352,29 @@ CREATE POLICY session_skips_policy ON public.session_skips
   FOR ALL
   USING (user_id = auth.uid());
 
+-- ============================================================
+-- PROMO CODES TABLES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT NOT NULL UNIQUE,
+  duration_days INTEGER,
+  max_uses INTEGER NOT NULL DEFAULT 500,
+  times_used INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS promo_redemptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  promo_code_id UUID NOT NULL REFERENCES promo_codes(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  redeemed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT unique_user_promo UNIQUE (promo_code_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promo_codes(code);
+CREATE INDEX IF NOT EXISTS idx_promo_redemptions_user ON promo_redemptions(user_id);
+
+

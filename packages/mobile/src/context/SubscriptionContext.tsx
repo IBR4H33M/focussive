@@ -68,6 +68,7 @@ export interface SubscriptionContextType {
   purchasePackage: (pkg: PurchasesPackage | FallbackPlan) => Promise<boolean>;
   restorePurchases: () => Promise<boolean>;
   refreshSubscription: () => Promise<void>;
+  redeemPromoCode: (code: string) => Promise<boolean>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | null>(null);
@@ -354,6 +355,27 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     return tier === 'premium' && (status === 'active' || status === 'trial');
   }, [tier, status]);
 
+  // Redeem Promo Code
+  const redeemPromoCode = useCallback(
+    async (code: string): Promise<boolean> => {
+      try {
+        setIsLoading(true);
+        const res = await subscriptionApi.redeemPromo(code);
+        await refreshSubscription();
+        Alert.alert('Promo Redeemed!', res.message || 'Focussive Premium unlocked!');
+        closePaywall();
+        return true;
+      } catch (err: any) {
+        const msg = err instanceof ApiError ? err.message : (err?.message || 'Could not redeem promo code.');
+        Alert.alert('Redemption Failed', msg);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [refreshSubscription, closePaywall]
+  );
+
   return (
     <SubscriptionContext.Provider
       value={{
@@ -375,6 +397,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         purchasePackage,
         restorePurchases,
         refreshSubscription,
+        redeemPromoCode,
       }}
     >
       {children}
