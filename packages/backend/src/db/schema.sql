@@ -376,5 +376,3 @@ CREATE TABLE IF NOT EXISTS promo_redemptions (
 
 CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promo_codes(code);
 CREATE INDEX IF NOT EXISTS idx_promo_redemptions_user ON promo_redemptions(user_id);
-
-

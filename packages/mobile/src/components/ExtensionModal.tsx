@@ -65,30 +65,53 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
   const [unpairing, setUnpairing] = useState(false);
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onStatusChangeRef = useRef(onStatusChange);
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange;
+  }, [onStatusChange]);
+
+  const pairedRef = useRef(paired);
+  pairedRef.current = paired;
+  const connectedRef = useRef(connected);
+  connectedRef.current = connected;
 
   // Fetch extension connection status
-  const fetchStatus = useCallback(async () => {
+  // silent: boolean — background polling is silent and NEVER triggers fullscreen loading spinner
+  const fetchStatus = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       const result = await deviceApi.extensionStatus();
       setPaired(result.paired);
       setConnected(result.connected);
       setDevice(result.device);
-      onStatusChange?.(result.paired, result.connected);
+      if (result.paired !== pairedRef.current || result.connected !== connectedRef.current) {
+        onStatusChangeRef.current?.(result.paired, result.connected);
+      }
     } catch {
       setPaired(false);
       setConnected(false);
       setDevice(null);
+      if (pairedRef.current !== false || connectedRef.current !== false) {
+        onStatusChangeRef.current?.(false, false);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  }, [onStatusChange]);
+  }, []);
 
   useEffect(() => {
     if (visible) {
-      setLoading(true);
-      fetchStatus();
-      // Poll every 4 seconds while modal is open
-      pollIntervalRef.current = setInterval(fetchStatus, 4000);
+      // Initial check with loading indicator
+      fetchStatus(false);
+
+      // Silent background polling — NEVER sets loading(true) or replaces the screen
+      pollIntervalRef.current = setInterval(() => {
+        fetchStatus(true);
+      }, 7000);
     } else {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
@@ -412,26 +435,76 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
                NOT CONNECTED VIEW (2 Tabs: Scan QR Code & One-Time Code)
             ═════════════════════════════════════════════════════════ */
             <ScrollView contentContainerStyle={styles.contentScroll} showsVerticalScrollIndicator={false}>
-              {/* Segmented Tabs (2 Equal Buttons, Never Overlapping) */}
-              <View style={[styles.tabBar, { backgroundColor: 'rgba(0, 0, 0, 0.25)' }]}>
+              {/* Premium Segmented Tabs */}
+              <View
+                style={[
+                  styles.tabBar,
+                  {
+                    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0.05)',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                  },
+                ]}
+              >
                 <TouchableOpacity
-                  style={[styles.tabItem, tab === 'scan' && [styles.tabItemActive, { backgroundColor: 'rgba(255, 255, 255, 0.12)' }]]}
+                  style={[
+                    styles.tabItem,
+                    tab === 'scan' && [
+                      styles.tabItemActive,
+                      {
+                        backgroundColor: isDark ? '#383A59' : '#FFFFFF',
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.08)',
+                      },
+                    ],
+                  ]}
                   onPress={() => { setTab('scan'); setApprovalError(''); }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="qr-code-outline" size={16} color={tab === 'scan' ? theme.accent : POPUP_MUTED} />
-                  <Text style={[styles.tabText, { color: tab === 'scan' ? POPUP_TEXT : POPUP_MUTED }]}>
+                  <Ionicons
+                    name="qr-code-outline"
+                    size={17}
+                    color={tab === 'scan' ? '#D4AF37' : POPUP_MUTED}
+                  />
+                  <Text
+                    style={[
+                      styles.tabText,
+                      {
+                        color: tab === 'scan' ? POPUP_TEXT : POPUP_MUTED,
+                        fontWeight: tab === 'scan' ? '700' : '500',
+                      },
+                    ]}
+                  >
                     Scan QR Code
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.tabItem, tab === 'code' && [styles.tabItemActive, { backgroundColor: 'rgba(255, 255, 255, 0.12)' }]]}
+                  style={[
+                    styles.tabItem,
+                    tab === 'code' && [
+                      styles.tabItemActive,
+                      {
+                        backgroundColor: isDark ? '#383A59' : '#FFFFFF',
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.08)',
+                      },
+                    ],
+                  ]}
                   onPress={() => { setTab('code'); setApprovalError(''); }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="keypad-outline" size={16} color={tab === 'code' ? theme.accent : POPUP_MUTED} />
-                  <Text style={[styles.tabText, { color: tab === 'code' ? POPUP_TEXT : POPUP_MUTED }]}>
+                  <Ionicons
+                    name="keypad-outline"
+                    size={17}
+                    color={tab === 'code' ? '#D4AF37' : POPUP_MUTED}
+                  />
+                  <Text
+                    style={[
+                      styles.tabText,
+                      {
+                        color: tab === 'code' ? POPUP_TEXT : POPUP_MUTED,
+                        fontWeight: tab === 'code' ? '700' : '500',
+                      },
+                    ]}
+                  >
                     One-Time Code
                   </Text>
                 </TouchableOpacity>
@@ -440,6 +513,29 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
               {/* TAB 1: Scan QR Code from Desktop Extension */}
               {tab === 'scan' && (
                 <View style={styles.tabContent}>
+                  {/* Chrome Web Store Guide Banner */}
+                  <View
+                    style={[
+                      styles.webstoreGuideCard,
+                      {
+                        backgroundColor: isDark ? 'rgba(212, 175, 55, 0.08)' : 'rgba(212, 175, 55, 0.09)',
+                        borderColor: isDark ? 'rgba(212, 175, 55, 0.28)' : 'rgba(212, 175, 55, 0.35)',
+                      },
+                    ]}
+                  >
+                    <View style={styles.webstoreIconCircle}>
+                      <Ionicons name="globe-outline" size={18} color="#D4AF37" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.webstoreTitle, { color: POPUP_TEXT }]}>
+                        First time setting up?
+                      </Text>
+                      <Text style={[styles.webstoreSubtitle, { color: POPUP_MUTED }]}>
+                        Search for <Text style={{ color: '#D4AF37', fontWeight: '700' }}>&ldquo;FOCUSSIVE companion&rdquo;</Text> in the Chrome Web Store on your computer.
+                      </Text>
+                    </View>
+                  </View>
+
                   {scanMode === 'camera' ? (
                     /* CAMERA SCANNER VIEW */
                     <View style={styles.cameraSection}>
@@ -768,29 +864,61 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    borderRadius: 10,
+    borderRadius: 14,
+    borderWidth: 1,
     padding: 4,
     gap: 6,
     width: '100%',
+    marginBottom: 6,
   },
   tabItem: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 9,
-    borderRadius: 8,
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   tabItemActive: {
-    elevation: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tabText: {
+    fontSize: 13.5,
+    letterSpacing: 0.2,
+  },
+  webstoreGuideCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  webstoreIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webstoreTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    marginBottom: 2,
+    letterSpacing: 0.2,
+  },
+  webstoreSubtitle: {
+    fontSize: 12.5,
+    lineHeight: 17,
   },
   tabContent: {
     gap: 12,

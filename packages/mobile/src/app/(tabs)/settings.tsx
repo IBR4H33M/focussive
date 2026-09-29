@@ -1805,8 +1805,8 @@ export default function SettingsScreen() {
         visible={showExtensionModal}
         onClose={() => setShowExtensionModal(false)}
         onStatusChange={(paired, connected) => {
-          setExtensionPaired(paired);
-          setExtensionConnected(connected);
+          setExtensionPaired((prev) => (prev !== paired ? paired : prev));
+          setExtensionConnected((prev) => (prev !== connected ? connected : prev));
         }}
       />
     </ScrollView>
