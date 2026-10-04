@@ -115,6 +115,11 @@ function RootLayoutContent() {
   useFocusEffect(
     React.useCallback(() => {
       if (isLoading || !isAuthenticated) return;
+      // Do not interrupt onboarding screens with the global permission modal
+      const inAuth = segments[0] === '(auth)';
+      const isDrivingForces = (segments as string[]).includes('driving-forces');
+      if (inAuth || isDrivingForces) return;
+
       (async () => {
         try {
           const [usage, overlay, exactAlarm, notifStatus, batteryIgnoring] = await Promise.all([

@@ -23,6 +23,7 @@ interface PermissionModalProps {
   onDismiss: () => void;
   onGrantPermissions: () => void;
   missingPermissions?: MissingPermissions;
+  skipSettingsNavigation?: boolean;
 }
 
 export default function PermissionModal({
@@ -30,6 +31,7 @@ export default function PermissionModal({
   onDismiss,
   onGrantPermissions,
   missingPermissions,
+  skipSettingsNavigation = false,
 }: PermissionModalProps) {
   const theme = useTheme();
   const isDark = useIsDark();
@@ -37,14 +39,15 @@ export default function PermissionModal({
 
   const handleGrantPermissions = async () => {
     onGrantPermissions();
-    // Navigate to Settings with app permissions expanded
     onDismiss();
-    setTimeout(() => {
-      router.push({
-        pathname: '/(tabs)/settings',
-        params: { expandPermissions: 'true' },
-      } as never);
-    }, 300);
+    if (!skipSettingsNavigation) {
+      setTimeout(() => {
+        router.push({
+          pathname: '/(tabs)/settings',
+          params: { expandPermissions: 'true' },
+        } as never);
+      }, 300);
+    }
   };
 
   const showUsage = missingPermissions ? missingPermissions.usageAccess : true;

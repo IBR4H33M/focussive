@@ -22,6 +22,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
 import { userApi } from '@/utils/api';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import PermissionModal, { MissingPermissions } from '@/components/PermissionModal';
+import {
+  hasUsageStatsPermission,
+  hasOverlayPermission,
+  hasExactAlarmPermission,
+  isIgnoringBatteryOptimization,
+  requestUsageStatsPermission,
+  requestOverlayPermission,
+  requestExactAlarmPermission,
+  requestIgnoreBatteryOptimization,
+  requestNotificationPermission,
+} from '@focussive/app-blocker';
+import * as Notifications from 'expo-notifications';
 
 // ─── Driving Forces definitions ──────────────────────────────
 
@@ -113,6 +126,45 @@ export default function DrivingForcesScreen() {
     );
   }
 
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [missingPermissions, setMissingPermissions] = useState<MissingPermissions>({});
+
+  async function checkPermissionsAndProceed() {
+    try {
+      const [usage, overlay, exactAlarm, notifStatus, batteryIgnoring] = await Promise.all([
+        hasUsageStatsPermission(),
+        hasOverlayPermission(),
+        Platform.OS === 'android' ? hasExactAlarmPermission() : Promise.resolve(true),
+        Notifications.getPermissionsAsync(),
+        Platform.OS === 'android' ? isIgnoringBatteryOptimization() : Promise.resolve(true),
+      ]);
+
+      const notifGranted = notifStatus.granted;
+      const missingUsage = !usage;
+      const missingOverlay = !overlay;
+      const missingAlarm = Platform.OS === 'android' && !exactAlarm;
+      const missingNotif = !notifGranted;
+      const missingBattery = Platform.OS === 'android' && !batteryIgnoring;
+
+      const anyMissing = missingUsage || missingOverlay || missingAlarm || missingNotif || missingBattery;
+
+      if (anyMissing) {
+        setMissingPermissions({
+          usageAccess: missingUsage,
+          overlay: missingOverlay,
+          exactAlarm: missingAlarm,
+          notifications: missingNotif,
+          batteryOptimization: missingBattery,
+        });
+        setShowPermissionModal(true);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    router.replace('/(auth)/extension-qr' as never);
+  }
+
   async function handleContinue() {
     setLoading(true);
     try {
@@ -125,8 +177,8 @@ export default function DrivingForcesScreen() {
         Alert.alert('Saved', 'Your driving forces have been updated.');
         router.back();
       } else {
-        // Continue signup flow → extension QR pairing
-        router.replace('/(auth)/extension-qr' as never);
+        // Show permissions popup before moving to extension QR pairing
+        await checkPermissionsAndProceed();
       }
     } catch (err: any) {
       Alert.alert(
@@ -138,11 +190,11 @@ export default function DrivingForcesScreen() {
     }
   }
 
-  function handleSkip() {
+  async function handleSkip() {
     if (isFromSettings) {
       router.back();
     } else {
-      router.replace('/(auth)/extension-qr' as never);
+      await checkPermissionsAndProceed();
     }
   }
 
@@ -318,6 +370,27 @@ export default function DrivingForcesScreen() {
           )}
         </View>
       </ScrollView>
+
+      <PermissionModal
+        visible={showPermissionModal}
+        missingPermissions={missingPermissions}
+        skipSettingsNavigation={true}
+        onGrantPermissions={async () => {
+          try {
+            if (missingPermissions.usageAccess) await requestUsageStatsPermission();
+            if (missingPermissions.overlay) await requestOverlayPermission();
+            if (missingPermissions.exactAlarm && Platform.OS === 'android') await requestExactAlarmPermission();
+            if (missingPermissions.notifications) await requestNotificationPermission();
+            if (missingPermissions.batteryOptimization && Platform.OS === 'android') await requestIgnoreBatteryOptimization();
+          } catch {}
+          setShowPermissionModal(false);
+          router.replace('/(auth)/extension-qr' as never);
+        }}
+        onDismiss={() => {
+          setShowPermissionModal(false);
+          router.replace('/(auth)/extension-qr' as never);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
