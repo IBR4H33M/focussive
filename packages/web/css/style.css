@@ -212,12 +212,7 @@ a:hover {
   max-width: 900px;
   margin-left: auto;
   margin-right: auto;
-}
-
-.hero-title span {
-  background: linear-gradient(135deg, #E9E4DC 30%, #8BA794 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-main);
 }
 
 .hero-desc {
