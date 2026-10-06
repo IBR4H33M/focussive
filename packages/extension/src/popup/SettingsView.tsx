@@ -13,6 +13,7 @@ import {
 interface SettingsViewProps {
   onBack: () => void;
   onRefreshData?: () => void;
+  onLogout?: () => void;
 }
 
 const DEFAULT_IMAGES = [
@@ -21,7 +22,7 @@ const DEFAULT_IMAGES = [
   { id: 'dont-answer.gif', title: "Don't Answer", file: 'blockimages/dont-answer.gif' },
 ];
 
-export default function SettingsView({ onBack, onRefreshData }: SettingsViewProps) {
+export default function SettingsView({ onBack, onRefreshData, onLogout }: SettingsViewProps) {
   const [settings, setSettings] = useState<ExtensionSettings | null>(null);
   const [deviceId, setDeviceIdState] = useState<string>('');
   const [syncing, setSyncing] = useState(false);
@@ -273,6 +274,24 @@ export default function SettingsView({ onBack, onRefreshData }: SettingsViewProp
             </div>
           </>
         )}
+
+        {/* ─── SECTION 4: ACCOUNT / LOGOUT ─────────────────── */}
+        {onLogout && (
+          <div style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid #454B6E' }}>
+            <div style={{ ...styles.sectionHeader, marginBottom: 12 }}>
+              <span style={styles.sectionTitle}>ACCOUNT</span>
+            </div>
+
+            <button style={styles.logoutBtn} onClick={onLogout}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span>Log Out</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -461,6 +480,24 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '4px 8px',
     fontSize: 12,
     cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  logoutBtn: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: '12px 16px',
+    backgroundColor: '#D34545',
+    border: 'none',
+    borderRadius: 10,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 700,
+    letterSpacing: 0.3,
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(211, 69, 69, 0.3)',
     transition: 'all 0.15s ease',
   },
 };

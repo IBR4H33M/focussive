@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Focussive",
-  "description": "ADHD Focus Session Manager — Block distracting websites during focus sessions",
+  "name": "Focussive Companion",
+  "description": "Block distracting websites synchronized with your Focussive mobile app.",
   "version": "1.0.0",
   "icons": {
     "16": "icons/icon-16.png",

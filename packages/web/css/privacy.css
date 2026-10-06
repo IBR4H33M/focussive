@@ -1,0 +1,85 @@
+/* ==========================================================================
+   FOCUSSIVE — Legal & Privacy Policy Stylesheet
+   ========================================================================== */
+
+.legal-header {
+  padding: 80px 0 40px;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 48px;
+}
+
+.legal-header h1 {
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  margin-bottom: 16px;
+}
+
+.legal-meta {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.legal-body {
+  max-width: 840px;
+  margin: 0 auto 80px;
+  color: var(--text-main);
+  line-height: 1.8;
+}
+
+.legal-body h2 {
+  font-size: 1.6rem;
+  margin-top: 48px;
+  margin-bottom: 20px;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 10px;
+}
+
+.legal-body h3 {
+  font-size: 1.25rem;
+  margin-top: 28px;
+  margin-bottom: 12px;
+  color: var(--accent-light);
+}
+
+.legal-body p {
+  margin-bottom: 18px;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.legal-body ul, .legal-body ol {
+  padding-left: 28px;
+  margin-bottom: 24px;
+}
+
+.legal-body li {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+}
+
+.legal-body li strong {
+  color: var(--text-main);
+}
+
+.legal-body code {
+  background: var(--surface);
+  color: var(--accent-light);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  border: 1px solid var(--border-light);
+}
+
+.legal-callout {
+  background: rgba(139, 167, 148, 0.08);
+  border-left: 4px solid var(--accent);
+  padding: 20px 24px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  margin: 28px 0;
+}
+
+.legal-callout p {
+  margin-bottom: 0;
+  color: var(--text-main);
+}

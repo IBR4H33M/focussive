@@ -1,0 +1,9 @@
+{
+  "name": "focussive-web",
+  "version": "1.0.0",
+  "description": "Focussive official website",
+  "scripts": {
+    "start": "node serve.js",
+    "dev": "node serve.js"
+  }
+}
