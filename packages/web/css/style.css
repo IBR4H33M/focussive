@@ -11,9 +11,9 @@
   --surface: #272D4A;
   --surface-alt: #343B5F;
   --surface-glass: rgba(39, 45, 74, 0.7);
-  --border: #424A70;
-  --border-light: rgba(93, 110, 117, 0.25);
-  --border-glow: rgba(139, 167, 148, 0.35);
+  --border: transparent;
+  --border-light: transparent;
+  --border-glow: transparent;
 
   /* Brand Accents */
   --accent: #8BA794;          /* Cambridge Blue / Calm Sage */
@@ -131,7 +131,7 @@ a:hover {
   height: 42px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: var(--transition);
@@ -140,7 +140,6 @@ a:hover {
 
 .menu-toggle-btn:hover {
   background: rgba(139, 167, 148, 0.14);
-  border-color: rgba(139, 167, 148, 0.4);
   transform: translateY(-1px);
 }
 
@@ -203,7 +202,7 @@ a:hover {
   width: 320px;
   max-width: 86vw;
   background: #141727;
-  border-right: 1px solid rgba(93, 110, 117, 0.25);
+  border: none;
   box-shadow: 16px 0 48px rgba(0, 0, 0, 0.65);
   z-index: 999;
   display: flex;
@@ -227,7 +226,7 @@ body.drawer-open {
   align-items: center;
   justify-content: space-between;
   padding: 24px 20px 20px;
-  border-bottom: 1px solid rgba(93, 110, 117, 0.15);
+  border: none;
 }
 
 .drawer-brand {
@@ -257,7 +256,7 @@ body.drawer-open {
   height: 38px;
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: none;
   color: var(--text-muted);
   cursor: pointer;
   transition: var(--transition);
@@ -291,20 +290,18 @@ body.drawer-open {
   font-size: 0.98rem;
   font-weight: 500;
   transition: var(--transition);
-  border: 1px solid transparent;
+  border: none;
 }
 
 .drawer-nav-item:hover {
   color: var(--text-main);
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(93, 110, 117, 0.25);
   transform: translateX(4px);
 }
 
 .drawer-nav-item.active {
   color: var(--accent-light);
   background: rgba(139, 167, 148, 0.14);
-  border-color: rgba(139, 167, 148, 0.35);
   font-weight: 600;
 }
 
@@ -320,7 +317,7 @@ body.drawer-open {
 
 .drawer-footer {
   padding: 20px 20px 28px;
-  border-top: 1px solid rgba(93, 110, 117, 0.15);
+  border: none;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -337,7 +334,7 @@ body.drawer-open {
   border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--text-main);
-  border: 1px solid var(--border);
+  border: none;
   font-size: 0.95rem;
   font-weight: 600;
   transition: var(--transition);
@@ -346,7 +343,6 @@ body.drawer-open {
 
 .drawer-contact-btn:hover {
   background: var(--surface-alt);
-  border-color: var(--accent);
   color: var(--accent-light);
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
@@ -370,7 +366,7 @@ body.drawer-open {
   align-items: center;
   gap: 8px;
   background: rgba(139, 167, 148, 0.12);
-  border: 1px solid rgba(139, 167, 148, 0.3);
+  border: none;
   padding: 6px 16px;
   border-radius: var(--radius-pill);
   font-size: 0.85rem;
@@ -442,13 +438,12 @@ body.drawer-open {
 .btn-secondary {
   background: var(--surface);
   color: var(--text-main);
-  border: 1px solid var(--border);
+  border: none;
 }
 
 .btn-secondary:hover {
   background: var(--surface-alt);
   color: var(--text-main);
-  border-color: var(--accent);
   transform: translateY(-2px);
 }
 
@@ -540,7 +535,7 @@ body.drawer-open {
 .tab-btn {
   background: var(--surface);
   color: var(--text-muted);
-  border: 1px solid var(--border-light);
+  border: none;
   padding: 10px 22px;
   border-radius: var(--radius-pill);
   font-size: 0.95rem;
@@ -557,7 +552,7 @@ body.drawer-open {
 .tab-btn.active {
   background: var(--accent);
   color: #121422;
-  border-color: var(--accent);
+  border: none;
   box-shadow: 0 4px 16px rgba(139, 167, 148, 0.25);
 }
 
@@ -582,7 +577,7 @@ body.drawer-open {
 .mockup-card {
   position: relative;
   background: var(--surface-glass);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius-lg);
   padding: 24px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
@@ -637,80 +632,147 @@ body.drawer-open {
 }
 
 /* Research-Backed Features (Bento Grid) */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-  gap: 24px;
-}
-
-.feature-card {
-  background: var(--surface-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 32px;
-  transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-}
-
-.feature-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0;
-  transition: var(--transition);
-}
-
-.feature-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--border-glow);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
-}
-
-.feature-card:hover::before {
-  opacity: 1;
-}
-
-.feature-icon-wrapper {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-sm);
-  background: rgba(139, 167, 148, 0.12);
+/* Behavioral Science Slider */
+.science-slider-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
-  margin-bottom: 20px;
+  gap: 24px;
+  max-width: 940px;
+  margin: 0 auto;
+  position: relative;
 }
 
-.feature-card h3 {
-  font-size: 1.25rem;
+.slider-nav-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-main);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  outline: none;
+}
+
+.slider-nav-btn:hover {
+  background: var(--surface-alt);
+  color: var(--accent-light);
+  transform: scale(1.1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.slider-nav-btn:active {
+  transform: scale(0.95);
+}
+
+.slider-nav-btn svg {
+  display: block;
+}
+
+.science-slider-viewport {
+  position: relative;
+  width: 100%;
+  min-height: 280px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  border: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.science-slide {
+  display: none;
+  width: 100%;
+  padding: 44px 40px;
+  text-align: left;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.science-slide.active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.science-slide-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+.science-topic-num {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
   margin-bottom: 12px;
 }
 
-.feature-card p {
-  font-size: 0.95rem;
+.science-topic-title {
+  font-size: clamp(1.4rem, 2.8vw, 1.85rem);
+  font-weight: 700;
+  color: var(--text-main);
   margin-bottom: 16px;
+  border: none;
+}
+
+.science-topic-desc {
+  font-size: 1.05rem;
+  line-height: 1.7;
   color: var(--text-muted);
+  margin-bottom: 24px;
+  max-width: 760px;
 }
 
 .citation-pill {
+  align-self: flex-start;
   display: inline-block;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--accent-light);
-  background: rgba(47, 52, 86, 0.8);
-  padding: 4px 10px;
+  background: rgba(139, 167, 148, 0.14);
+  padding: 6px 16px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
+  border: none;
+}
+
+.science-dots-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.science-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+
+.science-dot.active {
+  width: 28px;
+  border-radius: 6px;
+  background: var(--accent);
 }
 
 /* How It Works Steps */
@@ -723,7 +785,7 @@ body.drawer-open {
 
 .step-card {
   background: var(--surface);
-  border: 1px solid var(--border-light);
+  border: none;
   border-radius: var(--radius-md);
   padding: 32px;
   position: relative;
@@ -753,7 +815,7 @@ body.drawer-open {
 
 .faq-item {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius-md);
   overflow: hidden;
   transition: var(--transition);
@@ -805,7 +867,7 @@ body.drawer-open {
 /* CTA Banner */
 .cta-banner {
   background: linear-gradient(135deg, #1F243B 0%, #2F3456 100%);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius-lg);
   padding: 64px 32px;
   text-align: center;
@@ -828,7 +890,7 @@ body.drawer-open {
 
 /* Footer */
 .footer {
-  border-top: 1px solid var(--border-light);
+  border-top: none;
   padding: 64px 0 32px;
   margin-top: 96px;
   background: #111320;
@@ -893,7 +955,7 @@ body.drawer-open {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid rgba(93, 110, 117, 0.15);
+  border-top: none;
   padding-top: 24px;
   font-size: 0.85rem;
   color: var(--text-subtle);
@@ -927,7 +989,7 @@ body.drawer-open {
 
 .guide-step-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius-lg);
   padding: 36px 32px;
   position: relative;
@@ -935,7 +997,6 @@ body.drawer-open {
 }
 
 .guide-step-card:hover {
-  border-color: rgba(139, 167, 148, 0.4);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
 }
 
@@ -954,7 +1015,7 @@ body.drawer-open {
   height: 42px;
   border-radius: 50%;
   background: rgba(139, 167, 148, 0.18);
-  border: 1px solid rgba(139, 167, 148, 0.4);
+  border: none;
   color: var(--accent-light);
   font-weight: 800;
   font-size: 1.15rem;
@@ -1007,8 +1068,8 @@ body.drawer-open {
   margin-top: 18px;
   padding: 16px 20px;
   background: rgba(139, 167, 148, 0.08);
-  border-left: 3px solid var(--accent);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border: none;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-size: 0.92rem;
 }
@@ -1021,7 +1082,7 @@ body.drawer-open {
   max-width: 860px;
   margin: 64px auto 0;
   background: linear-gradient(135deg, rgba(39, 45, 74, 0.8), rgba(31, 36, 59, 0.9));
-  border: 1px solid var(--border-glow);
+  border: none;
   border-radius: var(--radius-lg);
   padding: 40px 32px;
   text-align: center;
@@ -1064,5 +1125,19 @@ body.drawer-open {
   .footer-bottom {
     flex-direction: column;
     text-align: center;
+  }
+  .science-slider-wrapper {
+    gap: 12px;
+  }
+  .slider-nav-btn {
+    width: 48px;
+    height: 48px;
+  }
+  .slider-nav-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+  .science-slide {
+    padding: 32px 20px;
   }
 }

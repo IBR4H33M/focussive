@@ -60,6 +60,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Behavioral Science Slider
+  const scienceSlides = document.querySelectorAll('.science-slide');
+  const sciencePrevBtn = document.getElementById('sciencePrevBtn');
+  const scienceNextBtn = document.getElementById('scienceNextBtn');
+  const scienceDots = document.querySelectorAll('.science-dot');
+  let currentScienceSlide = 0;
+
+  function setScienceSlide(index) {
+    if (!scienceSlides.length) return;
+    if (index < 0) index = scienceSlides.length - 1;
+    if (index >= scienceSlides.length) index = 0;
+    currentScienceSlide = index;
+
+    scienceSlides.forEach((slide, i) => {
+      slide.classList.toggle('active', i === currentScienceSlide);
+    });
+
+    scienceDots.forEach((dot, i) => {
+      dot.classList.toggle('active', i === currentScienceSlide);
+    });
+  }
+
+  if (sciencePrevBtn) {
+    sciencePrevBtn.addEventListener('click', () => {
+      setScienceSlide(currentScienceSlide - 1);
+    });
+  }
+
+  if (scienceNextBtn) {
+    scienceNextBtn.addEventListener('click', () => {
+      setScienceSlide(currentScienceSlide + 1);
+    });
+  }
+
+  scienceDots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const targetIdx = parseInt(dot.getAttribute('data-slide'), 10);
+      setScienceSlide(targetIdx);
+    });
+  });
+
   // FAQ Accordions
   const faqItems = document.querySelectorAll('.faq-item');
   faqItems.forEach(item => {

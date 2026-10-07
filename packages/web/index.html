@@ -284,53 +284,67 @@
         <p>Focussive was built around peer-reviewed principles of attention management and habit formation, addressing the true psychological root causes of distraction.</p>
       </div>
 
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
+      <div class="science-slider-wrapper">
+        <button class="slider-nav-btn slider-prev" id="sciencePrevBtn" aria-label="Previous Topic">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+
+        <div class="science-slider-viewport">
+          <!-- Slide 1 -->
+          <div class="science-slide active" data-index="0">
+            <div class="science-slide-inner">
+              <span class="science-topic-num">Topic 1 of 4</span>
+              <h3 class="science-topic-title">Attention Residue Mitigation</h3>
+              <p class="science-topic-desc">Research by Dr. Gloria Mark and Dr. Sophie Leroy proves that switching to another screen leaves lingering attention residue, taking up to 23 minutes to regain deep focus. Focussive synchronizes all devices simultaneously to eliminate cross-device leaks.</p>
+              <span class="citation-pill">Leroy (2009) • Mark (2014)</span>
+            </div>
           </div>
-          <h3>Attention Residue Mitigation</h3>
-          <p>Research by Dr. Gloria Mark and Dr. Sophie Leroy proves that switching to another screen leaves lingering attention residue, taking up to 23 minutes to regain deep focus. Focussive synchronizes all devices simultaneously to eliminate cross-device leaks.</p>
-          <span class="citation-pill">Leroy (2009) • Mark (2014)</span>
+
+          <!-- Slide 2 -->
+          <div class="science-slide" data-index="1">
+            <div class="science-slide-inner">
+              <span class="science-topic-num">Topic 2 of 4</span>
+              <h3 class="science-topic-title">Implementation Intentions</h3>
+              <p class="science-topic-desc">Psychologist Peter Gollwitzer demonstrated that pre-committing to specific motivations and conditional plans significantly increases goal adherence. Focussive's "Driving Forces" activate deliberate agency when impulse strikes.</p>
+              <span class="citation-pill">Gollwitzer et al.</span>
+            </div>
+          </div>
+
+          <!-- Slide 3 -->
+          <div class="science-slide" data-index="2">
+            <div class="science-slide-inner">
+              <span class="science-topic-num">Topic 3 of 4</span>
+              <h3 class="science-topic-title">Calibrated Micro-Friction</h3>
+              <p class="science-topic-desc">Impulsive screen pickups are automatic System 1 reflexes. Introducing purposeful, non-punitive friction pauses the subconscious impulse and re-engages deliberate prefrontal executive control (System 2).</p>
+              <span class="citation-pill">Kahneman Dual-Process</span>
+            </div>
+          </div>
+
+          <!-- Slide 4 -->
+          <div class="science-slide" data-index="3">
+            <div class="science-slide-inner">
+              <span class="science-topic-num">Topic 4 of 4</span>
+              <h3 class="science-topic-title">Pre-Commitment Contracts</h3>
+              <p class="science-topic-desc">In behavioral economics, pre-commitment devices protect your future self from predictable ego-depletion. Setting scheduled focus rules beforehand ensures high-performance follow-through.</p>
+              <span class="citation-pill">Schelling / Strotz</span>
+            </div>
+          </div>
         </div>
 
-        <div class="feature-card">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="M12 6v6l4 2"></path>
-            </svg>
-          </div>
-          <h3>Implementation Intentions</h3>
-          <p>Psychologist Peter Gollwitzer demonstrated that pre-committing to specific motivations and conditional plans significantly increases goal adherence. Focussive's "Driving Forces" activate deliberate agency when impulse strikes.</p>
-          <span class="citation-pill">Gollwitzer et al.</span>
-        </div>
+        <button class="slider-nav-btn slider-next" id="scienceNextBtn" aria-label="Next Topic">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
 
-        <div class="feature-card">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>
-          </div>
-          <h3>Calibrated Micro-Friction</h3>
-          <p>Impulsive screen pickups are automatic System 1 reflexes. Introducing purposeful, non-punitive friction pauses the subconscious impulse and re-engages deliberate prefrontal executive control (System 2).</p>
-          <span class="citation-pill">Kahneman Dual-Process</span>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-          </div>
-          <h3>Pre-Commitment Contracts</h3>
-          <p>In behavioral economics, pre-commitment devices protect your future self from predictable ego-depletion. Setting scheduled focus rules beforehand ensures high-performance follow-through.</p>
-          <span class="citation-pill">Schelling / Strotz</span>
-        </div>
+      <div class="science-dots-container" id="scienceDots">
+        <button class="science-dot active" data-slide="0" aria-label="Topic 1"></button>
+        <button class="science-dot" data-slide="1" aria-label="Topic 2"></button>
+        <button class="science-dot" data-slide="2" aria-label="Topic 3"></button>
+        <button class="science-dot" data-slide="3" aria-label="Topic 4"></button>
       </div>
     </div>
   </section>
@@ -416,13 +430,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Bottom CTA Banner -->
-      <div class="cta-banner">
-        <h2>Ready to Reclaim Your Focus?</h2>
-        <p>Join our closed beta community today. Experience a unified, cross-screen focus environment built with intention.</p>
-        <a href="#overview" class="btn btn-primary">Get Started with Focussive</a>
-      </div>
     </div>
   </section>
 
@@ -435,21 +442,9 @@
             <img src="assets/icon.png" alt="Focussive" width="28" height="28" style="border-radius: 6px;">
             <strong style="color: #fff; font-size: 1.1rem;">Focussive</strong>
           </div>
-          <p>A cognitive science-grounded productivity suite by SOLASE Studio. Designed to protect deep work across all your screens.</p>
         </div>
 
         <div class="footer-links-group">
-          <div class="footer-col">
-            <h4>Product</h4>
-            <ul>
-              <li><a href="index.html">App Overview</a></li>
-              <li><a href="guide.html">Usage Guide</a></li>
-              <li><a href="#walkthrough">Demo Video</a></li>
-              <li><a href="#screenshots">Screenshots</a></li>
-              <li><a href="#science">The Science</a></li>
-            </ul>
-          </div>
-
           <div class="footer-col">
             <h4>Legal</h4>
             <ul>
@@ -457,19 +452,11 @@
               <li><a href="terms.html">Terms of Service</a></li>
             </ul>
           </div>
-
-          <div class="footer-col">
-            <h4>Studio</h4>
-            <ul>
-              <li><a href="https://solase.studio" target="_blank" rel="noopener noreferrer">SOLASE Studio</a></li>
-              <li><a href="support.html">Contact &amp; Support</a></li>
-            </ul>
-          </div>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <div>&copy; 2026 Focussive. Developed with care by <a href="https://solase.studio" target="_blank" rel="noopener noreferrer"><strong>SOLASE Studio</strong></a>.</div>
+        <div>&copy; 2026 Focussive. Designed and Engineered by <a href="https://solase.studio" target="_blank" rel="noopener noreferrer"><strong>SOLASE Studio</strong></a>.</div>
         <div>
           <a href="index.html">Home</a> &bull; <a href="guide.html">Usage Guide</a> &bull; <a href="privacy.html">Privacy Policy</a> &bull; <a href="terms.html">Terms of Service</a>
         </div>
