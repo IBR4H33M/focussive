@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usage Guide &amp; Setup Tutorial — Focussive</title>
+  <meta name="description" content="Step-by-step setup guides and video walkthrough for Focussive. Learn how to configure cross-device focus synchronization between Android and Google Chrome.">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+
+  <!-- Open Graph / Meta -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://focussive.solase.studio/guide.html">
+  <meta property="og:title" content="Usage Guide &amp; Setup Tutorial — Focussive">
+  <meta property="og:description" content="Master cross-device focus. Detailed video walkthrough and step-by-step setup guide for Focussive on Android and Chrome.">
+  <meta property="og:image" content="https://focussive.solase.studio/assets/app-icon.png">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <!-- Header (Menu Button + Logo) -->
+  <header class="site-header">
+    <div class="container site-header-container">
+      <button class="menu-toggle-btn" id="menuToggleBtn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sideDrawer">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+      <a href="index.html" class="site-logo-link" aria-label="Focussive Home">
+        <img src="assets/icon.png" alt="Focussive" class="site-logo-img">
+      </a>
+    </div>
+  </header>
+
+  <!-- Left Side Menu Drawer -->
+  <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+  <aside class="side-drawer" id="sideDrawer" aria-label="Main Navigation" aria-hidden="true">
+    <div class="drawer-header">
+      <div class="drawer-brand">
+        <img src="assets/icon.png" alt="Focussive" class="drawer-logo-img">
+        <span class="drawer-brand-name">Focussive</span>
+      </div>
+      <button class="drawer-close-btn" id="drawerCloseBtn" aria-label="Close navigation menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="drawer-nav">
+      <ul class="drawer-menu">
+        <li>
+          <a href="index.html" class="drawer-nav-item">
+            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>App Overview</span>
+          </a>
+        </li>
+        <li>
+          <a href="guide.html" class="drawer-nav-item active">
+            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+            <span>Usage Guide</span>
+          </a>
+        </li>
+        <li>
+          <a href="privacy.html" class="drawer-nav-item">
+            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>Privacy Policy</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="drawer-footer">
+      <a href="support.html" class="drawer-contact-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Contact Us</span>
+      </a>
+      <p class="drawer-footer-note">Focussive &bull; SOLASE Studio</p>
+    </div>
+  </aside>
+
+  <!-- Hero Section -->
+  <section class="guide-hero">
+    <div class="container">
+      <div class="section-tag">Setup &amp; Walkthrough</div>
+      <h1 class="hero-title">Focussive Usage Guide</h1>
+      <p class="hero-desc">
+        Complete step-by-step instructions and video walkthrough to synchronize focus sessions between your Android device and Google Chrome.
+      </p>
+    </div>
+  </section>
+
+  <!-- Tutorial Video Section -->
+  <section class="section" style="padding-top: 0;" id="video-tutorial">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Tutorial Video</div>
+        <h2 class="section-title">See Setup &amp; Sync in Real Time</h2>
+        <p>Watch how real-time device synchronization, the focus shield overlay, and the Driving Forces protocol operate in under 2 minutes.</p>
+      </div>
+
+      <div class="video-wrapper">
+        <div class="video-container">
+          <iframe 
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0" 
+            title="Focussive App and Chrome Extension Setup Walkthrough" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+          </iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step-by-Step Setup Guides Section -->
+  <section class="section" id="setup-steps">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Step-by-Step Setup</div>
+        <h2 class="section-title">Getting Started with Focussive</h2>
+        <p>Follow these quick steps to configure the Android app and Chrome Companion extension for seamless deep work.</p>
+      </div>
+
+      <div class="guide-step-list">
+        <!-- Step 1 -->
+        <article class="guide-step-card">
+          <div class="guide-step-header">
+            <div class="guide-step-num">1</div>
+            <h3 class="guide-step-title">Install Focussive on Android</h3>
+          </div>
+          <div class="guide-step-body">
+            <p>Download the official Focussive app from the Google Play Store on your Android phone or tablet:</p>
+            <ul>
+              <li><strong>Install from Play Store:</strong> Open <a href="https://play.google.com/store/apps/details?id=com.solase.focussive" target="_blank" rel="noopener noreferrer">Focussive on Google Play</a> and tap <em>Install</em>.</li>
+              <li><strong>Usage Access Permission:</strong> When prompted on first launch, enable Usage Stats access so Focussive can recognize when distracting apps are foregrounded.</li>
+              <li><strong>Accessibility Service:</strong> Grant the Accessibility permission to allow Focussive to show the calming focus shield overlay over blocked apps during active sessions.</li>
+              <li><strong>Battery Exemption:</strong> Allow Focussive to run without aggressive OS battery optimization so your timers stay accurate when the screen is locked.</li>
+            </ul>
+            <div class="guide-tip-box">
+              <strong>Tip:</strong> All app evaluations happen locally on your phone. Focussive never uploads your screen or application usage history to external servers.
+            </div>
+          </div>
+        </article>
+
+        <!-- Step 2 -->
+        <article class="guide-step-card">
+          <div class="guide-step-header">
+            <div class="guide-step-num">2</div>
+            <h3 class="guide-step-title">Install Focussive Companion on Google Chrome</h3>
+          </div>
+          <div class="guide-step-body">
+            <p>Extend your focus defense to your desktop workspace by installing the official browser extension:</p>
+            <ul>
+              <li><strong>Chrome Web Store:</strong> Navigate to the <a href="https://chromewebstore.google.com/" target="_blank" rel="noopener noreferrer">Chrome Web Store</a> and click <em>Add to Chrome</em>.</li>
+              <li><strong>Pin to Toolbar:</strong> Click the extensions puzzle icon in Chrome’s top bar and pin Focussive so you can easily check session status at a glance.</li>
+            </ul>
+            <div class="guide-tip-box">
+              <strong>Seamless Sync:</strong> The companion extension runs lightweight in the background and only blocks websites during scheduled or active focus sessions.
+            </div>
+          </div>
+        </article>
+
+        <!-- Step 3 -->
+        <article class="guide-step-card">
+          <div class="guide-step-header">
+            <div class="guide-step-num">3</div>
+            <h3 class="guide-step-title">Log In with the Same Account</h3>
+          </div>
+          <div class="guide-step-body">
+            <p>Pair your phone and computer together using your Focussive account credentials:</p>
+            <ul>
+              <li>Open Focussive on Android and sign in with your email or Google account.</li>
+              <li>Open the Focussive Companion popup in Chrome, select the <em>Email</em> or <em>Google</em> tab, and log into the same account.</li>
+              <li>Within milliseconds, your devices establish an encrypted, real-time WebSocket sync channel.</li>
+            </ul>
+            <div class="guide-tip-box">
+              <strong>Check Connection:</strong> Once logged in, the Chrome extension popup displays a green "Synced" indicator confirming two-way communication.
+            </div>
+          </div>
+        </article>
+
+        <!-- Step 4 -->
+        <article class="guide-step-card">
+          <div class="guide-step-header">
+            <div class="guide-step-num">4</div>
+            <h3 class="guide-step-title">Customize Your Distraction Blocklists</h3>
+          </div>
+          <div class="guide-step-body">
+            <p>Choose which websites and apps tempt you most during deep work and set strict blocking rules:</p>
+            <ul>
+              <li><strong>Mobile Blocklist:</strong> In the Android app, select social media apps, games, and short-form video apps you want quarantined.</li>
+              <li><strong>Desktop Blocklist:</strong> In the Chrome extension (or Android settings), configure distracting websites (e.g., <code>reddit.com</code>, <code>facebook.com</code>, <code>instagram.com</code>, <code>x.com</code>).</li>
+              <li><strong>Synchronized Rules:</strong> Any rule set on your phone instantly reflects on your browser, so you cannot escape from mobile to desktop.</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Step 5 -->
+        <article class="guide-step-card">
+          <div class="guide-step-header">
+            <div class="guide-step-num">5</div>
+            <h3 class="guide-step-title">Apply the "Driving Forces" Protocol</h3>
+          </div>
+          <div class="guide-step-body">
+            <p>Willpower alone is fragile. Before starting each session, Focussive prompts you for intentionality:</p>
+            <ul>
+              <li><strong>Select a Motivation Category:</strong> Categorize your work under Career, Craft, Clarity, or Health.</li>
+              <li><strong>Write a Re-Anchoring Phrase:</strong> Enter your core reason for staying on task (e.g., <em>"Finish client draft so I can relax tonight guilt-free"</em>).</li>
+              <li><strong>Cognitive Interruption:</strong> If you accidentally type a blocked domain in Chrome, Focussive displays your own re-anchoring phrase instead of an angry block screen, gently steering you back to deep work.</li>
+            </ul>
+            <div class="guide-tip-box">
+              <strong>ADHD &amp; Neurodivergent Design:</strong> Purposeful friction turns impulsive reflex loops into conscious, thoughtful choices.
+            </div>
+          </div>
+        </article>
+
+        <!-- Step 6 -->
+        <article class="guide-step-card">
+          <div class="guide-step-header">
+            <div class="guide-step-num">6</div>
+            <h3 class="guide-step-title">Start a Session &amp; Maintain Flow</h3>
+          </div>
+          <div class="guide-step-body">
+            <p>You're ready to enter uninterrupted deep work:</p>
+            <ul>
+              <li>Set your timer duration (e.g., 25 min Pomodoro, 50 min Deep Block, or 90 min Flow state) and tap <strong>Start Focus</strong> on either your phone or Chrome.</li>
+              <li>Both devices lock down simultaneously. Restricting distractions on one immediately seals escape routes on the other.</li>
+              <li><strong>Emergency Unblock:</strong> Need to look up a two-factor code or urgent email? Focussive includes a strictly limited 60-second emergency unblock with a mandatory cool-down to prevent abuse.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+
+      <!-- Help Card -->
+      <div class="guide-help-card">
+        <h3>Have Questions or Need Assistance?</h3>
+        <p>Our team is here to assist with setup, device pairing, or troubleshooting on any Android or Chrome version.</p>
+        <div class="guide-help-actions">
+          <a href="support.html" class="btn btn-primary">Contact Support</a>
+          <a href="index.html" class="btn btn-secondary">Back to Overview</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand-col">
+          <div class="footer-logo">
+            <img src="assets/icon.png" alt="Focussive Logo" class="footer-logo-img">
+            <span class="footer-brand-name">Focussive</span>
+          </div>
+          <p class="footer-desc">
+            The cross-device focus system designed with behavioral psychology and deliberate friction to eliminate multi-screen distractions.
+          </p>
+        </div>
+
+        <div class="footer-links-group">
+          <div class="footer-col">
+            <h4>Navigation</h4>
+            <ul>
+              <li><a href="index.html">App Overview</a></li>
+              <li><a href="guide.html">Usage Guide</a></li>
+              <li><a href="support.html">Contact &amp; Support</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h4>Legal</h4>
+            <ul>
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="terms.html">Terms of Service</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h4>Studio</h4>
+            <ul>
+              <li><a href="https://solase.studio" target="_blank" rel="noopener noreferrer">SOLASE Studio</a></li>
+              <li><a href="mailto:support@solase.studio">support@solase.studio</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>&copy; 2026 Focussive. Developed with care by <a href="https://solase.studio" target="_blank" rel="noopener noreferrer"><strong>SOLASE Studio</strong></a>.</div>
+        <div>
+          <a href="index.html">Home</a> &bull; <a href="guide.html">Usage Guide</a> &bull; <a href="privacy.html">Privacy Policy</a> &bull; <a href="terms.html">Terms</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
