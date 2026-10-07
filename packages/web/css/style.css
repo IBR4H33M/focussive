@@ -107,18 +107,21 @@ a:hover {
   color: var(--accent-light);
 }
 
-/* Site Header - Menu Toggle & Logo */
+/* ==========================================================================
+   Floating Top Bar & Segmented Navigation (Stats Screen Style)
+   ========================================================================== */
 .site-header {
-  position: relative;
+  position: sticky;
+  top: 16px;
   width: 100%;
-  padding: 28px 0 16px;
-  z-index: 50;
+  padding: 8px 0;
+  z-index: 1000;
 }
 
 .site-header-container {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
   gap: 16px;
 }
 
@@ -126,6 +129,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  flex-shrink: 0;
 }
 
 .site-logo-link:hover {
@@ -140,173 +144,82 @@ a:hover {
   display: block;
 }
 
-/* 3-line menu icon - raw minimal icon, no container fill or border */
-.menu-toggle-btn {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  box-shadow: none;
-  padding: 4px 0;
-  cursor: pointer;
-  outline: none;
-  transition: opacity 0.2s ease;
-}
-
-.menu-toggle-btn:hover {
-  background: none;
-  opacity: 0.65;
-}
-
-.menu-toggle-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
-}
-
-.hamburger-bar {
-  display: block;
-  width: 22px;
-  height: 2px;
-  background-color: var(--text-main);
-  border-radius: 2px;
-}
-
-/* ==========================================================================
-   Left Side Menu Drawer & Backdrop
-   ========================================================================== */
-.drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(10, 12, 20, 0.72);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s ease;
-  z-index: 998;
-}
-
-.drawer-backdrop.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.side-drawer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 280px;
-  max-width: 86vw;
-  background: #141727;
-  border: none;
-  box-shadow: 16px 0 48px rgba(0, 0, 0, 0.65);
-  z-index: 999;
-  display: flex;
-  flex-direction: column;
-  transform: translateX(-100%);
-  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-  overflow-y: auto;
-  will-change: transform;
-}
-
-.side-drawer.active {
-  transform: translateX(0);
-}
-
-body.drawer-open {
-  overflow: hidden;
-}
-
-.drawer-header {
-  display: flex;
+/* 3-Tab Segmented Control — matching Focussive Stats Screen */
+.segment-container {
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: flex-end;
-  padding: 24px 24px 12px;
-  border: none;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 4px;
+  gap: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
-/* Cross close icon - raw icon, no container fill or border */
-.drawer-close-btn {
+.segment-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: none;
-  border: none;
-  box-shadow: none;
-  padding: 4px;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.2s ease, transform 0.2s ease;
-  outline: none;
-}
-
-.drawer-close-btn:hover {
-  background: none;
-  color: var(--text-main);
-  transform: rotate(90deg);
-}
-
-.drawer-nav {
-  padding: 16px 20px;
-  flex: 1;
-}
-
-.drawer-menu {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Menu items: NO icons, fat border when hovered, solid fill when selected */
-.drawer-nav-item {
-  display: block;
-  padding: 12px 18px;
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-size: 1.05rem;
-  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
   text-decoration: none;
-  background: transparent;
-  border: 3px solid transparent;
+  white-space: nowrap;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.drawer-nav-item:hover {
-  color: var(--text-main);
-  background: transparent;
-  border: 3px solid var(--accent);
+.segment-tab:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.drawer-nav-item.active {
-  background: var(--accent);
-  color: #121422;
-  border: 3px solid var(--accent);
+.segment-tab.active {
+  background-color: #62774C;
+  border-color: #62774C;
+  color: #FFFFFF;
   font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
-/* Contact Us: Simple text, no container */
-.drawer-footer {
-  padding: 24px 24px 36px;
-  border: none;
-  margin-top: auto;
+/* Balance spacer on desktop so the tabs remain centered */
+.header-spacer {
+  width: 44px;
+  flex-shrink: 0;
 }
 
-.drawer-contact-link {
-  display: inline-block;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
+@media (max-width: 640px) {
+  .site-header {
+    top: 10px;
+    padding: 6px 0;
+  }
 
-.drawer-contact-link:hover {
-  color: var(--accent-light);
-  text-decoration: underline;
+  .site-header-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header-spacer {
+    display: none;
+  }
+
+  .segment-container {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .segment-tab {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 12.5px;
+  }
 }
 
 /* Hero Section */

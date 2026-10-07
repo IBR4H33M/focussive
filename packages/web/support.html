@@ -18,50 +18,20 @@
 <body>
   <div class="bg-grid"></div>
 
-  <!-- Header (Logo on top, Menu Button below) -->
+  <!-- Floating Top Bar with Stats Screen Segmented Tabs -->
   <header class="site-header">
     <div class="container site-header-container">
       <a href="index.html" class="site-logo-link" aria-label="Focussive Home">
         <img src="assets/icon.png" alt="Focussive" class="site-logo-img">
       </a>
-      <button class="menu-toggle-btn" id="menuToggleBtn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sideDrawer">
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-      </button>
+      <nav class="segment-container" aria-label="Main Navigation">
+        <a href="index.html" class="segment-tab">Overview</a>
+        <a href="guide.html" class="segment-tab">Usage Guide</a>
+        <a href="privacy.html" class="segment-tab">Privacy Policy</a>
+      </nav>
+      <div class="header-spacer" aria-hidden="true"></div>
     </div>
   </header>
-
-  <!-- Left Side Menu Drawer -->
-  <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
-  <aside class="side-drawer" id="sideDrawer" aria-label="Main Navigation" aria-hidden="true">
-    <div class="drawer-header">
-      <button class="drawer-close-btn" id="drawerCloseBtn" aria-label="Close navigation menu">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-
-    <nav class="drawer-nav">
-      <ul class="drawer-menu">
-        <li>
-          <a href="index.html" class="drawer-nav-item">App Overview</a>
-        </li>
-        <li>
-          <a href="guide.html" class="drawer-nav-item">Usage Guide</a>
-        </li>
-        <li>
-          <a href="privacy.html" class="drawer-nav-item">Privacy Policy</a>
-        </li>
-      </ul>
-    </nav>
-
-    <div class="drawer-footer">
-      <a href="support.html" class="drawer-contact-link">Contact Us</a>
-    </div>
-  </aside>
 
   <!-- Support Content -->
   <main class="container">

@@ -3,44 +3,6 @@
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Side Drawer Navigation
-  const menuToggleBtn = document.getElementById('menuToggleBtn');
-  const sideDrawer = document.getElementById('sideDrawer');
-  const drawerBackdrop = document.getElementById('drawerBackdrop');
-  const drawerCloseBtn = document.getElementById('drawerCloseBtn');
-
-  function openDrawer() {
-    if (sideDrawer && drawerBackdrop) {
-      sideDrawer.classList.add('active');
-      drawerBackdrop.classList.add('active');
-      sideDrawer.setAttribute('aria-hidden', 'false');
-      drawerBackdrop.setAttribute('aria-hidden', 'false');
-      if (menuToggleBtn) menuToggleBtn.setAttribute('aria-expanded', 'true');
-      document.body.classList.add('drawer-open');
-    }
-  }
-
-  function closeDrawer() {
-    if (sideDrawer && drawerBackdrop) {
-      sideDrawer.classList.remove('active');
-      drawerBackdrop.classList.remove('active');
-      sideDrawer.setAttribute('aria-hidden', 'true');
-      drawerBackdrop.setAttribute('aria-hidden', 'true');
-      if (menuToggleBtn) menuToggleBtn.setAttribute('aria-expanded', 'false');
-      document.body.classList.remove('drawer-open');
-    }
-  }
-
-  if (menuToggleBtn) menuToggleBtn.addEventListener('click', openDrawer);
-  if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeDrawer);
-  if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeDrawer);
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && sideDrawer && sideDrawer.classList.contains('active')) {
-      closeDrawer();
-    }
-  });
-
   // Screenshot Tabs
   const tabButtons = document.querySelectorAll('.tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
