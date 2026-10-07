@@ -282,7 +282,7 @@ a:hover {
 }
 
 .store-badge-img {
-  height: 52px;
+  height: clamp(54px, 6vw, 62px);
   width: auto;
   object-fit: contain;
   display: block;
