@@ -4,7 +4,7 @@
 
 .legal-header {
   padding: 80px 0 40px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: none;
   margin-bottom: 48px;
 }
 
@@ -30,7 +30,7 @@
   margin-top: 48px;
   margin-bottom: 20px;
   color: var(--text-main);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: none;
   padding-bottom: 10px;
 }
 
@@ -68,14 +68,14 @@
   border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9em;
-  border: 1px solid var(--border-light);
+  border: none;
 }
 
 .legal-callout {
   background: rgba(139, 167, 148, 0.08);
-  border-left: 4px solid var(--accent);
+  border: none;
   padding: 20px 24px;
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-radius: var(--radius-md);
   margin: 28px 0;
 }
 
