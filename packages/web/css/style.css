@@ -270,17 +270,22 @@ a:hover {
   transform: translateY(-2px);
 }
 
-.hero-notice {
-  font-size: 0.9rem;
-  color: var(--text-subtle);
-  margin-top: 12px;
+.store-badge-link {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
 }
 
-.hero-notice strong {
-  color: var(--accent-light);
-  background: rgba(139, 167, 148, 0.1);
-  padding: 2px 8px;
-  border-radius: 4px;
+.store-badge-link:hover {
+  transform: translateY(-3px);
+  filter: brightness(1.1);
+}
+
+.store-badge-img {
+  height: 52px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 
 /* Video Showcase Section */
