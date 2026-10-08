@@ -14,6 +14,7 @@ import {
   Alert,
   ScrollView,
   Platform,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useIsDark } from '@/utils/theme';
@@ -514,14 +515,18 @@ export default function ExtensionModal({ visible, onClose, onStatusChange }: Ext
               {tab === 'scan' && (
                 <View style={styles.tabContent}>
                   {/* Chrome Web Store Guide Info */}
-                  <View style={styles.webstoreGuideTextContainer}>
+                  <TouchableOpacity
+                    style={styles.webstoreGuideTextContainer}
+                    onPress={() => Linking.openURL('https://chromewebstore.google.com/detail/focussive-companion/pmoefdfjjiaokamckkafglomikbcobkk')}
+                    activeOpacity={0.7}
+                  >
                     <Text style={[styles.webstoreTitle, { color: POPUP_TEXT }]}>
                       First time setting up?
                     </Text>
                     <Text style={[styles.webstoreSubtitle, { color: POPUP_MUTED }]}>
-                      Search for <Text style={{ color: '#2FB556', fontWeight: '700' }}>&ldquo;FOCUSSIVE companion&rdquo;</Text> in the Chrome Web Store.
+                      Get <Text style={{ color: '#2FB556', fontWeight: '700', textDecorationLine: 'underline' }}>Focussive Companion</Text> on the Chrome Web Store &rarr;
                     </Text>
-                  </View>
+                  </TouchableOpacity>
 
                   {scanMode === 'camera' ? (
                     /* CAMERA SCANNER VIEW */
