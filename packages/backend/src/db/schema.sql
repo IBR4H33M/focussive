@@ -376,3 +376,20 @@ CREATE TABLE IF NOT EXISTS promo_redemptions (
 
 CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promo_codes(code);
 CREATE INDEX IF NOT EXISTS idx_promo_redemptions_user ON promo_redemptions(user_id);
+
+-- Enable RLS to prevent public access via Supabase REST API
+ALTER TABLE public.promo_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.promo_redemptions ENABLE ROW LEVEL SECURITY;
+
+-- promo_codes: Only accessible by backend service role (anon/authenticated denied)
+DROP POLICY IF EXISTS promo_codes_service_policy ON public.promo_codes;
+CREATE POLICY promo_codes_service_policy ON public.promo_codes
+  FOR ALL
+  USING (false);
+
+-- promo_redemptions: Users can only view their own redemptions if queried directly
+DROP POLICY IF EXISTS promo_redemptions_user_policy ON public.promo_redemptions;
+CREATE POLICY promo_redemptions_user_policy ON public.promo_redemptions
+  FOR ALL
+  USING (user_id = auth.uid());
+

@@ -177,27 +177,27 @@ function renderIdle() {
   }
 
   overlayElement.innerHTML = `
-    <div style="text-align:center; padding:32px 24px; max-width:440px; margin:0 auto; width:100%; box-sizing:border-box;">
-      <h2 style="color:#FFFFFF; font-size:26px; font-weight:700; margin:0 0 8px; letter-spacing:0.3px;">
+    <div style="text-align:center; padding:24px 20px; max-width:440px; margin:auto; width:100%; box-sizing:border-box; flex-shrink:0;">
+      <h2 style="color:#FFFFFF; font-size:24px; font-weight:700; margin:0 0 6px; letter-spacing:0.3px; flex-shrink:0;">
         You are getting distracted
       </h2>
-      <p style="color:rgba(255,255,255,0.7); font-size:14px; font-weight:400; margin:0 0 18px; line-height:1.4;">
+      <p style="color:rgba(255,255,255,0.7); font-size:14px; font-weight:400; margin:0 0 16px; line-height:1.4; flex-shrink:0;">
         You're visiting <strong style="color:#FFFFFF; font-weight:600;">${currentWebsiteName}</strong> during a focus session
       </p>
 
       ${imageSrc ? `
-        <div style="margin:0 auto 20px auto; width:200px; height:200px; max-width:85vw; border-radius:16px; overflow:hidden; border:none; box-shadow:0 10px 30px rgba(0,0,0,0.6);">
+        <div style="margin:0 auto 16px auto; width:160px; height:160px; max-width:70vw; max-height:22vh; border-radius:16px; overflow:hidden; border:none; box-shadow:0 10px 30px rgba(0,0,0,0.6); flex-shrink:0;">
           <img src="${imageSrc}" alt="Block" style="width:100%; height:100%; object-fit:cover; display:block;" />
         </div>
       ` : ''}
 
       ${currentSettings.overlay_quote_enabled && selectedQuote ? `
-        <div style="margin:0 0 22px; padding:0 8px; text-align:center;">
-          <p style="font-style:italic; color:#86EFAC; font-size:24px; font-weight:700; margin:0; line-height:1.35; letter-spacing:-0.2px; text-shadow:0 2px 8px rgba(0,0,0,0.6);">
+        <div style="margin:0 0 16px; padding:0 8px; text-align:center; flex-shrink:0;">
+          <p style="font-style:italic; color:#86EFAC; font-size:19px; font-weight:700; margin:0; line-height:1.35; letter-spacing:-0.2px; text-shadow:0 2px 8px rgba(0,0,0,0.6);">
             "${quoteWords}"
           </p>
           ${quotePerson ? `
-            <div style="color:#86EFAC; font-size:14px; font-weight:400; margin-top:8px; font-style:normal; letter-spacing:0.3px; opacity:0.85;">
+            <div style="color:#86EFAC; font-size:13px; font-weight:400; margin-top:6px; font-style:normal; letter-spacing:0.3px; opacity:0.85;">
               — ${quotePerson}
             </div>
           ` : ''}
@@ -206,11 +206,11 @@ function renderIdle() {
 
       ${currentSettings.auto_close_tab ? `
         <!-- Large countdown container -->
-        <div id="foc-countdown-box" style="margin: 0 0 20px; background:rgba(0,0,0,0.5); border:none; border-radius:14px; padding:12px 16px; text-align:center;">
+        <div id="foc-countdown-box" style="margin: 0 0 16px; background:rgba(0,0,0,0.5); border:none; border-radius:14px; padding:10px 14px; text-align:center; flex-shrink:0;">
           <div style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,0.6); margin-bottom:2px;">
             CLOSING TAB IN
           </div>
-          <div id="foc-countdown-number" style="font-size:54px; font-weight:800; color:#FF6B6B; font-family:-apple-system, BlinkMacSystemFont, monospace; line-height:1.1;">
+          <div id="foc-countdown-number" style="font-size:46px; font-weight:800; color:#FF6B6B; font-family:-apple-system, BlinkMacSystemFont, monospace; line-height:1.1;">
             ${countdownRemaining}
           </div>
           <div style="font-size:11px; color:rgba(255,255,255,0.45); margin-top:2px;">
@@ -219,7 +219,7 @@ function renderIdle() {
         </div>
       ` : ''}
 
-      <div style="display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; flex-direction:column; gap:10px; width:100%; flex-shrink:0;">
 
         <!-- Exit / Close Tab -->
         <button id="foc-exit" style="${BTN_BASE} background:rgba(255,255,255,0.12); border:none; color:#FFFFFF;">
@@ -228,15 +228,15 @@ function renderIdle() {
 
         <!-- Take a break — only if break time available -->
         ${breakAvailable
-          ? `<button id="foc-break" style="${BTN_BASE} background:rgba(255,255,255,0.12); border:none; color:#FFFFFF; display:flex; justify-content:space-between; align-items:center; padding:14px 20px;">
+          ? `<button id="foc-break" style="${BTN_BASE} background:rgba(255,255,255,0.12); border:none; color:#FFFFFF; justify-content:space-between !important; padding:12px 20px !important;">
                <span style="font-size:15px; font-weight:500; color:#FFFFFF;">Take a break?</span>
-               <span style="font-size:16px; font-weight:600; color:#FFFFFF;">${breakMaxMinutes} min</span>
+               <span style="font-size:15px; font-weight:600; color:#FFFFFF;">${breakMaxMinutes} min</span>
              </button>`
           : ''
         }
 
         <!-- Allow anyway -->
-        <button id="foc-allow" style="${BTN_BASE} background:#8B1E1E; border:none; color:#FFFFFF;">
+        <button id="foc-allow" style="${BTN_BASE} background:#D34545; border:none; color:#FFFFFF;">
           Allow anyway
         </button>
 
@@ -289,24 +289,24 @@ function renderPicker(mode: 'break' | 'allow') {
   const confirmLabel = isBreak ? `Start ${current} min break` : `Allow ${current} min`;
   const confirmStyle = isBreak
     ? `background:#16652D; border:none; color:#FFFFFF;`
-    : `background:#8B1E1E; border:none; color:#FFFFFF;`;
+    : `background:#D34545; border:none; color:#FFFFFF;`;
 
   overlayElement.innerHTML = `
-    <div style="text-align:center; padding:36px 28px; max-width:380px; margin:0 auto; width:100%;">
+    <div style="text-align:center; padding:32px 24px; max-width:380px; margin:auto; width:100%; box-sizing:border-box; flex-shrink:0;">
       <h2 style="color:${titleColor}; font-size:26px; font-weight:700; margin:0 0 8px;">${title}</h2>
-      <p style="color:${subtitleColor}; font-size:13px; font-weight:400; margin:0 0 28px; line-height:1.5;">${subtitle}</p>
+      <p style="color:${subtitleColor}; font-size:13px; font-weight:400; margin:0 0 24px; line-height:1.5;">${subtitle}</p>
 
       <!-- Picker -->
-      <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:32px;">
+      <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:28px; flex-shrink:0;">
         <button id="foc-up" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:24px; cursor:pointer; padding:8px 48px; transition:color 0.15s;">▲</button>
         <div>
-          <span id="foc-num" style="color:white; font-size:76px; font-weight:200; line-height:1;">${current}</span>
+          <span id="foc-num" style="color:white; font-size:72px; font-weight:200; line-height:1;">${current}</span>
           <div style="color:rgba(255,255,255,0.5); font-size:15px; margin-top:-6px;">min</div>
         </div>
         <button id="foc-down" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:24px; cursor:pointer; padding:8px 48px; transition:color 0.15s;">▼</button>
       </div>
 
-      <div style="display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; flex-direction:column; gap:10px; width:100%; flex-shrink:0;">
         <button id="foc-confirm" style="${BTN_BASE} ${confirmStyle}">${confirmLabel}</button>
         <button id="foc-back" style="background:none; border:none; color:rgba(255,255,255,0.4); font-size:13px; cursor:pointer; padding:10px;">&lt; Back</button>
       </div>
@@ -389,27 +389,34 @@ function confirmAllow() {
 // ─── Helpers ─────────────────────────────────────────────────
 
 const BTN_BASE = `
-  width:100%; padding:13px 20px; border-radius:12px; border:none; outline:none;
-  font-size:14px; font-weight:600; cursor:pointer;
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  box-sizing:border-box; text-align:center;
-  transition: transform 0.12s, opacity 0.12s;
+  width:100% !important; min-height:46px !important; height:auto !important;
+  padding:12px 20px !important; border-radius:12px !important; border:none !important; outline:none !important;
+  font-size:15px !important; font-weight:600 !important; cursor:pointer !important;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;
+  box-sizing:border-box !important; text-align:center !important; line-height:1.3 !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  flex-shrink:0 !important; max-height:none !important;
+  transition: transform 0.12s, opacity 0.12s !important;
 `;
 
 function applyBaseStyles(el: HTMLDivElement) {
   el.style.cssText = `
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: rgba(14, 14, 18, 0.94);
-    z-index: 2147483647;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    position: fixed !important;
+    top: 0 !important; left: 0 !important;
+    width: 100vw !important; height: 100vh !important;
+    background: rgba(14, 14, 18, 0.95) !important;
+    z-index: 2147483647 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 32px 16px !important;
+    box-sizing: border-box !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
   `;
 }
 

@@ -39,7 +39,7 @@ function getBreakSecondsLeft(breakEndsAt: string | null): number {
 const GREEN = '#22B14C';
 const GREEN_BORDER = '#1B8C3C';
 const GREEN_DARK_BTN = '#16652D';
-const TIMER_BREAK = '#FFF1B8';
+const TIMER_BREAK = '#FFE500';
 const VIOLATION_RED = '#FFD1D1';
 
 export default function SessionCard({ session, onRefresh }: SessionCardProps) {
@@ -262,8 +262,9 @@ export default function SessionCard({ session, onRefresh }: SessionCardProps) {
 
       <style>{`
         .take-break-btn:hover {
-          background-color: #1c7c37 !important;
-          filter: brightness(1.08);
+          background-color: #FBBF24 !important;
+          filter: brightness(1.06);
+          box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4) !important;
         }
         .skip-active-btn:hover {
           background-color: #1e8f3e !important;
@@ -482,8 +483,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   breakCountdown: {
     fontSize: 16,
-    fontWeight: 600,
-    color: '#FFFFFF',
+    fontWeight: 700,
+    color: TIMER_BREAK,
     fontVariantNumeric: 'tabular-nums',
   },
   footer: {
@@ -538,24 +539,25 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '11px 14px',
     borderRadius: 10,
     border: 'none',
-    backgroundColor: GREEN_DARK_BTN,
-    color: '#FFFFFF',
+    backgroundColor: '#F59E0B',
+    color: '#1C1D2A',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
+    transition: 'all 0.15s ease',
     boxSizing: 'border-box',
+    boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
   },
   primaryBreakBtnText: {
     fontSize: 14,
-    fontWeight: 400,
-    color: '#FFFFFF',
+    fontWeight: 700,
+    color: '#1C1D2A',
   },
   primaryBreakBtnSub: {
     fontSize: 12,
-    fontWeight: 400,
-    color: 'rgba(255, 255, 255, 0.85)',
+    fontWeight: 600,
+    color: 'rgba(28, 29, 42, 0.85)',
   },
   quickBreakRow: {
     display: 'flex',
